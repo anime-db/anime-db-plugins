@@ -87,6 +87,24 @@ final class PluginZipBuilderTest extends TestCase
         self::assertSame(hash_file('sha256', $this->tempPath('first.zip')), $sha1);
     }
 
+    public function testShaIsStableAcrossDifferentBuilderTimezones(): void
+    {
+        $pluginDir = $this->createPluginFixture();
+        $previousTz = date_default_timezone_get();
+
+        try {
+            date_default_timezone_set('Pacific/Kiritimati'); // UTC+14
+            $sha1 = (new PluginZipBuilder())->build($pluginDir, $this->tempPath('tz-plus.zip'));
+
+            date_default_timezone_set('Etc/GMT+12'); // UTC-12
+            $sha2 = (new PluginZipBuilder())->build($pluginDir, $this->tempPath('tz-minus.zip'));
+        } finally {
+            date_default_timezone_set($previousTz);
+        }
+
+        self::assertSame($sha1, $sha2);
+    }
+
     public function testExtractedManifestPassesManifestValidator(): void
     {
         $pluginDir = $this->createPluginFixture();

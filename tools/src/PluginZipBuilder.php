@@ -91,22 +91,32 @@ final class PluginZipBuilder
             unlink($outZip);
         }
 
-        $zip = new \ZipArchive();
-        if ($zip->open($outZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            throw new \RuntimeException(\sprintf('Failed to create zip archive "%s".', $outZip));
-        }
+        // libzip converts the Unix timestamp passed to setMtimeName() into the entry's DOS
+        // date/time field via localtime(), so the resulting bytes (and thus the sha256) would
+        // otherwise depend on the builder machine's TZ. Pin UTC for the duration of the build.
+        $previousTz = date_default_timezone_get();
+        date_default_timezone_set('UTC');
 
-        foreach (self::collectFiles($pluginDir) as $relativePath) {
-            $zip->addFile($pluginDir.'/'.$relativePath, $relativePath);
-            $zip->setMtimeName($relativePath, self::FIXED_TIMESTAMP);
-            $zip->setExternalAttributesName(
-                $relativePath,
-                \ZipArchive::OPSYS_UNIX,
-                self::FIXED_UNIX_MODE << 16,
-            );
-        }
+        try {
+            $zip = new \ZipArchive();
+            if ($zip->open($outZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                throw new \RuntimeException(\sprintf('Failed to create zip archive "%s".', $outZip));
+            }
 
-        $zip->close();
+            foreach (self::collectFiles($pluginDir) as $relativePath) {
+                $zip->addFile($pluginDir.'/'.$relativePath, $relativePath);
+                $zip->setMtimeName($relativePath, self::FIXED_TIMESTAMP);
+                $zip->setExternalAttributesName(
+                    $relativePath,
+                    \ZipArchive::OPSYS_UNIX,
+                    self::FIXED_UNIX_MODE << 16,
+                );
+            }
+
+            $zip->close();
+        } finally {
+            date_default_timezone_set($previousTz);
+        }
 
         $sha256 = hash_file('sha256', $outZip);
         \assert($sha256 !== false);
