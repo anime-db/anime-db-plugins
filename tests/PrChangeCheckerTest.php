@@ -93,4 +93,14 @@ final class PrChangeCheckerTest extends TestCase
         self::assertFalse($result->isValid());
         self::assertNull($result->pluginId);
     }
+
+    public function testPathEscapingPluginDirectoryViaDotDotIsRejected(): void
+    {
+        $result = (new PrChangeChecker())->check([
+            'plugins/animedb-shikimori/../../tools/src/PluginValidator.php',
+        ]);
+
+        self::assertFalse($result->isValid());
+        self::assertNull($result->pluginId);
+    }
 }

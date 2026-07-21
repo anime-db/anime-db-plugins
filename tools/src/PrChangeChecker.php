@@ -72,6 +72,11 @@ final class PrChangeChecker
                 continue;
             }
 
+            if (\in_array('.', $segments, true) || \in_array('..', $segments, true)) {
+                $errors[] = \sprintf('Path "%s" contains "." or ".." segments.', $path);
+                continue;
+            }
+
             if (preg_match(self::PLUGIN_ID_PATTERN, $segments[1]) !== 1) {
                 $errors[] = \sprintf('Path "%s" has a malformed plugin id "%s".', $path, $segments[1]);
                 continue;
