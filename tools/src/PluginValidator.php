@@ -83,7 +83,7 @@ final class PluginValidator
         }
 
         $json = file_get_contents($manifestPath);
-        if (false === $json) {
+        if ($json === false) {
             return [[\sprintf('Failed to read "%s".', $manifestPath)], null];
         }
 
@@ -93,7 +93,7 @@ final class PluginValidator
             return [[\sprintf('manifest.json is not valid JSON: %s', $exception->getMessage())], null];
         }
 
-        if (!\is_array($data) || ([] !== $data && array_is_list($data))) {
+        if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
             return [['manifest.json must contain a JSON object at the top level.'], null];
         }
 
@@ -103,7 +103,7 @@ final class PluginValidator
         );
 
         $manifestId = \is_string($data['id'] ?? null) ? $data['id'] : null;
-        if (null !== $manifestId && $manifestId !== basename($pluginDir)) {
+        if ($manifestId !== null && $manifestId !== basename($pluginDir)) {
             $errors[] = \sprintf(
                 'Manifest id "%s" does not match plugin directory name "%s".',
                 $manifestId,
@@ -130,7 +130,7 @@ final class PluginValidator
         foreach (self::findPhpFiles($srcDir) as $file) {
             $namespace = self::declaredNamespace($file);
             $relativeDir = trim(str_replace(basename($file), '', substr($file, \strlen($srcDir))), '/');
-            $expectedNamespace = '' === $relativeDir
+            $expectedNamespace = $relativeDir === ''
                 ? $expectedRootNamespace
                 : $expectedRootNamespace.'\\'.str_replace('/', '\\', $relativeDir);
 
@@ -155,8 +155,9 @@ final class PluginValidator
         $errors = [];
 
         foreach (self::findPhpFiles($pluginDir) as $file) {
+            $output = [];
             exec('php -l '.escapeshellarg($file).' 2>&1', $output, $exitCode);
-            if (0 !== $exitCode) {
+            if ($exitCode !== 0) {
                 $errors[] = \sprintf(
                     'Syntax error in "%s": %s',
                     substr($file, \strlen($pluginDir) + 1),
@@ -179,7 +180,7 @@ final class PluginValidator
         );
 
         foreach ($iterator as $fileInfo) {
-            if ($fileInfo->isFile() && 'php' === $fileInfo->getExtension()) {
+            if ($fileInfo->isFile() && $fileInfo->getExtension() === 'php') {
                 $files[] = $fileInfo->getPathname();
             }
         }
@@ -192,7 +193,7 @@ final class PluginValidator
     private static function declaredNamespace(string $file): ?string
     {
         $content = file_get_contents($file);
-        if (false === $content) {
+        if ($content === false) {
             return null;
         }
 
@@ -201,7 +202,7 @@ final class PluginValidator
         $collecting = false;
 
         foreach ($tokens as $token) {
-            if (\is_array($token) && \T_NAMESPACE === $token[0]) {
+            if (\is_array($token) && $token[0] === \T_NAMESPACE) {
                 $namespace = '';
                 $collecting = true;
                 continue;
@@ -215,7 +216,7 @@ final class PluginValidator
                 if (\in_array($token[0], [\T_STRING, \T_NAME_QUALIFIED, \T_NS_SEPARATOR], true)) {
                     $namespace .= $token[1];
                 }
-            } elseif (';' === $token || '{' === $token) {
+            } elseif ($token === ';' || $token === '{') {
                 break;
             }
         }
