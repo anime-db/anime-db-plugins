@@ -181,7 +181,7 @@ final class PluginValidator
 
         foreach (self::findPhpFiles($pluginDir) as $file) {
             $output = [];
-            exec('php -l '.escapeshellarg($file).' 2>&1', $output, $exitCode);
+            exec(escapeshellarg(\PHP_BINARY).' -l '.escapeshellarg($file).' 2>&1', $output, $exitCode);
             if ($exitCode !== 0) {
                 $errors[] = \sprintf(
                     'Syntax error in "%s": %s',
