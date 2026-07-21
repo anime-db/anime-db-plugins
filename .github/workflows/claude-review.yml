@@ -1,0 +1,72 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    name: Claude review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Ты — Senior QA / Security Engineer.
+
+            Отревьюй этот pull request. Отвечай по-русски.
+
+            Контекст репозитория (anime-db-plugins):
+            Это монорепо плагинов AnimeDB v2 и одновременно реестр маркета. Плагины
+            сообщества попадают сюда через PR, а их код затем исполняется внутри
+            хост-приложения пользователя. Поэтому к чужому коду относись как к
+            недоверенному: безопасность — приоритет №1.
+
+            Ищи в первую очередь реальные проблемы:
+            - Безопасность: инъекции (command/SQL/path traversal), небезопасные
+              сетевые вызовы, чтение/запись за пределами своего каталога, вызовы
+              `eval`/`exec`/`system`/`shell_exec`/`unserialize` на внешних данных,
+              утечка секретов, невалидированный ввод на границах (URL, ответы API,
+              данные из manifest).
+            - Корректность: делает ли изменение то, что заявлено; логические ошибки,
+              off-by-one, разыменование null, несоответствие типов, неверные regex.
+            - Регрессии: поломка существующего поведения других плагинов.
+
+            Специфика «формы плагина» этого репозитория — проверяй на соответствие:
+            - Плагин = `manifest.json` (обязательно в КОРНЕ каталога плагина) + `src/*.php`.
+              У плагина НЕ должно быть собственного DI-конфига, класса бандла и тегов
+              сервисов — всё это настраивает хост-приложение. Флагай их появление.
+            - Id плагина имеет вид `<vendor>-<name>`. Вендор `animedb` ЗАРЕЗЕРВИРОВАН
+              за официальными плагинами — PR сообщества обязан использовать СВОЙ
+              вендор, а не `animedb`.
+            - Namespace выводится из id детерминированно: каждый сегмент id в StudlyCase
+              под общим корнем `AnimeDb\Plugins\` (например `johnsmith-example` →
+              `AnimeDb\Plugins\JohnsmithExample\`). Проверь, что namespace классов и
+              `autoload.psr-4` в composer.json совпадают с id.
+            - `manifest.json` должен быть валидным JSON и содержать согласованные с
+              composer.json/id поля (`id`, `name`, `version`, `require`).
+            - Плагин реализует контрактные интерфейсы из `anime-db/plugin-contracts`
+              (`FillerInterface` и т.п.) — проверяй корректность сигнатур и семантики.
+            - `vendor/` не должен коммититься: контракт в рантайме предоставляет хост.
+            - Лицензионная GPLv3-шапка обязана быть в КАЖДОМ исходном файле (PHP, Bash и т.д.).
+            - ЗАПРЕЩЁН Yoda-style (`null === $x`): только обычный порядок (`$x === null`).
+              openronin по умолчанию часто пишет именно в Yoda — проверяй внимательно.
+
+            Не флагай: стилевые придирки, которые ловит линтер проекта; гипотетические
+            будущие проблемы, не относящиеся к этому PR.
+
+            Публикуй замечания inline-комментариями к соответствующим строкам.
+            Если существенных проблем нет — коротко подтверди это одним комментарием.
+          claude_args: |
+            --model claude-opus-4-8
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
