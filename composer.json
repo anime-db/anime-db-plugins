@@ -1,0 +1,38 @@
+{
+    "name": "anime-db/anime-db-plugins",
+    "description": "Market registry tooling for AnimeDB v2 plugins (manifest validation, PR change gate).",
+    "type": "project",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1",
+        "anime-db/plugin-contracts": "^0.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^1.10",
+        "friendsofphp/php-cs-fixer": "^3.95"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/anime-db/anime-db-plugin-contracts.git"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\Tools\\": "tools/src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\Tools\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "phpstan": "phpstan analyse"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
