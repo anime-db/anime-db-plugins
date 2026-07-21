@@ -59,7 +59,9 @@ $paths = \array_slice($_SERVER['argv'], 1);
 
 if ($paths === []) {
     $stdin = stream_get_contents(\STDIN);
-    $paths = $stdin === false ? [] : array_filter(preg_split('/\R/', $stdin) ?: []);
+    // No callback here: PrChangeChecker::check() already trims and drops
+    // blank lines, so a literal "0" path line is not lost as falsy.
+    $paths = $stdin === false ? [] : (preg_split('/\R/', $stdin) ?: []);
 }
 
 $result = (new PrChangeChecker())->check($paths);
