@@ -1,0 +1,21 @@
+{
+    "name": "anime-db/animedb-shikimori",
+    "description": "Официальный плагин-источник Shikimori для AnimeDB (поиск и заполнение карточек).",
+    "type": "anime-db-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.1",
+        "anime-db/plugin-contracts": "^0.5"
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/anime-db/anime-db-plugin-contracts"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbShikimori\\": "src/"
+        }
+    }
+}
