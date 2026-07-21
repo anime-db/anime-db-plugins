@@ -38,6 +38,12 @@ namespace AnimeDb\Plugins\Tools;
  * Entries are added in a fixed (sorted) order with a fixed mtime and fixed unix file
  * permissions, so building the same plugin directory twice produces byte-identical ZIPs
  * (and therefore the same sha256) regardless of the filesystem's own entry order or mtimes.
+ *
+ * This determinism is guaranteed within the same toolchain (PHP/libzip/zlib version): the
+ * deflate stream itself is not pinned, so an independently built zlib on another machine may
+ * produce a different compressed byte stream (and thus a different sha256) for identical
+ * input. The published sha256 is a per-build integrity check, not a reproducible-build
+ * attestation across toolchains.
  */
 final class PluginZipBuilder
 {
