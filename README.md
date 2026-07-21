@@ -71,14 +71,19 @@ php tools/validate-plugin.php plugins/animedb-shikimori
 # id единственного затронутого плагина (код 0) либо причина отказа (код ≠0).
 git diff --name-only master... | php tools/check-pr-changes.php
 
+# Собрать детерминированный ZIP плагина (manifest.json в корне, src/, README.md;
+# без vendor/, composer.lock, tests/, .git*, .php-cs-fixer.*) и посчитать sha256.
+# Хеш печатается в stdout и кладётся рядом с архивом в файл "sha256".
+php tools/build-plugin-zip.php plugins/animedb-shikimori /tmp/animedb-shikimori.zip
+
 composer test      # PHPUnit
 composer phpstan    # статический анализ
 composer cs-check   # проверка стиля кода (php-cs-fixer, --dry-run)
 ```
 
-Оба скрипта — чистый CLI (вход → вывод/код возврата), без обвязки CI: воркфлоу
-`.github/workflows`, который их дёргает (git diff → `check-pr-changes` → `validate-plugin`
-на затронутом плагине), интегрирует ментейнер отдельно.
+Все скрипты — чистый CLI (вход → вывод/код возврата), без обвязки CI: воркфлоу
+`.github/workflows`, который их дёргает (git diff → `check-pr-changes` → `validate-plugin` →
+`build-plugin-zip` + создание Release на затронутом плагине), интегрирует ментейнер отдельно.
 
 `anime-db/plugin-contracts` — приватный репозиторий, поэтому `composer install` (как
 локально, так и будущему CI) нужна аутентификация: переменная окружения
