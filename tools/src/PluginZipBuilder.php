@@ -110,7 +110,9 @@ final class PluginZipBuilder
             }
 
             foreach (self::collectFiles($pluginDir) as $relativePath) {
-                $zip->addFile($pluginDir.'/'.$relativePath, $relativePath);
+                if (!$zip->addFile($pluginDir.'/'.$relativePath, $relativePath)) {
+                    throw new \RuntimeException(\sprintf('Failed to add file "%s" to zip archive.', $relativePath));
+                }
                 $zip->setMtimeName($relativePath, self::FIXED_TIMESTAMP);
                 $zip->setExternalAttributesName(
                     $relativePath,
