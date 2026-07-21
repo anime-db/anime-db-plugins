@@ -1,0 +1,375 @@
+<?php
+
+/**
+ * AnimeDb package.
+ *
+ * @author    Peter Gribanov <info@peter-gribanov.ru>
+ * @copyright Copyright (c) 2026, Peter Gribanov
+ * @license   https://gnu.org GPL-3.0-or-later
+ */
+
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://gnu.org>.
+ */
+
+declare(strict_types=1);
+
+namespace AnimeDb\Plugins\Tools\Tests;
+
+use AnimeDb\Plugins\Tools\PluginValidator;
+use PHPUnit\Framework\TestCase;
+
+final class PluginValidatorTest extends TestCase
+{
+    /** @var list<string> */
+    private array $tempDirs = [];
+
+    protected function tearDown(): void
+    {
+        foreach ($this->tempDirs as $dir) {
+            self::removeDirectory($dir);
+        }
+        $this->tempDirs = [];
+    }
+
+    public function testRealShikimoriPluginIsValid(): void
+    {
+        $pluginDir = \dirname(__DIR__).'/plugins/animedb-shikimori';
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testMissingManifestIsReported(): void
+    {
+        $pluginDir = $this->createPluginDir('missing-manifest', null);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertContains('manifest.json is missing in the plugin root.', $errors);
+    }
+
+    public function testManifestMissingRequiredFieldIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        unset($manifest['name']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'name'));
+    }
+
+    public function testManifestInvalidIdIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['id'] = 'Not A Valid Id!';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'not a valid id'));
+    }
+
+    public function testManifestInvalidVersionIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['version'] = 'not-a-version';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'not a valid version'));
+    }
+
+    public function testManifestInvalidRequireCoreIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['core'] = '^1.0';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'require.core'));
+    }
+
+    public function testIdNotMatchingDirectoryNameIsReported(): void
+    {
+        $manifest = $this->validManifest('other-id');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'does not match plugin directory name'));
+    }
+
+    public function testWrongNamespaceIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        file_put_contents($pluginDir.'/src/Widget.php', "<?php\n\nnamespace Totally\\Wrong\\Namespace;\n\nfinal class Widget\n{\n}\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'declares namespace "Totally\\Wrong\\Namespace"'));
+    }
+
+    public function testMissingComposerJsonIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withComposerJson: false);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertContains('composer.json is missing in the plugin root.', $errors);
+    }
+
+    public function testComposerJsonPsr4MismatchIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        file_put_contents(
+            $pluginDir.'/composer.json',
+            json_encode(
+                ['autoload' => ['psr-4' => ['Totally\\Wrong\\Namespace\\' => 'src/']]],
+                \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR,
+            ),
+        );
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'composer.json "autoload.psr-4" must map'));
+    }
+
+    public function testMissingSrcDirectoryIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertContains('Plugin is missing a "src/" directory.', $errors);
+    }
+
+    public function testSyntaxErrorIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        file_put_contents($pluginDir.'/src/Broken.php', "<?php\n\nnamespace AnimeDb\\Plugins\\VendorName;\n\nfinal class Broken {\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'Syntax error'));
+    }
+
+    public function testValidPluginHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testReservedVendorIdIsRejected(): void
+    {
+        $manifest = $this->validManifest('animedb-fake');
+        $pluginDir = $this->createPluginDir('animedb-fake', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
+    public function testOfficialPluginIdIsAllowedToUseReservedVendor(): void
+    {
+        $manifest = $this->validManifest('animedb-shikimori');
+        $pluginDir = $this->createPluginDir('animedb-shikimori', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
+    public function testSymlinkToFileOutsidePluginIsNotRead(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $outsideFile = \dirname($pluginDir).'/outside.php';
+        file_put_contents($outsideFile, "<?php\n\nsyntax error not php at all {{{\n");
+        symlink($outsideFile, $pluginDir.'/src/Escape.php');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testSymlinkToDirectoryIsNotFollowed(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $outsideDir = \dirname($pluginDir).'/outside-dir';
+        mkdir($outsideDir);
+        file_put_contents($outsideDir.'/Bad.php', "<?php broken {{{\n");
+        symlink($outsideDir, $pluginDir.'/src/EscapeDir');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testSymlinkCycleDoesNotCauseInfiniteRecursion(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        symlink($pluginDir.'/src', $pluginDir.'/src/cycle');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testSymlinkedPluginDirectoryIsRejected(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $realDir = $this->createPluginDir('vendor-name', $manifest);
+
+        // $linkDir lives inside the same temp root as $realDir (tracked by createPluginDir()
+        // above), so it's already covered by tearDown()'s cleanup.
+        $linkDir = \dirname($realDir).'/vendor-name-link';
+        symlink($realDir, $linkDir);
+
+        $errors = (new PluginValidator())->validate($linkDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'must not be a symlink'));
+    }
+
+    public function testSymlinkedSrcDirectoryIsRejected(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $outsideSrc = \dirname($pluginDir).'/outside-src';
+        mkdir($outsideSrc);
+        file_put_contents(
+            $outsideSrc.'/Widget.php',
+            "<?php\n\nnamespace AnimeDb\\Plugins\\VendorName;\n\nfinal class Widget\n{\n}\n",
+        );
+        symlink($outsideSrc, $pluginDir.'/src');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, '"src/" must not be a symlink'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validManifest(string $id): array
+    {
+        return [
+            'id' => $id,
+            'name' => 'Test plugin',
+            'version' => '0.1.0',
+            'type' => 'integration',
+            'features' => ['filler' => true],
+            'require' => [
+                'core' => '>=0.0.1',
+                'php' => '>=8.1',
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>|null $manifest
+     */
+    private function createPluginDir(
+        string $dirName,
+        ?array $manifest,
+        bool $withSrc = true,
+        bool $withComposerJson = true,
+    ): string {
+        $dir = sys_get_temp_dir().'/plugin-validator-test-'.bin2hex(random_bytes(8)).'/'.$dirName;
+        mkdir($dir, 0o777, true);
+        $this->tempDirs[] = \dirname($dir);
+
+        if ($manifest !== null) {
+            file_put_contents($dir.'/manifest.json', json_encode($manifest, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
+        }
+
+        $studly = str_replace('-', '', ucwords($dirName, '-'));
+
+        if ($withSrc) {
+            mkdir($dir.'/src');
+            file_put_contents(
+                $dir.'/src/Widget.php',
+                "<?php\n\nnamespace AnimeDb\\Plugins\\{$studly};\n\nfinal class Widget\n{\n}\n",
+            );
+        }
+
+        if ($withComposerJson) {
+            file_put_contents(
+                $dir.'/composer.json',
+                json_encode(
+                    ['autoload' => ['psr-4' => ["AnimeDb\\Plugins\\{$studly}\\" => 'src/']]],
+                    \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR,
+                ),
+            );
+        }
+
+        return $dir;
+    }
+
+    /**
+     * @param list<string> $errors
+     */
+    private static function hasErrorContaining(array $errors, string $needle): bool
+    {
+        foreach ($errors as $error) {
+            if (str_contains($error, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function removeDirectory(string $dir): void
+    {
+        // is_link() is checked before is_dir(), which follows symlinks: some fixtures
+        // intentionally contain symlinks (including a cyclic one) to exercise
+        // PluginValidator's own handling of them, and must not be followed here either.
+        if (is_link($dir)) {
+            unlink($dir);
+
+            return;
+        }
+
+        if (!is_dir($dir)) {
+            unlink($dir);
+
+            return;
+        }
+
+        foreach (scandir($dir) as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            self::removeDirectory($dir.'/'.$entry);
+        }
+
+        rmdir($dir);
+    }
+}

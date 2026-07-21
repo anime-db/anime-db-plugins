@@ -1,0 +1,6 @@
+parameters:
+    level: 8
+    paths:
+        - tools/src
+        - tools/validate-plugin.php
+        - tools/check-pr-changes.php
