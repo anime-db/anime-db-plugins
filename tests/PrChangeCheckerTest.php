@@ -83,4 +83,14 @@ final class PrChangeCheckerTest extends TestCase
 
         self::assertFalse($result->isValid());
     }
+
+    public function testMalformedPluginIdIsRejected(): void
+    {
+        $result = (new PrChangeChecker())->check([
+            'plugins/../secret/x',
+        ]);
+
+        self::assertFalse($result->isValid());
+        self::assertNull($result->pluginId);
+    }
 }

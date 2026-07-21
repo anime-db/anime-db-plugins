@@ -39,6 +39,12 @@ namespace AnimeDb\Plugins\Tools;
 final class PrChangeChecker
 {
     /**
+     * Same slug shape ManifestValidator enforces for a manifest's `id`: lowercase
+     * letters, digits and hyphen-separated segments (e.g. "vendor-name").
+     */
+    private const PLUGIN_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)+$/';
+
+    /**
      * @param string[] $paths changed paths, relative to the repository root
      */
     public function check(array $paths): PrChangeCheckResult
@@ -63,6 +69,11 @@ final class PrChangeChecker
             $segments = explode('/', $normalized);
             if (($segments[0] ?? null) !== 'plugins' || !isset($segments[1]) || $segments[1] === '') {
                 $errors[] = \sprintf('Path "%s" is outside plugins/<id>/.', $path);
+                continue;
+            }
+
+            if (preg_match(self::PLUGIN_ID_PATTERN, $segments[1]) !== 1) {
+                $errors[] = \sprintf('Path "%s" has a malformed plugin id "%s".', $path, $segments[1]);
                 continue;
             }
 
