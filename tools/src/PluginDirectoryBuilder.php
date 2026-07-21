@@ -53,7 +53,7 @@ final class PluginDirectoryBuilder
      * `../../etc/passwd` would otherwise let a caller read (and publish) an arbitrary
      * `manifest.json` outside the plugins directory.
      */
-    private const PLUGIN_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)+$/';
+    private const PLUGIN_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)+\z/';
 
     /**
      * URL templates for locating a version's assets, with `<id>`/`<version>`/`<file>` macros
