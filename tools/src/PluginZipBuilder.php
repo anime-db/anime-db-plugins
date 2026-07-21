@@ -121,7 +121,9 @@ final class PluginZipBuilder
                 );
             }
 
-            $zip->close();
+            if ($zip->close() !== true) {
+                throw new \RuntimeException(\sprintf('Failed to finalize zip archive "%s".', $outZip));
+            }
         } finally {
             date_default_timezone_set($previousTz);
         }
