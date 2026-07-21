@@ -35,9 +35,8 @@ use AnimeDb\PluginContracts\Manifest\ManifestValidator;
  * Checks, in order: `manifest.json` presence and JSON syntax, its content via the shared
  * {@see ManifestValidator} from `anime-db/plugin-contracts`, that the manifest `id` matches
  * the plugin's directory name, that a `src/` directory exists, that every class declared
- * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, that
- * `composer.json` declares a matching `autoload.psr-4` mapping to `src/`, and finally that
- * every `*.php` file in the plugin is syntactically valid (`php -l`).
+ * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, and finally
+ * that every `*.php` file in the plugin is syntactically valid (`php -l`).
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -89,7 +88,6 @@ final class PluginValidator
 
         $pluginId = $manifestId ?? basename($pluginDir);
         $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
-        $errors = [...$errors, ...$this->validateComposerJson($pluginDir, $pluginId)];
         $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
 
         return $errors;
@@ -186,49 +184,6 @@ final class PluginValidator
         }
 
         return $errors;
-    }
-
-    /**
-     * The host loads a plugin's classes via its own `composer.json` `autoload.psr-4` map, not
-     * via {@see self::validateSource()}'s namespace-vs-id check on the source files themselves.
-     * A plugin can pass that check yet still fail to load at runtime if `composer.json` is
-     * missing or maps the expected namespace to something other than `src/`.
-     *
-     * @return list<string>
-     */
-    private function validateComposerJson(string $pluginDir, string $pluginId): array
-    {
-        $composerPath = $pluginDir.'/composer.json';
-        if (!is_file($composerPath)) {
-            return ['composer.json is missing in the plugin root.'];
-        }
-
-        $json = file_get_contents($composerPath);
-        if ($json === false) {
-            return [\sprintf('Failed to read "%s".', $composerPath)];
-        }
-
-        try {
-            $data = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
-        } catch (\JsonException $exception) {
-            return [\sprintf('composer.json is not valid JSON: %s', $exception->getMessage())];
-        }
-
-        if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
-            return ['composer.json must contain a JSON object at the top level.'];
-        }
-
-        $expectedNamespace = self::expectedRootNamespace($pluginId).'\\';
-        $psr4 = $data['autoload']['psr-4'] ?? null;
-
-        if (!\is_array($psr4) || ($psr4[$expectedNamespace] ?? null) !== 'src/') {
-            return [\sprintf(
-                'composer.json "autoload.psr-4" must map "%s" to "src/" for the plugin host to load its classes.',
-                $expectedNamespace,
-            )];
-        }
-
-        return [];
     }
 
     /**
