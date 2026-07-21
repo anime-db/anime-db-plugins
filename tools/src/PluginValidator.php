@@ -75,6 +75,13 @@ final class PluginValidator
             return [\sprintf('Plugin directory "%s" does not exist.', $pluginDir)];
         }
 
+        // is_dir() above follows symlinks, so a symlinked plugin root would otherwise let
+        // findPhpFiles() scan a directory outside the intended plugin tree entirely (its
+        // entries are real files, not links, so the recursive symlink filter never sees them).
+        if (is_link($pluginDir)) {
+            return [\sprintf('Plugin directory "%s" must not be a symlink.', $pluginDir)];
+        }
+
         $errors = [];
 
         [$manifestErrors, $manifestId] = $this->validateManifest($pluginDir);
@@ -149,6 +156,13 @@ final class PluginValidator
         $srcDir = $pluginDir.'/src';
         if (!is_dir($srcDir)) {
             return ['Plugin is missing a "src/" directory.'];
+        }
+
+        // Same reasoning as the $pluginDir check in validate(): a symlinked "src/" is itself
+        // the scan root passed to findPhpFiles(), so the recursive symlink filter (which only
+        // inspects entries found *inside* the scan) never gets a chance to reject it.
+        if (is_link($srcDir)) {
+            return ['Plugin "src/" must not be a symlink.'];
         }
 
         $expectedRootNamespace = self::expectedRootNamespace($pluginId);

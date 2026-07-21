@@ -241,6 +241,39 @@ final class PluginValidatorTest extends TestCase
         self::assertSame([], $errors);
     }
 
+    public function testSymlinkedPluginDirectoryIsRejected(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $realDir = $this->createPluginDir('vendor-name', $manifest);
+
+        // $linkDir lives inside the same temp root as $realDir (tracked by createPluginDir()
+        // above), so it's already covered by tearDown()'s cleanup.
+        $linkDir = \dirname($realDir).'/vendor-name-link';
+        symlink($realDir, $linkDir);
+
+        $errors = (new PluginValidator())->validate($linkDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'must not be a symlink'));
+    }
+
+    public function testSymlinkedSrcDirectoryIsRejected(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $outsideSrc = \dirname($pluginDir).'/outside-src';
+        mkdir($outsideSrc);
+        file_put_contents(
+            $outsideSrc.'/Widget.php',
+            "<?php\n\nnamespace AnimeDb\\Plugins\\VendorName;\n\nfinal class Widget\n{\n}\n",
+        );
+        symlink($outsideSrc, $pluginDir.'/src');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, '"src/" must not be a symlink'));
+    }
+
     /**
      * @return array<string, mixed>
      */
