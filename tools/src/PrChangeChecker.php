@@ -43,9 +43,9 @@ final class PrChangeChecker
      */
     public function check(array $paths): PrChangeCheckResult
     {
-        $paths = array_values(array_filter(array_map('trim', $paths), static fn (string $path): bool => '' !== $path));
+        $paths = array_values(array_filter(array_map('trim', $paths), static fn (string $path): bool => $path !== ''));
 
-        if ([] === $paths) {
+        if ($paths === []) {
             return new PrChangeCheckResult(null, ['No changed paths given.']);
         }
 
@@ -55,13 +55,13 @@ final class PrChangeChecker
         foreach ($paths as $path) {
             $normalized = ltrim($path, '/');
 
-            if ('plugins-directory.json' === $normalized) {
+            if ($normalized === 'plugins-directory.json') {
                 $errors[] = 'plugins-directory.json is a CI-generated artifact and must not be edited manually.';
                 continue;
             }
 
             $segments = explode('/', $normalized);
-            if ('plugins' !== ($segments[0] ?? null) || !isset($segments[1]) || '' === $segments[1]) {
+            if ('plugins' !== ($segments[0] ?? null) || !isset($segments[1]) || $segments[1] === '') {
                 $errors[] = \sprintf('Path "%s" is outside plugins/<id>/.', $path);
                 continue;
             }
@@ -76,11 +76,11 @@ final class PrChangeChecker
             $errors[] = \sprintf('Changes touch multiple plugins: %s.', implode(', ', $ids));
         }
 
-        if ([] === $ids && [] === $errors) {
+        if ($ids === [] && $errors === []) {
             $errors[] = 'No plugin path found among the changed paths.';
         }
 
-        if ([] !== $errors) {
+        if ($errors !== []) {
             return new PrChangeCheckResult(null, $errors);
         }
 

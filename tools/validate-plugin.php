@@ -52,14 +52,14 @@ require locateAutoloader();
 use AnimeDb\Plugins\Tools\PluginValidator;
 
 $pluginDir = $_SERVER['argv'][1] ?? null;
-if (null === $pluginDir || '' === $pluginDir) {
+if ($pluginDir === null || $pluginDir === '') {
     fwrite(\STDERR, "Usage: php tools/validate-plugin.php <plugin-dir>\n");
     exit(1);
 }
 
 $errors = (new PluginValidator())->validate($pluginDir);
 
-if ([] === $errors) {
+if ($errors === []) {
     fwrite(\STDOUT, \sprintf("OK: \"%s\" is a valid plugin.\n", $pluginDir));
     exit(0);
 }

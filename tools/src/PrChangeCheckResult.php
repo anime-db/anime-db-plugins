@@ -44,6 +44,6 @@ final class PrChangeCheckResult
 
     public function isValid(): bool
     {
-        return null !== $this->pluginId && [] === $this->errors;
+        return $this->pluginId !== null && $this->errors === [];
     }
 }

@@ -180,7 +180,7 @@ final class PluginValidatorTest extends TestCase
         mkdir($dir, 0o777, true);
         $this->tempDirs[] = \dirname($dir);
 
-        if (null !== $manifest) {
+        if ($manifest !== null) {
             file_put_contents($dir.'/manifest.json', json_encode($manifest, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
         }
 

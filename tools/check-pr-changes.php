@@ -57,9 +57,9 @@ use AnimeDb\Plugins\Tools\PrChangeChecker;
 
 $paths = \array_slice($_SERVER['argv'], 1);
 
-if ([] === $paths) {
+if ($paths === []) {
     $stdin = stream_get_contents(\STDIN);
-    $paths = false === $stdin ? [] : array_filter(preg_split('/\R/', $stdin) ?: []);
+    $paths = $stdin === false ? [] : array_filter(preg_split('/\R/', $stdin) ?: []);
 }
 
 $result = (new PrChangeChecker())->check($paths);
