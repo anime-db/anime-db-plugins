@@ -124,6 +124,33 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'declares namespace "Totally\\Wrong\\Namespace"'));
     }
 
+    public function testMissingComposerJsonIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withComposerJson: false);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertContains('composer.json is missing in the plugin root.', $errors);
+    }
+
+    public function testComposerJsonPsr4MismatchIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        file_put_contents(
+            $pluginDir.'/composer.json',
+            json_encode(
+                ['autoload' => ['psr-4' => ['Totally\\Wrong\\Namespace\\' => 'src/']]],
+                \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR,
+            ),
+        );
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'composer.json "autoload.psr-4" must map'));
+    }
+
     public function testMissingSrcDirectoryIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
@@ -235,8 +262,12 @@ final class PluginValidatorTest extends TestCase
     /**
      * @param array<string, mixed>|null $manifest
      */
-    private function createPluginDir(string $dirName, ?array $manifest, bool $withSrc = true): string
-    {
+    private function createPluginDir(
+        string $dirName,
+        ?array $manifest,
+        bool $withSrc = true,
+        bool $withComposerJson = true,
+    ): string {
         $dir = sys_get_temp_dir().'/plugin-validator-test-'.bin2hex(random_bytes(8)).'/'.$dirName;
         mkdir($dir, 0o777, true);
         $this->tempDirs[] = \dirname($dir);
@@ -245,12 +276,23 @@ final class PluginValidatorTest extends TestCase
             file_put_contents($dir.'/manifest.json', json_encode($manifest, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
         }
 
+        $studly = str_replace('-', '', ucwords($dirName, '-'));
+
         if ($withSrc) {
             mkdir($dir.'/src');
-            $studly = str_replace('-', '', ucwords($dirName, '-'));
             file_put_contents(
                 $dir.'/src/Widget.php',
                 "<?php\n\nnamespace AnimeDb\\Plugins\\{$studly};\n\nfinal class Widget\n{\n}\n",
+            );
+        }
+
+        if ($withComposerJson) {
+            file_put_contents(
+                $dir.'/composer.json',
+                json_encode(
+                    ['autoload' => ['psr-4' => ["AnimeDb\\Plugins\\{$studly}\\" => 'src/']]],
+                    \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR,
+                ),
             );
         }
 
