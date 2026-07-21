@@ -44,6 +44,20 @@ use AnimeDb\PluginContracts\Manifest\ManifestValidator;
  */
 final class PluginValidator
 {
+    /**
+     * Vendor prefix reserved for plugins maintained in this monorepo. A community PR must not
+     * be able to claim it for a new plugin id and impersonate an official one.
+     */
+    private const RESERVED_VENDOR = 'animedb';
+
+    /**
+     * Plugin ids already using {@see self::RESERVED_VENDOR} that are genuinely official.
+     * Extend this list in the same commit that adds a new official plugin.
+     *
+     * @var list<string>
+     */
+    private const OFFICIAL_PLUGIN_IDS = ['animedb-shikimori'];
+
     public function __construct(
         private readonly ManifestValidator $manifestValidator = new ManifestValidator(),
     ) {
@@ -108,6 +122,17 @@ final class PluginValidator
                 'Manifest id "%s" does not match plugin directory name "%s".',
                 $manifestId,
                 basename($pluginDir),
+            );
+        }
+
+        if ($manifestId !== null
+            && explode('-', $manifestId, 2)[0] === self::RESERVED_VENDOR
+            && !\in_array($manifestId, self::OFFICIAL_PLUGIN_IDS, true)
+        ) {
+            $errors[] = \sprintf(
+                'Manifest id "%s" uses the reserved "%s" vendor, which is limited to official plugins of this monorepo.',
+                $manifestId,
+                self::RESERVED_VENDOR,
             );
         }
 
