@@ -153,7 +153,7 @@ final class PluginZipBuilder
             }
         }
 
-        sort($files);
+        sort($files, SORT_STRING);
 
         return $files;
     }
