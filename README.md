@@ -21,8 +21,14 @@ Id плагина имеет вид `<vendor>-<name>`, где `<vendor>` — **�
 `animedb` зарезервирован за официальными плагинами; для своих плагинов авторы
 используют собственный вендор.
 
-Namespace классов выводится из id детерминированно:
-`animedb-shikimori` → `AnimeDb\Plugins\AnimedbShikimori\`.
+Namespace классов выводится из id детерминированно (каждый сегмент id — в
+StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\`):
+
+- `animedb-shikimori` → `AnimeDb\Plugins\AnimedbShikimori\`
+- `johnsmith-example` → `AnimeDb\Plugins\JohnsmithExample\`
+
+Префикс `AnimeDb\Plugins\` — общий для всех плагинов, включая комьюнити (вендор
+влияет только на сегмент studly, не на корень).
 
 ## Плагины
 
