@@ -170,6 +170,26 @@ final class PluginDirectoryBuilderTest extends TestCase
         ]);
     }
 
+    public function testPathTraversalPluginIdThrowsInsteadOfEscapingThePluginsDirectory(): void
+    {
+        $root = \dirname($this->tempPath('plugins'));
+        $pluginsDir = $root.'/plugins';
+        mkdir($pluginsDir, 0o777, true);
+
+        // A manifest.json placed just outside the plugins directory, reachable via traversal.
+        file_put_contents(
+            $root.'/manifest.json',
+            json_encode(['id' => 'secret-plugin', 'name' => 'Secret', 'version' => '0.1.0'], \JSON_THROW_ON_ERROR),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/not a valid plugin id/');
+
+        (new PluginDirectoryBuilder())->build($pluginsDir, [
+            ['id' => '..', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
+        ]);
+    }
+
     /**
      * @param array<string, array{version: string, name: string}> $plugins
      */

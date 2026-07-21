@@ -46,6 +46,16 @@ namespace AnimeDb\Plugins\Tools;
 final class PluginDirectoryBuilder
 {
     /**
+     * Canonical "vendor-name" slug shape enforced on manifest `id` by
+     * {@see \AnimeDb\PluginContracts\Manifest\ManifestValidator} from `anime-db/plugin-contracts`.
+     * Re-checked here on the `id` supplied via `$publishedVersions` before it is used to build a
+     * filesystem path, since that input comes from outside this class and an id like
+     * `../../etc/passwd` would otherwise let a caller read (and publish) an arbitrary
+     * `manifest.json` outside the plugins directory.
+     */
+    private const PLUGIN_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)+$/';
+
+    /**
      * URL templates for locating a version's assets, with `<id>`/`<version>`/`<file>` macros
      * for the caller to substitute. `<file>` is one of `plugin.zip` or `manifest.json`.
      *
@@ -116,6 +126,10 @@ final class PluginDirectoryBuilder
      */
     private function readManifest(string $pluginsDir, string $pluginId): array
     {
+        if (preg_match(self::PLUGIN_ID_PATTERN, $pluginId) !== 1) {
+            throw new \RuntimeException(\sprintf('"%s" is not a valid plugin id. It must be a "vendor-name" slug: lowercase letters, digits and hyphen-separated segments (e.g. "vendor-name").', $pluginId));
+        }
+
         $manifestPath = $pluginsDir.'/'.$pluginId.'/manifest.json';
 
         if (!is_file($manifestPath)) {
