@@ -175,9 +175,15 @@ final class PluginValidator
     private static function findPhpFiles(string $dir): array
     {
         $files = [];
-        $iterator = new \RecursiveIteratorIterator(
+        // Plugin source is untrusted: a symlink (e.g. pointing at "/" or "..") must not be
+        // followed, or the scan could read files outside $dir or loop forever on a symlink
+        // cycle. The callback filter excludes symlinks from the recursion itself, not just
+        // from the result, so a symlinked directory is never descended into.
+        $filter = new \RecursiveCallbackFilterIterator(
             new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            static fn (\SplFileInfo $fileInfo): bool => !$fileInfo->isLink(),
         );
+        $iterator = new \RecursiveIteratorIterator($filter);
 
         foreach ($iterator as $fileInfo) {
             if ($fileInfo->isFile() && $fileInfo->getExtension() === 'php') {

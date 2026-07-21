@@ -153,6 +153,47 @@ final class PluginValidatorTest extends TestCase
         self::assertSame([], (new PluginValidator())->validate($pluginDir));
     }
 
+    public function testSymlinkToFileOutsidePluginIsNotRead(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $outsideFile = \dirname($pluginDir).'/outside.php';
+        file_put_contents($outsideFile, "<?php\n\nsyntax error not php at all {{{\n");
+        symlink($outsideFile, $pluginDir.'/src/Escape.php');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testSymlinkToDirectoryIsNotFollowed(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $outsideDir = \dirname($pluginDir).'/outside-dir';
+        mkdir($outsideDir);
+        file_put_contents($outsideDir.'/Bad.php', "<?php broken {{{\n");
+        symlink($outsideDir, $pluginDir.'/src/EscapeDir');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testSymlinkCycleDoesNotCauseInfiniteRecursion(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        symlink($pluginDir.'/src', $pluginDir.'/src/cycle');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -212,17 +253,26 @@ final class PluginValidatorTest extends TestCase
 
     private static function removeDirectory(string $dir): void
     {
-        if (!is_dir($dir)) {
+        // is_link() is checked before is_dir(), which follows symlinks: some fixtures
+        // intentionally contain symlinks (including a cyclic one) to exercise
+        // PluginValidator's own handling of them, and must not be followed here either.
+        if (is_link($dir)) {
+            unlink($dir);
+
             return;
         }
 
-        $items = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST,
-        );
+        if (!is_dir($dir)) {
+            unlink($dir);
 
-        foreach ($items as $item) {
-            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+            return;
+        }
+
+        foreach (scandir($dir) as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            self::removeDirectory($dir.'/'.$entry);
         }
 
         rmdir($dir);
