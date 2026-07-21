@@ -154,7 +154,7 @@ final class PluginValidator
 
         foreach (self::findPhpFiles($srcDir) as $file) {
             $namespace = self::declaredNamespace($file);
-            $relativeDir = trim(str_replace(basename($file), '', substr($file, \strlen($srcDir))), '/');
+            $relativeDir = trim(substr(\dirname($file), \strlen($srcDir)), '/');
             $expectedNamespace = $relativeDir === ''
                 ? $expectedRootNamespace
                 : $expectedRootNamespace.'\\'.str_replace('/', '\\', $relativeDir);
