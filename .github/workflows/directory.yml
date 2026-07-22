@@ -1,0 +1,76 @@
+name: Build plugins directory
+
+# Пересобирает корневой plugins-directory.json после релиз-воркфлоу. Собирает по
+# опубликованным Release'ам список {id, version, core, sha256} (core — из ассета
+# manifest.json версии, sha256 — из ассета sha256), подаёт его вместе с текущими
+# манифестами в tools/build-directory.php и коммитит результат в master, если он
+# изменился. Идемпотентно: без изменений коммита нет.
+#
+# Триггер — workflow_run по завершении "Release plugins": так directory собирается
+# ГАРАНТИРОВАННО после публикации новых версий (снимает гонку «директория до релиза»).
+
+on:
+  workflow_run:
+    workflows: ["Release plugins"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  directory:
+    name: Rebuild plugins-directory.json
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # Контракт — из публичного VCS-репозитория (composer.json), токен не нужен.
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Collect published versions
+        run: |
+          set -euo pipefail
+          echo "[]" > published-versions.json
+          tmp="$(mktemp -d)"
+          tags="$(gh release list --limit 1000 --json tagName --jq '.[].tagName')"
+          for tag in $tags; do
+            id="${tag%%/*}"
+            version="${tag#*/}"
+            gh release download "$tag" --dir "$tmp" --clobber \
+              --pattern manifest.json --pattern sha256
+            core="$(jq -r '.require.core' "$tmp/manifest.json")"
+            sha256="$(tr -d '[:space:]' < "$tmp/sha256")"
+            jq \
+              --arg id "$id" --arg version "$version" --arg core "$core" --arg sha256 "$sha256" \
+              '. += [{id: $id, version: $version, core: $core, sha256: $sha256}]' \
+              published-versions.json > published-versions.tmp
+            mv published-versions.tmp published-versions.json
+            rm -f "$tmp/manifest.json" "$tmp/sha256"
+          done
+
+      - name: Build directory
+        run: php tools/build-directory.php plugins published-versions.json > plugins-directory.json
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git add plugins-directory.json
+          if git diff --cached --quiet; then
+            echo "plugins-directory.json unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "anime-db-bot"
+          git config user.email "bot@anime-db.org"
+          git commit -m "ci: rebuild plugins-directory.json"
+          git push origin HEAD:master

@@ -1,0 +1,45 @@
+name: PR validation
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate plugin change
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # anime-db/plugin-contracts подключается из публичного VCS-репозитория
+      # (см. repositories в composer.json), не из Packagist. Пакет публичный —
+      # аутентификация не нужна, поэтому PR из форков валидируются штатно.
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      # Гейт: PR затрагивает ровно один плагин и только его код внутри plugins/<id>/.
+      # Правка plugins-directory.json (CI-артефакт) или путей вне plugins/ — фейл.
+      # Инфра-PR (пути вне plugins/) намеренно не проходят гейт и мёржатся вручную.
+      - name: Gate — one plugin / only its code
+        run: |
+          git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
+            | php tools/check-pr-changes.php | tee affected-plugin.txt
+
+      - name: Validate affected plugin
+        run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"
+
+      - name: PHPStan (tooling)
+        run: composer phpstan
+
+      - name: Code style (tooling)
+        run: composer cs-check
