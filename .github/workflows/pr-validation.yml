@@ -1,3 +1,9 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
 name: PR validation
 
 on:
@@ -23,17 +29,28 @@ jobs:
       # anime-db/plugin-contracts подключается из публичного VCS-репозитория
       # (см. repositories в composer.json), не из Packagist. Пакет публичный —
       # аутентификация не нужна, поэтому PR из форков валидируются штатно.
+      #
+      # --no-scripts --no-plugins: install выполняется на коде PR ДО гейта, поэтому
+      # исполнять composer-скрипты/плагины из недоверенного composer.json нельзя.
+      # Гейту и тулингу (validate/phpstan/cs) скрипты и плагины composer не нужны.
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
 
       # Гейт: PR затрагивает ровно один плагин и только его код внутри plugins/<id>/.
       # Правка plugins-directory.json (CI-артефакт) или путей вне plugins/ — фейл.
       # Инфра-PR (пути вне plugins/) намеренно не проходят гейт и мёржатся вручную.
+      #
+      # check-pr-changes.php вызываем простой командой с редиректом (не через пайп
+      # и не в присваивании $()) — иначе его ненулевой код маскируется (tee/командная
+      # подстановка), и гейт молча проходит. Так set -e корректно валит шаг.
       - name: Gate — one plugin / only its code
         run: |
+          set -euo pipefail
           git diff --name-only \
             "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
-            | php tools/check-pr-changes.php | tee affected-plugin.txt
+            > changed-files.txt
+          php tools/check-pr-changes.php < changed-files.txt > affected-plugin.txt
+          echo "Gated to plugin: $(cat affected-plugin.txt)"
 
       - name: Validate affected plugin
         run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"

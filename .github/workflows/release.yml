@@ -1,3 +1,9 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
 name: Release plugins
 
 # Reconcile: на каждый плагин в plugins/<id>/ проверяет, есть ли Release
@@ -16,6 +22,13 @@ on:
 
 permissions:
   contents: write
+
+# Сериализуем прогоны: два параллельных reconcile-джоба могли бы оба увидеть
+# «релиза ещё нет» и оба дойти до gh release create одного тега — проигравший
+# упал бы с «already exists», оборвав публикацию остальных плагинов.
+concurrency:
+  group: release-plugins
+  cancel-in-progress: false
 
 jobs:
   release:
