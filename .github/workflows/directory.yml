@@ -46,6 +46,17 @@ jobs:
           php-version: '8.3'
           coverage: none
 
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-
+
       # Контракт — из публичного VCS-репозитория (composer.json), токен не нужен.
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
