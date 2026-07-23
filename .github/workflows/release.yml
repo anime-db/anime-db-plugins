@@ -1,0 +1,77 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
+name: Release plugins
+
+# Reconcile: на каждый плагин в plugins/<id>/ проверяет, есть ли Release
+# <id>/<version> (version из manifest.json). Если нет — собирает ZIP и публикует
+# Release с ассетами plugin.zip + manifest.json + sha256. Идемпотентно: уже
+# опубликованные версии пропускаются. Первый прогон подхватит уже закоммиченные
+# плагины, у которых Release ещё нет.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      # Коммит самой директории (см. directory.yml) не должен ретриггерить цепочку.
+      - 'plugins-directory.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Сериализуем прогоны: два параллельных reconcile-джоба могли бы оба увидеть
+# «релиза ещё нет» и оба дойти до gh release create одного тега — проигравший
+# упал бы с «already exists», оборвав публикацию остальных плагинов.
+concurrency:
+  group: release-plugins
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Reconcile plugin releases
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # Контракт — из публичного VCS-репозитория (composer.json), токен не нужен.
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Reconcile releases
+        run: |
+          set -euo pipefail
+          for plugin in plugins/*/; do
+            id="$(basename "$plugin")"
+            manifest="plugins/$id/manifest.json"
+            if [ ! -f "$manifest" ]; then
+              echo "::warning::plugins/$id has no manifest.json — skipping."
+              continue
+            fi
+            version="$(jq -r '.version' "$manifest")"
+            tag="$id/$version"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "Release $tag already exists — skipping."
+              continue
+            fi
+            echo "Building and publishing $tag ..."
+            workdir="$(mktemp -d)"
+            # build-plugin-zip.php пишет plugin.zip и рядом файл sha256.
+            php tools/build-plugin-zip.php "plugins/$id" "$workdir/plugin.zip"
+            cp "$manifest" "$workdir/manifest.json"
+            gh release create "$tag" \
+              --title "$tag" \
+              --notes "Автоматический релиз $id $version." \
+              "$workdir/plugin.zip" "$workdir/manifest.json" "$workdir/sha256"
+            rm -rf "$workdir"
+          done

@@ -1,0 +1,119 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
+name: Build plugins directory
+
+# Пересобирает корневой plugins-directory.json после релиз-воркфлоу. Собирает по
+# опубликованным Release'ам список {id, version, core, sha256} (core — из ассета
+# manifest.json версии, sha256 — из ассета sha256), подаёт его вместе с текущими
+# манифестами в tools/build-directory.php и коммитит результат в master, если он
+# изменился. Идемпотентно: без изменений коммита нет.
+#
+# Триггер — workflow_run по завершении "Release plugins": так directory собирается
+# ГАРАНТИРОВАННО после публикации новых версий (снимает гонку «директория до релиза»).
+
+on:
+  workflow_run:
+    workflows: ["Release plugins"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+# Сериализуем: несколько подряд завершившихся «Release plugins» дали бы
+# параллельные пересборки, конкурирующие за push в master.
+concurrency:
+  group: build-plugins-directory
+  cancel-in-progress: false
+
+jobs:
+  directory:
+    name: Rebuild plugins-directory.json
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      # Контракт — из публичного VCS-репозитория (composer.json), токен не нужен.
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Collect published versions
+        run: |
+          set -euo pipefail
+          echo "[]" > published-versions.json
+          tmp="$(mktemp -d)"
+          tags="$(gh release list --limit 1000 --json tagName --jq '.[].tagName')"
+          for tag in $tags; do
+            # Ожидаем форму <id>/<version>. Посторонние теги (ручные релизы,
+            # анонсы) и релизы без нужных ассетов пропускаем с предупреждением,
+            # чтобы один нестандартный релиз не ронял пересборку всей директории.
+            case "$tag" in
+              */*) : ;;
+              *) echo "::warning::Пропускаю релиз \"$tag\": тег не в форме <id>/<version>."; continue ;;
+            esac
+            id="${tag%%/*}"
+            version="${tag#*/}"
+            if ! gh release download "$tag" --dir "$tmp" --clobber \
+                --pattern manifest.json --pattern sha256; then
+              echo "::warning::Пропускаю \"$tag\": не удалось скачать ассеты manifest.json/sha256."
+              continue
+            fi
+            if [ ! -f "$tmp/manifest.json" ] || [ ! -f "$tmp/sha256" ]; then
+              echo "::warning::Пропускаю \"$tag\": нет ассета manifest.json или sha256."
+              rm -f "$tmp/manifest.json" "$tmp/sha256"
+              continue
+            fi
+            core="$(jq -r '.require.core // empty' "$tmp/manifest.json")"
+            sha256="$(tr -d '[:space:]' < "$tmp/sha256")"
+            if [ -z "$core" ] || [ -z "$sha256" ]; then
+              echo "::warning::Пропускаю \"$tag\": пустой require.core или sha256."
+              rm -f "$tmp/manifest.json" "$tmp/sha256"
+              continue
+            fi
+            jq \
+              --arg id "$id" --arg version "$version" --arg core "$core" --arg sha256 "$sha256" \
+              '. += [{id: $id, version: $version, core: $core, sha256: $sha256}]' \
+              published-versions.json > published-versions.tmp
+            mv published-versions.tmp published-versions.json
+            rm -f "$tmp/manifest.json" "$tmp/sha256"
+          done
+
+      - name: Build directory
+        run: php tools/build-directory.php plugins published-versions.json > plugins-directory.json
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git add plugins-directory.json
+          if git diff --cached --quiet; then
+            echo "plugins-directory.json unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.name "anime-db-bot"
+          git config user.email "bot@anime-db.org"
+          git commit -m "ci: rebuild plugins-directory.json"
+          # concurrency сериализует джобы, но master мог уйти вперёд между checkout
+          # и push (мёрж плагина) — ребейзим и ретраим на случай non-fast-forward.
+          for attempt in 1 2 3; do
+            if git pull --rebase origin master && git push origin HEAD:master; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "::warning::Push attempt $attempt failed — retrying after rebase."
+            sleep "$((attempt * 3))"
+          done
+          echo "::error::Не удалось запушить plugins-directory.json после 3 попыток."
+          exit 1

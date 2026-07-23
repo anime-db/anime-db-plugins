@@ -85,8 +85,7 @@ composer cs-check   # проверка стиля кода (php-cs-fixer, --dry-
 `.github/workflows`, который их дёргает (git diff → `check-pr-changes` → `validate-plugin` →
 `build-plugin-zip` + создание Release на затронутом плагине), интегрирует ментейнер отдельно.
 
-`anime-db/plugin-contracts` — приватный репозиторий, поэтому `composer install` (как
-локально, так и будущему CI) нужна аутентификация: переменная окружения
-`COMPOSER_GITHUB_TOKEN` (GitHub-токен с доступом на чтение) или заранее настроенный
-`github-oauth.github.com` в `composer` auth-конфиге. В CI это секрет репозитория,
-который настраивает ментейнер.
+`anime-db/plugin-contracts` пока не опубликован в Packagist, поэтому подключается из
+публичного VCS-репозитория (см. `repositories` в `composer.json`). Репозиторий
+публичный — `composer install` работает без аутентификации и без токена, как локально,
+так и в CI (в т.ч. на PR из форков).
