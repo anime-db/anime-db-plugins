@@ -30,11 +30,11 @@ namespace AnimeDb\Plugins\Tools\Tests;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Smoke-tests tools/build-directory.php as an actual CLI process, on top of the unit coverage
- * of {@see \AnimeDb\Plugins\Tools\PluginDirectoryBuilder} in {@see PluginDirectoryBuilderTest} —
+ * Smoke-tests tools/build-registry.php as an actual CLI process, on top of the unit coverage
+ * of {@see \AnimeDb\Plugins\Tools\PluginRegistryBuilder} in {@see PluginRegistryBuilderTest} —
  * the deliverable of this issue is the script itself, not just the class behind it.
  */
-final class BuildDirectoryCliTest extends TestCase
+final class BuildRegistryCliTest extends TestCase
 {
     private ?string $tempDir = null;
 
@@ -46,10 +46,10 @@ final class BuildDirectoryCliTest extends TestCase
         }
     }
 
-    public function testBuildingRealShikimoriPluginExitsZeroAndPrintsDirectory(): void
+    public function testBuildingRealShikimoriPluginExitsZeroAndPrintsRegistry(): void
     {
         $repoRoot = \dirname(__DIR__);
-        $this->tempDir = sys_get_temp_dir().'/build-directory-cli-test-'.bin2hex(random_bytes(8));
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
         mkdir($this->tempDir);
 
         $publishedVersionsPath = $this->tempDir.'/published-versions.json';
@@ -61,28 +61,28 @@ final class BuildDirectoryCliTest extends TestCase
 
         self::assertSame(0, $exitCode, implode("\n", $output));
 
-        $directory = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertSame(
             ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
-            $directory['asset_mirrors'],
+            $registry['asset_mirrors'],
         );
-        self::assertCount(1, $directory['plugins']);
-        self::assertSame('animedb-shikimori', $directory['plugins'][0]['id']);
+        self::assertCount(1, $registry['plugins']);
+        self::assertSame('animedb-shikimori', $registry['plugins'][0]['id']);
         self::assertSame(
             json_decode(file_get_contents($repoRoot.'/plugins/animedb-shikimori/manifest.json'), true, 512, \JSON_THROW_ON_ERROR),
-            $directory['plugins'][0]['manifest'],
+            $registry['plugins'][0]['manifest'],
         );
         self::assertSame(
             [['version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123']],
-            $directory['plugins'][0]['versions'],
+            $registry['plugins'][0]['versions'],
         );
     }
 
     public function testOutputIsByteIdenticalAcrossTwoRuns(): void
     {
         $repoRoot = \dirname(__DIR__);
-        $this->tempDir = sys_get_temp_dir().'/build-directory-cli-test-'.bin2hex(random_bytes(8));
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
         mkdir($this->tempDir);
 
         $publishedVersionsPath = $this->tempDir.'/published-versions.json';
@@ -101,7 +101,7 @@ final class BuildDirectoryCliTest extends TestCase
     public function testMissingPluginsDirExitsNonZero(): void
     {
         $repoRoot = \dirname(__DIR__);
-        $this->tempDir = sys_get_temp_dir().'/build-directory-cli-test-'.bin2hex(random_bytes(8));
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
         mkdir($this->tempDir);
 
         $publishedVersionsPath = $this->tempDir.'/published-versions.json';
@@ -115,7 +115,7 @@ final class BuildDirectoryCliTest extends TestCase
     public function testMalformedPublishedVersionsExitsNonZero(): void
     {
         $repoRoot = \dirname(__DIR__);
-        $this->tempDir = sys_get_temp_dir().'/build-directory-cli-test-'.bin2hex(random_bytes(8));
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
         mkdir($this->tempDir);
 
         $publishedVersionsPath = $this->tempDir.'/published-versions.json';
@@ -134,7 +134,7 @@ final class BuildDirectoryCliTest extends TestCase
         $repoRoot = \dirname(__DIR__);
 
         exec(
-            escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-directory.php').' '
+            escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-registry.php').' '
                 .escapeshellarg($pluginsDir).' '
                 .escapeshellarg($publishedVersionsPath).' 2>&1',
             $output,

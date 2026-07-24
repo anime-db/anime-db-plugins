@@ -28,7 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 /**
- * Builds the market registry's root `plugins-directory.json` aggregate from a plugin-manifest
+ * Builds the market registry's root `plugins-registry.json` aggregate from a plugin-manifest
  * directory of this monorepo and a caller-supplied list of already-published versions.
  *
  * Deliberately does not talk to the network (no `gh release ...`, no GitHub API call) — the
@@ -39,11 +39,11 @@ namespace AnimeDb\Plugins\Tools;
  * Per plugin, only the *latest* full manifest (the one currently checked into
  * `plugins/<id>/manifest.json`) is embedded; older versions are represented by the compact
  * `{version, core, sha256}` triple used to resolve install/upgrade compatibility. Embedding
- * every historical manifest would make the directory grow unboundedly, since the whole file is
+ * every historical manifest would make the registry grow unboundedly, since the whole file is
  * parsed into memory by the consuming application. Full manifests of older versions remain
  * available as Release assets, addressed via `asset_mirrors`.
  */
-final class PluginDirectoryBuilder
+final class PluginRegistryBuilder
 {
     /**
      * Canonical "vendor-name" slug shape enforced on manifest `id` by

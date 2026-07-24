@@ -4,4 +4,4 @@ parameters:
         - tools/src
         - tools/validate-plugin.php
         - tools/check-pr-changes.php
-        - tools/build-directory.php
+        - tools/build-registry.php

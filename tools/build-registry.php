@@ -27,13 +27,13 @@
 declare(strict_types=1);
 
 /*
- * Builds the market registry's root plugins-directory.json from the current plugin manifests
+ * Builds the market registry's root plugins-registry.json from the current plugin manifests
  * of this monorepo and a caller-supplied list of already-published versions. Purely local: it
  * never talks to the network or to GitHub Releases itself, so collecting the published-versions
- * input (via `gh release ...`) and committing the resulting directory are left to CI tooling.
+ * input (via `gh release ...`) and committing the resulting registry are left to CI tooling.
  *
- * Usage: php tools/build-directory.php <plugins-dir> <published-versions.json>
- * Prints the generated JSON to stdout; redirect it to plugins-directory.json.
+ * Usage: php tools/build-registry.php <plugins-dir> <published-versions.json>
+ * Prints the generated JSON to stdout; redirect it to plugins-registry.json.
  * Exit code: 0 on success, 1 otherwise. Problems are printed to stderr.
  */
 
@@ -52,13 +52,13 @@ function locateAutoloader(): string
 
 require locateAutoloader();
 
-use AnimeDb\Plugins\Tools\PluginDirectoryBuilder;
+use AnimeDb\Plugins\Tools\PluginRegistryBuilder;
 
 $pluginsDir = $_SERVER['argv'][1] ?? null;
 $publishedVersionsPath = $_SERVER['argv'][2] ?? null;
 
 if ($pluginsDir === null || $pluginsDir === '' || $publishedVersionsPath === null || $publishedVersionsPath === '') {
-    fwrite(\STDERR, "Usage: php tools/build-directory.php <plugins-dir> <published-versions.json>\n");
+    fwrite(\STDERR, "Usage: php tools/build-registry.php <plugins-dir> <published-versions.json>\n");
     exit(1);
 }
 
@@ -106,14 +106,14 @@ foreach ($publishedVersions as $index => $entry) {
 
 /* @var list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions */
 try {
-    $directory = (new PluginDirectoryBuilder())->build($pluginsDir, $publishedVersions);
+    $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions);
 } catch (RuntimeException $exception) {
     fwrite(\STDERR, $exception->getMessage()."\n");
     exit(1);
 }
 
 fwrite(\STDOUT, json_encode(
-    $directory,
+    $registry,
     \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR,
 )."\n");
 
