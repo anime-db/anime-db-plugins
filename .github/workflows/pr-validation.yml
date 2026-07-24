@@ -54,7 +54,7 @@ jobs:
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
 
       # Гейт: PR затрагивает ровно один плагин и только его код внутри plugins/<id>/.
-      # Правка plugins-directory.json (CI-артефакт) или путей вне plugins/ — фейл.
+      # Правка plugins-registry.json (CI-артефакт) или путей вне plugins/ — фейл.
       # Инфра-PR (пути вне plugins/) намеренно не проходят гейт и мёржатся вручную.
       #
       # check-pr-changes.php вызываем простой командой с редиректом (не через пайп

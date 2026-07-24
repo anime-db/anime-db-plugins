@@ -61,8 +61,8 @@ final class PrChangeChecker
         foreach ($paths as $path) {
             $normalized = ltrim($path, '/');
 
-            if ($normalized === 'plugins-directory.json') {
-                $errors[] = 'plugins-directory.json is a CI-generated artifact and must not be edited manually.';
+            if ($normalized === 'plugins-registry.json') {
+                $errors[] = 'plugins-registry.json is a CI-generated artifact and must not be edited manually.';
                 continue;
             }
 

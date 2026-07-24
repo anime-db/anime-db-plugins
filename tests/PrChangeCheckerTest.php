@@ -66,11 +66,11 @@ final class PrChangeCheckerTest extends TestCase
         self::assertNull($result->pluginId);
     }
 
-    public function testEditingPluginsDirectoryJsonIsRejected(): void
+    public function testEditingPluginsRegistryJsonIsRejected(): void
     {
         $result = (new PrChangeChecker())->check([
             'plugins/animedb-shikimori/manifest.json',
-            'plugins-directory.json',
+            'plugins-registry.json',
         ]);
 
         self::assertFalse($result->isValid());

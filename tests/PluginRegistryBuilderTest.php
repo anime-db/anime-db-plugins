@@ -27,10 +27,10 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools\Tests;
 
-use AnimeDb\Plugins\Tools\PluginDirectoryBuilder;
+use AnimeDb\Plugins\Tools\PluginRegistryBuilder;
 use PHPUnit\Framework\TestCase;
 
-final class PluginDirectoryBuilderTest extends TestCase
+final class PluginRegistryBuilderTest extends TestCase
 {
     /** @var list<string> */
     private array $tempDirs = [];
@@ -49,7 +49,7 @@ final class PluginDirectoryBuilderTest extends TestCase
             'widget-plugin' => ['version' => '0.1.0', 'name' => 'Widget'],
         ]);
 
-        $result = (new PluginDirectoryBuilder())->build($pluginsDir, [
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
         ]);
 
@@ -75,7 +75,7 @@ final class PluginDirectoryBuilderTest extends TestCase
             'widget-plugin' => ['version' => '0.3.0', 'name' => 'Widget'],
         ]);
 
-        $result = (new PluginDirectoryBuilder())->build($pluginsDir, [
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0'],
             ['id' => 'widget-plugin', 'version' => '0.3.0', 'core' => '>=0.2.0', 'sha256' => 'sha-0.3.0'],
             ['id' => 'widget-plugin', 'version' => '0.2.0', 'core' => '>=0.1.0', 'sha256' => 'sha-0.2.0'],
@@ -108,7 +108,7 @@ final class PluginDirectoryBuilderTest extends TestCase
             'alpha-plugin' => ['version' => '0.1.0', 'name' => 'Alpha'],
         ]);
 
-        $result = (new PluginDirectoryBuilder())->build($pluginsDir, [
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'zeta-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-zeta'],
             ['id' => 'alpha-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-alpha'],
         ]);
@@ -131,7 +131,7 @@ final class PluginDirectoryBuilderTest extends TestCase
             ['id' => 'gadget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-gadget-1'],
         ];
 
-        $builder = new PluginDirectoryBuilder();
+        $builder = new PluginRegistryBuilder();
         $first = json_encode($builder->build($pluginsDir, $publishedVersions), \JSON_THROW_ON_ERROR);
         $second = json_encode($builder->build($pluginsDir, $publishedVersions), \JSON_THROW_ON_ERROR);
 
@@ -145,7 +145,7 @@ final class PluginDirectoryBuilderTest extends TestCase
             'unpublished-plugin' => ['version' => '0.1.0', 'name' => 'Unpublished'],
         ]);
 
-        $result = (new PluginDirectoryBuilder())->build($pluginsDir, [
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
         ]);
 
@@ -156,7 +156,7 @@ final class PluginDirectoryBuilderTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
 
-        (new PluginDirectoryBuilder())->build($this->tempPath('does-not-exist'), []);
+        (new PluginRegistryBuilder())->build($this->tempPath('does-not-exist'), []);
     }
 
     public function testPublishedVersionReferencingUnknownPluginThrows(): void
@@ -165,7 +165,7 @@ final class PluginDirectoryBuilderTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
 
-        (new PluginDirectoryBuilder())->build($pluginsDir, [
+        (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'ghost-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
         ]);
     }
@@ -185,7 +185,7 @@ final class PluginDirectoryBuilderTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/not a valid plugin id/');
 
-        (new PluginDirectoryBuilder())->build($pluginsDir, [
+        (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => '..', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
         ]);
     }
@@ -221,7 +221,7 @@ final class PluginDirectoryBuilderTest extends TestCase
     private function tempPath(string $name): string
     {
         if ($this->tempDirs === []) {
-            $root = sys_get_temp_dir().'/plugin-directory-builder-test-'.bin2hex(random_bytes(8));
+            $root = sys_get_temp_dir().'/plugin-registry-builder-test-'.bin2hex(random_bytes(8));
             mkdir($root);
             $this->tempDirs[] = $root;
         }

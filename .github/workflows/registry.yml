@@ -4,16 +4,16 @@
 # @copyright Copyright (c) 2026, Peter Gribanov
 # @license   https://gnu.org GPL-3.0-or-later
 
-name: Build plugins directory
+name: Build plugins registry
 
-# Пересобирает корневой plugins-directory.json после релиз-воркфлоу. Собирает по
+# Пересобирает корневой plugins-registry.json после релиз-воркфлоу. Собирает по
 # опубликованным Release'ам список {id, version, core, sha256} (core — из ассета
 # manifest.json версии, sha256 — из ассета sha256), подаёт его вместе с текущими
-# манифестами в tools/build-directory.php и коммитит результат в master, если он
+# манифестами в tools/build-registry.php и коммитит результат в master, если он
 # изменился. Идемпотентно: без изменений коммита нет.
 #
-# Триггер — workflow_run по завершении "Release plugins": так directory собирается
-# ГАРАНТИРОВАННО после публикации новых версий (снимает гонку «директория до релиза»).
+# Триггер — workflow_run по завершении "Release plugins": так реестр собирается
+# ГАРАНТИРОВАННО после публикации новых версий (снимает гонку «реестр до релиза»).
 
 on:
   workflow_run:
@@ -26,12 +26,12 @@ permissions:
 # Сериализуем: несколько подряд завершившихся «Release plugins» дали бы
 # параллельные пересборки, конкурирующие за push в master.
 concurrency:
-  group: build-plugins-directory
+  group: build-plugins-registry
   cancel-in-progress: false
 
 jobs:
-  directory:
-    name: Rebuild plugins-directory.json
+  registry:
+    name: Rebuild plugins-registry.json
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
@@ -70,7 +70,7 @@ jobs:
           for tag in $tags; do
             # Ожидаем форму <id>/<version>. Посторонние теги (ручные релизы,
             # анонсы) и релизы без нужных ассетов пропускаем с предупреждением,
-            # чтобы один нестандартный релиз не ронял пересборку всей директории.
+            # чтобы один нестандартный релиз не ронял пересборку всего реестра.
             case "$tag" in
               */*) : ;;
               *) echo "::warning::Пропускаю релиз \"$tag\": тег не в форме <id>/<version>."; continue ;;
@@ -102,20 +102,20 @@ jobs:
             rm -f "$tmp/manifest.json" "$tmp/sha256"
           done
 
-      - name: Build directory
-        run: php tools/build-directory.php plugins published-versions.json > plugins-directory.json
+      - name: Build registry
+        run: php tools/build-registry.php plugins published-versions.json > plugins-registry.json
 
       - name: Commit if changed
         run: |
           set -euo pipefail
-          git add plugins-directory.json
+          git add plugins-registry.json
           if git diff --cached --quiet; then
-            echo "plugins-directory.json unchanged — nothing to commit."
+            echo "plugins-registry.json unchanged — nothing to commit."
             exit 0
           fi
           git config user.name "anime-db-bot"
           git config user.email "bot@anime-db.org"
-          git commit -m "ci: rebuild plugins-directory.json"
+          git commit -m "ci: rebuild plugins-registry.json"
           # concurrency сериализует джобы, но master мог уйти вперёд между checkout
           # и push (мёрж плагина) — ребейзим и ретраим на случай non-fast-forward.
           for attempt in 1 2 3; do
@@ -126,5 +126,5 @@ jobs:
             echo "::warning::Push attempt $attempt failed — retrying after rebase."
             sleep "$((attempt * 3))"
           done
-          echo "::error::Не удалось запушить plugins-directory.json после 3 попыток."
+          echo "::error::Не удалось запушить plugins-registry.json после 3 попыток."
           exit 1

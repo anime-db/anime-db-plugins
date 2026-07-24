@@ -28,7 +28,7 @@ declare(strict_types=1);
 
 /*
  * Gate: a PR must touch exactly one plugin, and only paths inside its plugins/<id>/
- * directory (plugins-directory.json is a CI-generated artifact and may not be hand-edited).
+ * directory (plugins-registry.json is a CI-generated artifact and may not be hand-edited).
  *
  * Usage:
  *   php tools/check-pr-changes.php <path> [<path> ...]
