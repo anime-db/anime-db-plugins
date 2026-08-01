@@ -116,9 +116,15 @@ jobs:
         id: changed
         run: |
           set -euo pipefail
-          # Сравниваем БЕЗ поля sequence: иначе идентичный по содержанию реестр всё равно
-          # бампил бы счётчик и коммитил на каждый триггерящий Release-прогон.
+          # Пропускаем ТОЛЬКО если реестр уже есть, УЖЕ ПОДПИСАН и по содержанию не
+          # изменился. Сравниваем БЕЗ поля sequence: иначе идентичный по содержанию
+          # реестр бампил бы счётчик и коммитил на каждый триггерящий Release-прогон.
+          # Проверка наличия .sig обязательна: если реестр закоммичен без подписи
+          # (напр. до включения подписи, или прогоном старого воркфлоу), то без неё
+          # guard считал бы контент «неизменным» и неподписанный реестр залип бы
+          # навсегда — отсутствие .sig принудительно ведёт к пере-сборке и подписи.
           if [ -f plugins-registry.json ] \
+            && [ -f plugins-registry.json.sig ] \
             && diff -q <(jq -S 'del(.sequence)' plugins-registry.json) \
                        <(jq -S 'del(.sequence)' plugins-registry.json.new) >/dev/null; then
             echo "Registry content unchanged — keeping existing registry and sequence."
