@@ -1,5 +1,5 @@
 {
-    "sequence": 1,
+    "sequence": 2,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>"
     ],
