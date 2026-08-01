@@ -69,9 +69,15 @@ final class PluginRegistryBuilder
     ];
 
     /**
+     * `$sequence` is the monotonic anti-rollback counter (must be >= 1). The caller (CLI) is
+     * responsible for deriving it from the previously published registry
+     * (`previous.sequence + 1`) so that it strictly increases between generations — this method
+     * only rejects non-positive values, it does not itself compare against a previous registry.
+     *
      * @param list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions
      *
      * @return array{
+     *     sequence: int,
      *     asset_mirrors: list<string>,
      *     plugins: list<array{
      *         id: string,
@@ -80,8 +86,12 @@ final class PluginRegistryBuilder
      *     }>,
      * }
      */
-    public function build(string $pluginsDir, array $publishedVersions): array
+    public function build(string $pluginsDir, array $publishedVersions, int $sequence): array
     {
+        if ($sequence < 1) {
+            throw new \RuntimeException(\sprintf('Registry sequence must be a positive integer, got %d.', $sequence));
+        }
+
         $pluginsDir = rtrim($pluginsDir, '/');
 
         if (!is_dir($pluginsDir)) {
@@ -116,6 +126,7 @@ final class PluginRegistryBuilder
         }
 
         return [
+            'sequence' => $sequence,
             'asset_mirrors' => self::ASSET_MIRRORS,
             'plugins' => $plugins,
         ];

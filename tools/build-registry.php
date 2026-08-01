@@ -32,8 +32,19 @@ declare(strict_types=1);
  * never talks to the network or to GitHub Releases itself, so collecting the published-versions
  * input (via `gh release ...`) and committing the resulting registry are left to CI tooling.
  *
- * Usage: php tools/build-registry.php <plugins-dir> <published-versions.json>
- * Prints the generated JSON to stdout; redirect it to plugins-registry.json.
+ * Usage: php tools/build-registry.php <plugins-dir> <published-versions.json> [<previous-registry.json>]
+ * Prints the generated JSON to stdout. Do NOT redirect stdout directly onto the previous
+ * registry path (`> plugins-registry.json`): the shell truncates that file before this script
+ * runs, so it would read back empty. Write to a new path and move it into place instead:
+ *   php tools/build-registry.php plugins published-versions.json plugins-registry.json \
+ *     > plugins-registry.json.new
+ *   mv plugins-registry.json.new plugins-registry.json
+ *
+ * <previous-registry.json>, when given and existing, supplies the previous "sequence" value;
+ * the new registry's sequence is that value + 1 (anti-rollback: strictly increasing between
+ * generations). When omitted, or when the path does not exist yet (first ever generation),
+ * sequence starts at 1.
+ *
  * Exit code: 0 on success, 1 otherwise. Problems are printed to stderr.
  */
 
@@ -104,9 +115,33 @@ foreach ($publishedVersions as $index => $entry) {
     }
 }
 
+$previousRegistryPath = $_SERVER['argv'][3] ?? null;
+$sequence = 1;
+if ($previousRegistryPath !== null && $previousRegistryPath !== '' && is_file($previousRegistryPath)) {
+    $previousRegistryJson = file_get_contents($previousRegistryPath);
+    if ($previousRegistryJson === false) {
+        fwrite(\STDERR, \sprintf('Failed to read "%s".'."\n", $previousRegistryPath));
+        exit(1);
+    }
+
+    try {
+        $previousRegistry = json_decode($previousRegistryJson, true, 512, \JSON_THROW_ON_ERROR);
+    } catch (JsonException $exception) {
+        fwrite(\STDERR, \sprintf('"%s" is not valid JSON: %s'."\n", $previousRegistryPath, $exception->getMessage()));
+        exit(1);
+    }
+
+    if (!\is_array($previousRegistry) || !\is_int($previousRegistry['sequence'] ?? null) || $previousRegistry['sequence'] < 1) {
+        fwrite(\STDERR, \sprintf('"%s" does not contain a valid positive-integer "sequence" field.'."\n", $previousRegistryPath));
+        exit(1);
+    }
+
+    $sequence = $previousRegistry['sequence'] + 1;
+}
+
 /* @var list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions */
 try {
-    $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions);
+    $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions, $sequence);
 } catch (RuntimeException $exception) {
     fwrite(\STDERR, $exception->getMessage()."\n");
     exit(1);

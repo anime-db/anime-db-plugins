@@ -63,6 +63,7 @@ final class BuildRegistryCliTest extends TestCase
 
         $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
 
+        self::assertSame(1, $registry['sequence']);
         self::assertSame(
             ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
             $registry['asset_mirrors'],
@@ -126,20 +127,81 @@ final class BuildRegistryCliTest extends TestCase
         self::assertNotSame(0, $exitCode);
     }
 
+    public function testSequenceIsPreviousRegistrySequencePlusOne(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([
+            ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
+        ], \JSON_THROW_ON_ERROR));
+
+        $previousRegistryPath = $this->tempDir.'/previous-registry.json';
+        file_put_contents($previousRegistryPath, json_encode(['sequence' => 41], \JSON_THROW_ON_ERROR));
+
+        [$output, $exitCode] = $this->runCli($repoRoot.'/plugins', $publishedVersionsPath, $previousRegistryPath);
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(42, $registry['sequence']);
+    }
+
+    public function testMissingPreviousRegistryFileFallsBackToSequenceOne(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([
+            ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
+        ], \JSON_THROW_ON_ERROR));
+
+        [$output, $exitCode] = $this->runCli(
+            $repoRoot.'/plugins',
+            $publishedVersionsPath,
+            $this->tempDir.'/does-not-exist.json',
+        );
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(1, $registry['sequence']);
+    }
+
+    public function testPreviousRegistryWithoutSequenceFieldExitsNonZero(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
+
+        $previousRegistryPath = $this->tempDir.'/previous-registry.json';
+        file_put_contents($previousRegistryPath, json_encode(['plugins' => []], \JSON_THROW_ON_ERROR));
+
+        [, $exitCode] = $this->runCli($repoRoot.'/plugins', $publishedVersionsPath, $previousRegistryPath);
+
+        self::assertNotSame(0, $exitCode);
+    }
+
     /**
      * @return array{0: list<string>, 1: int}
      */
-    private function runCli(string $pluginsDir, string $publishedVersionsPath): array
+    private function runCli(string $pluginsDir, string $publishedVersionsPath, ?string $previousRegistryPath = null): array
     {
         $repoRoot = \dirname(__DIR__);
 
-        exec(
-            escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-registry.php').' '
-                .escapeshellarg($pluginsDir).' '
-                .escapeshellarg($publishedVersionsPath).' 2>&1',
-            $output,
-            $exitCode,
-        );
+        $command = escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-registry.php').' '
+            .escapeshellarg($pluginsDir).' '
+            .escapeshellarg($publishedVersionsPath);
+        if ($previousRegistryPath !== null) {
+            $command .= ' '.escapeshellarg($previousRegistryPath);
+        }
+
+        exec($command.' 2>&1', $output, $exitCode);
 
         return [$output, $exitCode];
     }
