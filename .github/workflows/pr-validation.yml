@@ -47,31 +47,53 @@ jobs:
       # (см. repositories в composer.json), не из Packagist. Пакет публичный —
       # аутентификация не нужна, поэтому PR из форков валидируются штатно.
       #
-      # --no-scripts --no-plugins: install выполняется на коде PR ДО гейта, поэтому
-      # исполнять composer-скрипты/плагины из недоверенного composer.json нельзя.
-      # Гейту и тулингу (validate/phpstan/cs) скрипты и плагины composer не нужны.
+      # --no-scripts --no-plugins: install выполняется на коде PR, поэтому исполнять
+      # composer-скрипты/плагины из недоверенного composer.json нельзя.
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
 
-      # Гейт: PR затрагивает ровно один плагин и только его код внутри plugins/<id>/.
-      # Правка plugins-registry.json (CI-артефакт) или путей вне plugins/ — фейл.
-      # Инфра-PR (пути вне plugins/) намеренно не проходят гейт и мёржатся вручную.
-      #
-      # check-pr-changes.php вызываем простой командой с редиректом (не через пайп
-      # и не в присваивании $()) — иначе его ненулевой код маскируется (tee/командная
-      # подстановка), и гейт молча проходит. Так set -e корректно валит шаг.
-      - name: Gate — one plugin / only its code
+      # Трогает ли PR плагины? Плагин-гейт (ниже) применяем ТОЛЬКО к таким PR; чисто
+      # инфраструктурные (tools/ / .github/ / доки / реестр) его больше не спотыкают —
+      # раньше гейт стоял безусловно первым и ронял их в красный, из-за чего до
+      # PHPStan/cs-check дело вообще не доходило.
+      - name: Detect plugin changes
+        id: diff
         run: |
           set -euo pipefail
           git diff --name-only \
             "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" \
             > changed-files.txt
+          if grep -q '^plugins/' changed-files.txt; then
+            echo "touches_plugins=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "touches_plugins=false" >> "$GITHUB_OUTPUT"
+            echo "Чисто инфраструктурный PR (без изменений в plugins/) — плагин-гейт пропущен, гоняются только PHPStan и cs-check."
+          fi
+
+      # Гейт: PR затрагивает ровно один плагин и только его код внутри plugins/<id>/.
+      # Смешанный PR (плагин + пути вне plugins/) отклоняется. Порядок важен для
+      # безопасности: гейт (и его отказ) идёт ДО PHPStan/cs-check, которые исполняют
+      # конфиги репозитория (.php-cs-fixer.dist.php — это PHP-файл; phpstan.neon.dist
+      # может тянуть bootstrap). На PR, правящем эти конфиги вместе с плагином, гейт
+      # валит шаг раньше, чем недоверенный конфиг будет исполнен.
+      #
+      # check-pr-changes.php вызываем простой командой с редиректом (не через пайп
+      # и не в присваивании $()) — иначе его ненулевой код маскируется (tee/командная
+      # подстановка), и гейт молча проходит. Так set -e корректно валит шаг.
+      - name: Gate — one plugin / only its code
+        if: steps.diff.outputs.touches_plugins == 'true'
+        run: |
+          set -euo pipefail
           php tools/check-pr-changes.php < changed-files.txt > affected-plugin.txt
           echo "Gated to plugin: $(cat affected-plugin.txt)"
 
       - name: Validate affected plugin
+        if: steps.diff.outputs.touches_plugins == 'true'
         run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"
 
+      # PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
+      # Гоняются на КАЖДОМ PR: на плагинных (после гейта — конфиги тогда доверенные,
+      # = базовые) и на инфраструктурных (плагин-гейт пропущен).
       - name: PHPStan (tooling)
         run: composer phpstan
 
