@@ -5,3 +5,6 @@ parameters:
         - tools/validate-plugin.php
         - tools/check-pr-changes.php
         - tools/build-registry.php
+        - tools/sign-registry.php
+        - tools/verify-registry-signature.php
+        - tools/generate-registry-keypair.php

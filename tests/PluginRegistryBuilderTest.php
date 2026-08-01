@@ -51,8 +51,9 @@ final class PluginRegistryBuilderTest extends TestCase
 
         $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
-        ]);
+        ], 1);
 
+        self::assertSame(1, $result['sequence']);
         self::assertSame(
             ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
             $result['asset_mirrors'],
@@ -79,7 +80,7 @@ final class PluginRegistryBuilderTest extends TestCase
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0'],
             ['id' => 'widget-plugin', 'version' => '0.3.0', 'core' => '>=0.2.0', 'sha256' => 'sha-0.3.0'],
             ['id' => 'widget-plugin', 'version' => '0.2.0', 'core' => '>=0.1.0', 'sha256' => 'sha-0.2.0'],
-        ]);
+        ], 1);
 
         $plugin = $result['plugins'][0];
 
@@ -111,7 +112,7 @@ final class PluginRegistryBuilderTest extends TestCase
         $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'zeta-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-zeta'],
             ['id' => 'alpha-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-alpha'],
-        ]);
+        ], 1);
 
         self::assertSame(
             ['alpha-plugin', 'zeta-plugin'],
@@ -132,8 +133,8 @@ final class PluginRegistryBuilderTest extends TestCase
         ];
 
         $builder = new PluginRegistryBuilder();
-        $first = json_encode($builder->build($pluginsDir, $publishedVersions), \JSON_THROW_ON_ERROR);
-        $second = json_encode($builder->build($pluginsDir, $publishedVersions), \JSON_THROW_ON_ERROR);
+        $first = json_encode($builder->build($pluginsDir, $publishedVersions, 1), \JSON_THROW_ON_ERROR);
+        $second = json_encode($builder->build($pluginsDir, $publishedVersions, 1), \JSON_THROW_ON_ERROR);
 
         self::assertSame($first, $second);
     }
@@ -147,7 +148,7 @@ final class PluginRegistryBuilderTest extends TestCase
 
         $result = (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'widget-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
-        ]);
+        ], 1);
 
         self::assertSame(['widget-plugin'], array_column($result['plugins'], 'id'));
     }
@@ -156,7 +157,7 @@ final class PluginRegistryBuilderTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
 
-        (new PluginRegistryBuilder())->build($this->tempPath('does-not-exist'), []);
+        (new PluginRegistryBuilder())->build($this->tempPath('does-not-exist'), [], 1);
     }
 
     public function testPublishedVersionReferencingUnknownPluginThrows(): void
@@ -167,7 +168,7 @@ final class PluginRegistryBuilderTest extends TestCase
 
         (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => 'ghost-plugin', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
-        ]);
+        ], 1);
     }
 
     public function testPathTraversalPluginIdThrowsInsteadOfEscapingThePluginsDirectory(): void
@@ -187,7 +188,17 @@ final class PluginRegistryBuilderTest extends TestCase
 
         (new PluginRegistryBuilder())->build($pluginsDir, [
             ['id' => '..', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
-        ]);
+        ], 1);
+    }
+
+    public function testNonPositiveSequenceThrows(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/positive integer/');
+
+        (new PluginRegistryBuilder())->build($pluginsDir, [], 0);
     }
 
     /**

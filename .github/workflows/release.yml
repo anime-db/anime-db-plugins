@@ -16,8 +16,9 @@ on:
   push:
     branches: [master]
     paths-ignore:
-      # Коммит самого реестра (см. registry.yml) не должен ретриггерить цепочку.
+      # Коммит самого реестра и его подписи (см. registry.yml) не должен ретриггерить цепочку.
       - 'plugins-registry.json'
+      - 'plugins-registry.json.sig'
   workflow_dispatch:
 
 permissions:

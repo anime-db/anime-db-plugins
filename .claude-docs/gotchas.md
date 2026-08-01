@@ -25,3 +25,22 @@ mistaken premise that the host reads `composer.json` for autoloading, then rever
 (issue #6) once that premise was shown to be false. If a future change wants to check
 `composer.json` for dev convenience, keep it an optional warning, not a required-shape
 check — and don't describe it as how the host loads classes.
+
+## Never pipe `build-registry.php`'s stdout onto its own `<previous-registry.json>` argument
+
+`tools/build-registry.php plugins published-versions.json plugins-registry.json` reads
+its 3rd argument to derive the next `sequence` (`previous.sequence + 1`, anti-rollback).
+If a CI step naively redirects `> plugins-registry.json` using that *same* path as both
+the previous-registry argument and the output target, the shell truncates the file
+(setting up the redirect) **before** exec'ing PHP — so the script reads back an empty
+file instead of the real previous registry, and the rollback check is silently defeated.
+
+Always write to a new path first, then move it into place:
+
+```bash
+php tools/build-registry.php plugins published-versions.json plugins-registry.json \
+  > plugins-registry.json.new
+mv plugins-registry.json.new plugins-registry.json
+```
+
+See issue #12 and the README's "Маркет и версии" section.

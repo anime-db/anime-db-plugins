@@ -103,19 +103,59 @@ jobs:
           done
 
       - name: Build registry
-        run: php tools/build-registry.php plugins published-versions.json > plugins-registry.json
-
-      - name: Commit if changed
         run: |
           set -euo pipefail
-          git add plugins-registry.json
+          # Передаём текущий опубликованный реестр как «предыдущий», чтобы его
+          # anti-rollback `sequence` строго возрастал (previous.sequence + 1). На самом
+          # первом прогоне файла ещё нет — инструмент стартует sequence с 1. НЕЛЬЗЯ
+          # редиректить stdout в тот же путь, что дан «предыдущим» — шелл обнулит его
+          # раньше, чем скрипт прочитает. Пишем в новый путь.
+          php tools/build-registry.php plugins published-versions.json plugins-registry.json > plugins-registry.json.new
+
+      - name: Skip when registry content is unchanged
+        id: changed
+        run: |
+          set -euo pipefail
+          # Сравниваем БЕЗ поля sequence: иначе идентичный по содержанию реестр всё равно
+          # бампил бы счётчик и коммитил на каждый триггерящий Release-прогон.
+          if [ -f plugins-registry.json ] \
+            && diff -q <(jq -S 'del(.sequence)' plugins-registry.json) \
+                       <(jq -S 'del(.sequence)' plugins-registry.json.new) >/dev/null; then
+            echo "Registry content unchanged — keeping existing registry and sequence."
+            rm -f plugins-registry.json.new
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            mv plugins-registry.json.new plugins-registry.json
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sign registry
+        if: steps.changed.outputs.changed == 'true'
+        env:
+          REGISTRY_SIGNING_KEY: ${{ secrets.REGISTRY_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REGISTRY_SIGNING_KEY:-}" ]; then
+            echo "::error::Секрет REGISTRY_SIGNING_KEY не задан — реестр нельзя подписать."
+            exit 1
+          fi
+          php tools/sign-registry.php plugins-registry.json REGISTRY_SIGNING_KEY > plugins-registry.json.sig
+          # Самопроверка: подпись должна пройти против закоммиченного публичного ключа —
+          # иначе CI подписал ключом, не совпадающим с тем, что зашивается в клиент (#292).
+          php tools/verify-registry-signature.php plugins-registry.json plugins-registry.json.sig plugins-registry.pub
+
+      - name: Commit if changed
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git add plugins-registry.json plugins-registry.json.sig
           if git diff --cached --quiet; then
-            echo "plugins-registry.json unchanged — nothing to commit."
+            echo "Nothing staged — nothing to commit."
             exit 0
           fi
           git config user.name "anime-db-bot"
           git config user.email "bot@anime-db.org"
-          git commit -m "ci: rebuild plugins-registry.json"
+          git commit -m "ci: rebuild and sign plugins-registry.json"
           # concurrency сериализует джобы, но master мог уйти вперёд между checkout
           # и push (мёрж плагина) — ребейзим и ретраим на случай non-fast-forward.
           for attempt in 1 2 3; do
