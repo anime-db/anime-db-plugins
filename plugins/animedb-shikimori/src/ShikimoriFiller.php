@@ -27,9 +27,9 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori;
 
-use AnimeDb\PluginContracts\FillerInterface;
-use AnimeDb\PluginContracts\PluginAnimeData;
-use AnimeDb\PluginContracts\SearchByPluginCandidate;
+use AnimeDb\PluginContracts\Filler\FillerInterface;
+use AnimeDb\PluginContracts\Filler\PluginAnimeData;
+use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 
 /**
  * Источник Shikimori — поиск и заполнение карточек аниме.
