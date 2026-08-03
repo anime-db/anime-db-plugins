@@ -8,3 +8,4 @@ parameters:
         - tools/sign-registry.php
         - tools/verify-registry-signature.php
         - tools/generate-registry-keypair.php
+        - tools/push-mirror-assets.php

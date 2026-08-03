@@ -89,6 +89,59 @@ REGISTRY_SIGNING_KEY="$(cat secret.key)" \
 и не публиковать плагин в маркете, а распространять свой ZIP самостоятельно: тогда
 пользователь ставит его как сторонний архив (минуя маркет), а не из витрины.
 
+### Зеркала (`asset_mirrors`) и раскладка ассетов
+
+Ассеты версии (`plugin.zip`, `manifest.json`) раздаются клиенту с зеркал, а не только
+из GitHub Releases. Публичная часть — список URL-шаблонов `asset_mirrors` в
+`plugins-registry.json` (см. `PluginRegistryBuilder::ASSET_MIRRORS`), с макросами
+`<id>`/`<version>`/`<file>`; секретная часть (креды записи) в git не попадает —
+она в GitHub Secret `MIRROR_CREDS`, один JSON-объект, ключ — id зеркала:
+
+```json
+{
+  "reg-ru": {
+    "host": "ftp.example.tld",
+    "port": 21,
+    "user": "mirror_user",
+    "password": "***",
+    "dir": "/public_html/mirror",
+    "protocol": "ftps"
+  }
+}
+```
+
+Поля: `host`, `port` (опц., по умолчанию 21), `user`, `password`, `dir` (корень
+раздачи на зеркале), `protocol` (`ftps` — по умолчанию и предпочтительно, `ftp` —
+фолбэк для хостинга без FTPS). `tools/push-mirror-assets.php` читает этот JSON из
+переменной окружения (имя — четвёртый аргумент, не argv — секрет не должен попадать
+в список процессов) и **в цикле** по всем ключам заливает `plugin.zip` и
+`manifest.json` версии на каждое зеркало по FTP/FTPS:
+
+```bash
+MIRROR_CREDS='...' php tools/push-mirror-assets.php <id> <version> <dir-с-ассетами> MIRROR_CREDS
+```
+
+Раскладка на зеркале — версионное **неизменяемое** дерево `<dir>/<id>/<version>/<file>`
+(тот же `<id>/<version>/<file>`, что и в `asset_mirrors`). Скрипт идемпотентен: файл,
+уже существующий на зеркале, повторно не заливается и не перезаписывается — безопасно
+перезапускать на уже опубликованную версию. Если `MIRROR_CREDS` не задана или пуста —
+это не ошибка, а «зеркала ещё не настроены»: скрипт завершается кодом 0, ничего не делая.
+
+**Добавить зеркало = одна правка в двух публичных/секретных местах, не код:**
+дописать URL-шаблон в `PluginRegistryBuilder::ASSET_MIRRORS` (публично, коммитится) и
+запись в `MIRROR_CREDS` (секрет). Число секретов не растёт с числом зеркал.
+
+**Порядок публикации — инвариант:** реестр (`sequence`) ссылается на `sha256` уже
+залитых ассетов, поэтому ассеты должны лечь на **все** зеркала раньше, чем
+`plugins-registry.json` будет пересобран/подписан/закоммичен — иначе клиент может
+увидеть в реестре версию, ассетов которой на зеркале ещё нет. `push-mirror-assets.php`
+падает с кодом ≠0 при первой же неудаче (сбой коннекта/логина/заливки на любое
+зеркало) — вызывающий (CI) обязан трактовать это как «реестр не публикуем». Сам скрипт
+не решает, когда его вызвать относительно сборки реестра — эта последовательность
+(и переброс FTP-шага в CI) специфична для `.github/workflows/`, вне зоны
+ответственности этого README (см. соответствующий комментарий выше про
+`build-registry.php`/`sign-registry.php`).
+
 ## Тулинг
 
 Каркас проверки плагинов на PHP, самодостаточно вызываемый из CLI:
@@ -115,6 +168,11 @@ php tools/build-registry.php plugins published-versions.json [<previous-registry
 php tools/sign-registry.php <registry.json> <secret-key-env-var-name>
 php tools/verify-registry-signature.php <registry.json> <signature-file> <public-key-file>
 php tools/generate-registry-keypair.php <public-key-out-file>
+
+# Залить ассеты версии на все зеркала из MIRROR_CREDS (см. "Зеркала" выше). Код 0 без
+# заливки, если переменная не задана/пуста или декодируется в пустой JSON-объект —
+# зеркала опциональны. Код ≠0 при сбое на любом зеркале.
+php tools/push-mirror-assets.php <id> <version> <dir-с-ассетами> <mirror-creds-env-var-name>
 
 composer test      # PHPUnit
 composer phpstan    # статический анализ
