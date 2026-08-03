@@ -5,7 +5,7 @@
     "license": "GPL-3.0-or-later",
     "require": {
         "php": ">=8.1",
-        "anime-db/plugin-contracts": "^0.7"
+        "anime-db/plugin-contracts": "^0.8"
     },
     "repositories": [
         {
