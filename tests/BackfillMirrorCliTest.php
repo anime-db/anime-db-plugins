@@ -59,7 +59,7 @@ final class BackfillMirrorCliTest extends TestCase
     public function testMissingActiveMirrorsFileExitsNonZero(): void
     {
         [, $exitCode] = $this->runCli(
-            ['reg-ru', 'MIRROR_CREDS', '/does/not/exist'],
+            ['mirror1', 'MIRROR_CREDS', '/does/not/exist'],
             ['MIRROR_CREDS' => '{}'],
         );
 
@@ -70,7 +70,7 @@ final class BackfillMirrorCliTest extends TestCase
     {
         $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
-        [, $exitCode] = $this->runCli(['reg-ru', 'MIRROR_CREDS', $activeMirrorsPath]);
+        [, $exitCode] = $this->runCli(['mirror1', 'MIRROR_CREDS', $activeMirrorsPath]);
 
         self::assertNotSame(0, $exitCode);
         self::assertSame('', file_get_contents($activeMirrorsPath));
@@ -81,7 +81,7 @@ final class BackfillMirrorCliTest extends TestCase
         $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
         [, $exitCode] = $this->runCli(
-            ['reg-ru', 'MIRROR_CREDS', $activeMirrorsPath],
+            ['mirror1', 'MIRROR_CREDS', $activeMirrorsPath],
             ['MIRROR_CREDS' => '{}'],
         );
 
@@ -94,7 +94,7 @@ final class BackfillMirrorCliTest extends TestCase
         $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
         [, $exitCode] = $this->runCli(
-            ['reg-ru', 'MIRROR_CREDS', $activeMirrorsPath],
+            ['mirror1', 'MIRROR_CREDS', $activeMirrorsPath],
             ['MIRROR_CREDS' => 'not json'],
         );
 

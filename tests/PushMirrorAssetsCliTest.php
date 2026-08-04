@@ -106,7 +106,7 @@ final class PushMirrorAssetsCliTest extends TestCase
 
         [, $exitCode] = $this->runCli(
             ['animedb-shikimori', '0.2.0', $assetsDir, 'MIRROR_CREDS'],
-            ['MIRROR_CREDS' => json_encode(['reg-ru' => ['host' => 'a.tld']], \JSON_THROW_ON_ERROR)],
+            ['MIRROR_CREDS' => json_encode(['mirror1' => ['host' => 'a.tld']], \JSON_THROW_ON_ERROR)],
         );
 
         self::assertNotSame(0, $exitCode);

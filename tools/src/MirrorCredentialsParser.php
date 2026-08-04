@@ -55,7 +55,7 @@ final class MirrorCredentialsParser
     /**
      * Mirror id shape: not used as a path segment anywhere, but kept identifier-safe so it reads
      * cleanly in logs and errors, matching the vendor-name-ish slugs used for plugin ids
-     * elsewhere in this repo (e.g. "reg-ru").
+     * elsewhere in this repo (e.g. "mirror1").
      */
     private const MIRROR_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)*\z/';
 
@@ -80,7 +80,7 @@ final class MirrorCredentialsParser
             $id = (string) $id;
 
             if (preg_match(self::MIRROR_ID_PATTERN, $id) !== 1) {
-                throw new \RuntimeException(\sprintf('"%s" is not a valid mirror id. It must be a lowercase, hyphen-separated slug (e.g. "reg-ru").', $id));
+                throw new \RuntimeException(\sprintf('"%s" is not a valid mirror id. It must be a lowercase, hyphen-separated slug (e.g. "mirror1").', $id));
             }
 
             if (!\is_array($entry)) {

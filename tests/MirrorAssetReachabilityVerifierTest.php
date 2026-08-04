@@ -37,7 +37,7 @@ final class MirrorAssetReachabilityVerifierTest extends TestCase
     {
         $checker = new FakeMirrorReachabilityChecker(['https://second.tld/animedb-shikimori/0.1.0/plugin.zip']);
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/d', 'ftps', 'https://reg-ru.tld/<id>/<version>/<file>'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/d', 'ftps', 'https://mirror1.example.org/<id>/<version>/<file>'),
             'second' => new MirrorCredential('second', 'b.tld', 21, 'u', 'p', '/d', 'ftp', 'https://second.tld/<id>/<version>/<file>'),
         ];
 
@@ -49,7 +49,7 @@ final class MirrorAssetReachabilityVerifierTest extends TestCase
         );
 
         self::assertCount(4, $reports);
-        self::assertSame('https://reg-ru.tld/animedb-shikimori/0.1.0/plugin.zip', $reports[0]->url);
+        self::assertSame('https://mirror1.example.org/animedb-shikimori/0.1.0/plugin.zip', $reports[0]->url);
         self::assertTrue($reports[0]->reachable);
         self::assertSame('https://second.tld/animedb-shikimori/0.1.0/plugin.zip', $reports[2]->url);
         self::assertFalse($reports[2]->reachable);

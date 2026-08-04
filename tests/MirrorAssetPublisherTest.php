@@ -52,7 +52,7 @@ final class MirrorAssetPublisherTest extends TestCase
         $transport = new FakeMirrorTransport();
 
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
             'second' => new MirrorCredential('second', 'b.tld', 21, 'u', 'p', '/srv/mirror/', 'ftp', 'https://example.tld/<id>/<version>/<file>'),
         ];
 
@@ -81,7 +81,7 @@ final class MirrorAssetPublisherTest extends TestCase
         $transport = new FakeMirrorTransport();
 
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
         ];
 
         $publisher = new MirrorAssetPublisher($transport);
@@ -129,7 +129,7 @@ final class MirrorAssetPublisherTest extends TestCase
         $transport = new FakeMirrorTransport();
 
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
         ];
 
         $this->expectException(\RuntimeException::class);

@@ -104,14 +104,14 @@ REGISTRY_SIGNING_KEY="$(cat secret.key)" \
 
   ```json
   {
-    "reg-ru": {
+    "mirror1": {
       "host": "ftp.example.tld",
       "port": 21,
       "user": "mirror_user",
       "password": "***",
       "dir": "/public_html/mirror",
       "protocol": "ftps",
-      "public_url": "https://reg-ru.example.tld/mirror/<id>/<version>/<file>"
+      "public_url": "https://mirror1.example.org/mirror/<id>/<version>/<file>"
     }
   }
   ```
@@ -129,7 +129,7 @@ REGISTRY_SIGNING_KEY="$(cat secret.key)" \
   id зеркал, один на строку (пустые строки и `#`-комментарии игнорируются):
 
   ```
-  reg-ru
+  mirror1
   ```
 
   Зеркало попадает в `asset_mirrors`, только если его id **одновременно** есть и в

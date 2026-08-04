@@ -75,7 +75,7 @@ final class ActiveMirrorsFile
             }
 
             if (preg_match(self::MIRROR_ID_PATTERN, $line) !== 1) {
-                throw new \RuntimeException(\sprintf('"%s" is not a valid mirror id in active-mirrors. It must be a lowercase, hyphen-separated slug (e.g. "reg-ru").', $line));
+                throw new \RuntimeException(\sprintf('"%s" is not a valid mirror id in active-mirrors. It must be a lowercase, hyphen-separated slug (e.g. "mirror1").', $line));
             }
 
             $ids[$line] = true;

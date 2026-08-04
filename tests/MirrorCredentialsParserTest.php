@@ -35,43 +35,43 @@ final class MirrorCredentialsParserTest extends TestCase
     public function testParsesAllFieldsAndDefaultsProtocolToFtpsAndPortTo21(): void
     {
         $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => [
+            'mirror1' => [
                 'host' => 'ftp.example.tld',
                 'user' => 'mirror_user',
                 'password' => 'secret',
                 'dir' => '/public_html/mirror',
-                'public_url' => 'https://reg-ru.example.tld/mirror/<id>/<version>/<file>',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
             ],
         ], \JSON_THROW_ON_ERROR));
 
         self::assertCount(1, $mirrors);
-        $mirror = $mirrors['reg-ru'];
-        self::assertSame('reg-ru', $mirror->id);
+        $mirror = $mirrors['mirror1'];
+        self::assertSame('mirror1', $mirror->id);
         self::assertSame('ftp.example.tld', $mirror->host);
         self::assertSame(21, $mirror->port);
         self::assertSame('mirror_user', $mirror->user);
         self::assertSame('secret', $mirror->password);
         self::assertSame('/public_html/mirror', $mirror->dir);
         self::assertSame('ftps', $mirror->protocol);
-        self::assertSame('https://reg-ru.example.tld/mirror/<id>/<version>/<file>', $mirror->publicUrl);
+        self::assertSame('https://mirror1.example.org/mirror/<id>/<version>/<file>', $mirror->publicUrl);
     }
 
     public function testExplicitPortAndFtpProtocolAreHonoured(): void
     {
         $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => [
+            'mirror1' => [
                 'host' => 'ftp.example.tld',
                 'port' => 2121,
                 'user' => 'mirror_user',
                 'password' => 'secret',
                 'dir' => '/public_html/mirror',
                 'protocol' => 'ftp',
-                'public_url' => 'https://reg-ru.example.tld/mirror/<id>/<version>/<file>',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
             ],
         ], \JSON_THROW_ON_ERROR));
 
-        self::assertSame(2121, $mirrors['reg-ru']->port);
-        self::assertSame('ftp', $mirrors['reg-ru']->protocol);
+        self::assertSame(2121, $mirrors['mirror1']->port);
+        self::assertSame('ftp', $mirrors['mirror1']->protocol);
     }
 
     public function testMultipleMirrorsAreSortedByIdForADeterministicOrder(): void
@@ -103,7 +103,7 @@ final class MirrorCredentialsParserTest extends TestCase
         // (see testEmptyObjectYieldsNoMirrors).
         $this->expectException(\RuntimeException::class);
 
-        (new MirrorCredentialsParser())->parse('["reg-ru"]');
+        (new MirrorCredentialsParser())->parse('["mirror1"]');
     }
 
     public function testInvalidMirrorIdThrows(): void
@@ -125,7 +125,7 @@ final class MirrorCredentialsParserTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
 
-        (new MirrorCredentialsParser())->parse(json_encode(['reg-ru' => $entry], \JSON_THROW_ON_ERROR));
+        (new MirrorCredentialsParser())->parse(json_encode(['mirror1' => $entry], \JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -149,10 +149,10 @@ final class MirrorCredentialsParserTest extends TestCase
     public function testMalformedPublicUrlDoesNotThrowAtParseTime(): void
     {
         $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'public_url' => 'not-a-url'],
+            'mirror1' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'public_url' => 'not-a-url'],
         ], \JSON_THROW_ON_ERROR));
 
-        self::assertSame('not-a-url', $mirrors['reg-ru']->publicUrl);
+        self::assertSame('not-a-url', $mirrors['mirror1']->publicUrl);
     }
 
     public function testInvalidProtocolThrows(): void
@@ -160,7 +160,7 @@ final class MirrorCredentialsParserTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'protocol' => 'sftp', 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
+            'mirror1' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'protocol' => 'sftp', 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
         ], \JSON_THROW_ON_ERROR));
     }
 
@@ -169,7 +169,7 @@ final class MirrorCredentialsParserTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'port' => 0, 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
+            'mirror1' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'port' => 0, 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
         ], \JSON_THROW_ON_ERROR));
     }
 
@@ -178,7 +178,7 @@ final class MirrorCredentialsParserTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         (new MirrorCredentialsParser())->parse(json_encode([
-            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => 'mirror', 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
+            'mirror1' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => 'mirror', 'public_url' => 'https://a.tld/<id>/<version>/<file>'],
         ], \JSON_THROW_ON_ERROR));
     }
 }

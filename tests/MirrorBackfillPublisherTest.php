@@ -134,6 +134,6 @@ final class MirrorBackfillPublisherTest extends TestCase
 
     private function credential(string $publicUrl = 'https://mirror.tld/<id>/<version>/<file>'): MirrorCredential
     {
-        return new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/mirror', 'ftps', $publicUrl);
+        return new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/mirror', 'ftps', $publicUrl);
     }
 }
