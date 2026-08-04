@@ -59,8 +59,11 @@ final class PluginRegistryBuilder
      * URL templates for locating a version's assets, with `<id>`/`<version>`/`<file>` macros
      * for the caller to substitute. `<file>` is one of `plugin.zip` or `manifest.json`.
      *
-     * Only a single mirror (GitHub Releases) exists today; more can be appended here later
-     * without any change on the consuming application's side.
+     * Default/fallback when the caller does not supply `$assetMirrors` (see {@see self::build()}):
+     * GitHub Releases only. Once mirrors are configured, the caller resolves the full list via
+     * {@see AssetMirrorsResolver} (GitHub + active `MIRROR_CREDS` replicas) and passes it in
+     * explicitly — this class stays a pure function of its inputs and does not itself know about
+     * `MIRROR_CREDS`/`active-mirrors`.
      *
      * @var list<string>
      */
@@ -75,6 +78,10 @@ final class PluginRegistryBuilder
      * only rejects non-positive values, it does not itself compare against a previous registry.
      *
      * @param list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions
+     * @param ?list<string>                                                          $assetMirrors      pre-resolved `asset_mirrors`
+     *                                                                                                  (see {@see AssetMirrorsResolver});
+     *                                                                                                  `null` falls back to
+     *                                                                                                  {@see self::ASSET_MIRRORS} (GitHub only)
      *
      * @return array{
      *     sequence: int,
@@ -86,7 +93,7 @@ final class PluginRegistryBuilder
      *     }>,
      * }
      */
-    public function build(string $pluginsDir, array $publishedVersions, int $sequence): array
+    public function build(string $pluginsDir, array $publishedVersions, int $sequence, ?array $assetMirrors = null): array
     {
         if ($sequence < 1) {
             throw new \RuntimeException(\sprintf('Registry sequence must be a positive integer, got %d.', $sequence));
@@ -127,7 +134,7 @@ final class PluginRegistryBuilder
 
         return [
             'sequence' => $sequence,
-            'asset_mirrors' => self::ASSET_MIRRORS,
+            'asset_mirrors' => $assetMirrors ?? self::ASSET_MIRRORS,
             'plugins' => $plugins,
         ];
     }

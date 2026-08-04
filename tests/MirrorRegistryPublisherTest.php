@@ -52,8 +52,8 @@ final class MirrorRegistryPublisherTest extends TestCase
         $transport = new FakeMirrorTransport();
 
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps'),
-            'second' => new MirrorCredential('second', 'b.tld', 21, 'u', 'p', '/srv/mirror/', 'ftp'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
+            'second' => new MirrorCredential('second', 'b.tld', 21, 'u', 'p', '/srv/mirror/', 'ftp', 'https://example.tld/<id>/<version>/<file>'),
         ];
 
         (new MirrorRegistryPublisher($transport))->publish($mirrors, $registry, $signature);
@@ -76,7 +76,7 @@ final class MirrorRegistryPublisherTest extends TestCase
         $transport = new FakeMirrorTransport();
 
         $mirrors = [
-            'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps'),
+            'mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps', 'https://example.tld/<id>/<version>/<file>'),
         ];
 
         // The registry is mutable (changes every release): each publish re-uploads both files,
@@ -95,7 +95,7 @@ final class MirrorRegistryPublisherTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         (new MirrorRegistryPublisher(new FakeMirrorTransport()))->publish(
-            ['reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/m', 'ftps')],
+            ['mirror1' => new MirrorCredential('mirror1', 'a.tld', 21, 'u', 'p', '/m', 'ftps', 'https://example.tld/<id>/<version>/<file>')],
             $this->tempDir.'/does-not-exist.json',
             $signature,
         );

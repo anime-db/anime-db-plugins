@@ -1,0 +1,5 @@
+# One mirror id per line (must match a key in the MIRROR_CREDS secret). Blank lines and lines
+# starting with "#" are ignored. See README.md ("Зеркала (asset_mirrors)") and issue #26:
+# an id belongs here only once its mirror has been fully backfilled from GitHub Releases and
+# HEAD-verified (see tools/backfill-mirror.php) — this is what actually gets advertised to clients
+# in plugins-registry.json's asset_mirrors, gated separately from MIRROR_CREDS.

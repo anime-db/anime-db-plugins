@@ -19,6 +19,12 @@ on:
   workflow_run:
     workflows: ["Release plugins"]
     types: [completed]
+  # Ручной прогон: пересобрать/подписать реестр без релиза плагина. Нужен, чтобы
+  # изменение состава зеркал (`active-mirrors` + `MIRROR_CREDS`) попало в подписанный
+  # `asset_mirrors` — например после активации нового зеркала (workflow «Backfill
+  # mirror» коммитит `active-mirrors`, а этот прогон подтягивает его в реестр) или для
+  # срочного де-листинга скомпрометированного зеркала (убрать id из `active-mirrors`).
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -32,7 +38,9 @@ concurrency:
 jobs:
   registry:
     name: Rebuild plugins-registry.json
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # workflow_run от «Release plugins» гоняем только при успехе; ручной workflow_dispatch
+    # (у него нет github.event.workflow_run) — всегда.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -114,7 +122,12 @@ jobs:
           # первом прогоне файла ещё нет — инструмент стартует sequence с 1. НЕЛЬЗЯ
           # редиректить stdout в тот же путь, что дан «предыдущим» — шелл обнулит его
           # раньше, чем скрипт прочитает. Пишем в новый путь.
-          php tools/build-registry.php plugins published-versions.json plugins-registry.json > plugins-registry.json.new
+          #
+          # Аргументы 4-5 (`active-mirrors` + имя env-переменной `MIRROR_CREDS`) собирают
+          # `asset_mirrors` = [GitHub] + public_url тех зеркал, чей id в `active-mirrors`
+          # (issue #26). Кривой/осиротевший public_url выбрасывается с ::warning:: в STDERR
+          # (fail-open, не роняет сборку). MIRROR_CREDS уже в env джоба; пусто → [GitHub].
+          php tools/build-registry.php plugins published-versions.json plugins-registry.json active-mirrors MIRROR_CREDS > plugins-registry.json.new
 
       - name: Skip when registry content is unchanged
         id: changed

@@ -201,6 +201,24 @@ final class PluginRegistryBuilderTest extends TestCase
         (new PluginRegistryBuilder())->build($pluginsDir, [], 0);
     }
 
+    public function testExplicitAssetMirrorsOverrideTheGithubOnlyDefault(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [], 1, [
+            'https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>',
+            'https://mirror1.example.org/mirror/<id>/<version>/<file>',
+        ]);
+
+        self::assertSame(
+            [
+                'https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>',
+                'https://mirror1.example.org/mirror/<id>/<version>/<file>',
+            ],
+            $result['asset_mirrors'],
+        );
+    }
+
     /**
      * @param array<string, array{version: string, name: string}> $plugins
      */

@@ -28,12 +28,18 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 /**
- * One mirror's write credentials, as decoded from a single entry of the `MIRROR_CREDS` GitHub
- * Actions secret (see {@see MirrorCredentialsParser}). Deliberately holds only the *secret* half
- * of a mirror's identity — the *public* half (the download URL template reachable by clients) is
- * `asset_mirrors` in `plugins-registry.json`, checked into git; the two are linked only by a
- * human matching this credential's `id` to the right `asset_mirrors` entry, not by any field
- * shared between the two.
+ * One mirror's credentials, as decoded from a single entry of the `MIRROR_CREDS` GitHub Actions
+ * secret (see {@see MirrorCredentialsParser}). Holds both halves of a mirror's identity: the
+ * *write* half (`host`/`port`/`user`/`password`/`dir`/`protocol`, used to push assets/registry via
+ * FTP(S)) and the *public* half (`publicUrl`, the download URL template reachable by clients, e.g.
+ * `https://mirror.tld/plugins/<id>/<version>/<file>`). Keeping both in the one secret entry is
+ * deliberate (issue #26): before, `publicUrl` lived only as a hardcoded, unrelated
+ * `PluginRegistryBuilder::ASSET_MIRRORS` entry, so adding a mirror meant editing two disconnected
+ * places and risked publishing write credentials for a mirror clients were never told about (or
+ * vice versa). This `id` still has to be matched by a human against a git-tracked
+ * `active-mirrors` entry before `publicUrl` is advertised in `asset_mirrors` — see
+ * {@see AssetMirrorsResolver} — so a MIRROR_CREDS entry existing is not by itself enough to go
+ * live.
  */
 final class MirrorCredential
 {
@@ -45,6 +51,7 @@ final class MirrorCredential
         public readonly string $password,
         public readonly string $dir,
         public readonly string $protocol,
+        public readonly string $publicUrl,
     ) {
     }
 }

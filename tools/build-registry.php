@@ -32,7 +32,7 @@ declare(strict_types=1);
  * never talks to the network or to GitHub Releases itself, so collecting the published-versions
  * input (via `gh release ...`) and committing the resulting registry are left to CI tooling.
  *
- * Usage: php tools/build-registry.php <plugins-dir> <published-versions.json> [<previous-registry.json>]
+ * Usage: php tools/build-registry.php <plugins-dir> <published-versions.json> [<previous-registry.json>] [<active-mirrors-file>] [<mirror-creds-env-var-name>]
  * Prints the generated JSON to stdout. Do NOT redirect stdout directly onto the previous
  * registry path (`> plugins-registry.json`): the shell truncates that file before this script
  * runs, so it would read back empty. Write to a new path and move it into place instead:
@@ -44,6 +44,17 @@ declare(strict_types=1);
  * the new registry's sequence is that value + 1 (anti-rollback: strictly increasing between
  * generations). When omitted, or when the path does not exist yet (first ever generation),
  * sequence starts at 1.
+ *
+ * <active-mirrors-file> and <mirror-creds-env-var-name>, when BOTH given, resolve `asset_mirrors`
+ * as [GitHub] + every `MIRROR_CREDS` entry whose id is listed in <active-mirrors-file> (see
+ * AssetMirrorsResolver, issue #26). A mirror id with no matching MIRROR_CREDS entry, or whose
+ * public_url is not a well-formed "https://...<id>...<version>...<file>..." template, is dropped
+ * with a "::warning::" line on STDERR — this NEVER fails the build (MIRROR_CREDS is a secret with
+ * no PR gate; a typo in one replica must not block signing/publishing the registry for every
+ * plugin). Warnings go to STDERR, not STDOUT, because STDOUT carries the registry JSON payload
+ * (the caller redirects it to a file) — a "::warning::" line on STDOUT would corrupt that JSON and
+ * so re-introduce the very build-wide freeze this fail-open design exists to prevent. When either
+ * argument is omitted, `asset_mirrors` falls back to GitHub only, same as before this option existed.
  *
  * Exit code: 0 on success, 1 otherwise. Problems are printed to stderr.
  */
@@ -63,6 +74,9 @@ function locateAutoloader(): string
 
 require locateAutoloader();
 
+use AnimeDb\Plugins\Tools\ActiveMirrorsFile;
+use AnimeDb\Plugins\Tools\AssetMirrorsResolver;
+use AnimeDb\Plugins\Tools\MirrorCredentialsParser;
 use AnimeDb\Plugins\Tools\PluginRegistryBuilder;
 
 $pluginsDir = $_SERVER['argv'][1] ?? null;
@@ -139,9 +153,50 @@ if ($previousRegistryPath !== null && $previousRegistryPath !== '' && is_file($p
     $sequence = $previousRegistry['sequence'] + 1;
 }
 
+$activeMirrorsPath = $_SERVER['argv'][4] ?? null;
+$credsEnvVar = $_SERVER['argv'][5] ?? null;
+
+$assetMirrors = null;
+if ($activeMirrorsPath !== null && $activeMirrorsPath !== '' && $credsEnvVar !== null && $credsEnvVar !== '') {
+    if (!is_file($activeMirrorsPath)) {
+        fwrite(\STDERR, \sprintf('Active mirrors file "%s" does not exist.'."\n", $activeMirrorsPath));
+        exit(1);
+    }
+
+    $activeMirrorsContent = file_get_contents($activeMirrorsPath);
+    if ($activeMirrorsContent === false) {
+        fwrite(\STDERR, \sprintf('Failed to read "%s".'."\n", $activeMirrorsPath));
+        exit(1);
+    }
+
+    $credsJson = getenv($credsEnvVar);
+    $mirrorCredentials = [];
+    if ($credsJson !== false && trim($credsJson) !== '') {
+        try {
+            $mirrorCredentials = (new MirrorCredentialsParser())->parse($credsJson);
+        } catch (RuntimeException $exception) {
+            fwrite(\STDERR, $exception->getMessage()."\n");
+            exit(1);
+        }
+    }
+
+    try {
+        $activeMirrorIds = (new ActiveMirrorsFile())->parse($activeMirrorsContent);
+    } catch (RuntimeException $exception) {
+        fwrite(\STDERR, $exception->getMessage()."\n");
+        exit(1);
+    }
+
+    $resolved = (new AssetMirrorsResolver())->resolve($mirrorCredentials, $activeMirrorIds);
+    foreach ($resolved['warnings'] as $warning) {
+        fwrite(\STDERR, "::warning::{$warning}\n");
+    }
+    $assetMirrors = $resolved['mirrors'];
+}
+
 /* @var list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions */
 try {
-    $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions, $sequence);
+    $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions, $sequence, $assetMirrors);
 } catch (RuntimeException $exception) {
     fwrite(\STDERR, $exception->getMessage()."\n");
     exit(1);

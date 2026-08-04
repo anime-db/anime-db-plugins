@@ -187,18 +187,198 @@ final class BuildRegistryCliTest extends TestCase
         self::assertNotSame(0, $exitCode);
     }
 
-    /**
-     * @return array{0: list<string>, 1: int}
-     */
-    private function runCli(string $pluginsDir, string $publishedVersionsPath, ?string $previousRegistryPath = null): array
+    public function testEmptyActiveMirrorsFileYieldsGithubOnlyAssetMirrors(): void
     {
         $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
 
-        $command = escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-registry.php').' '
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
+
+        $activeMirrorsPath = $this->tempDir.'/active-mirrors';
+        file_put_contents($activeMirrorsPath, '');
+
+        [$output, $exitCode] = $this->runCli(
+            $repoRoot.'/plugins',
+            $publishedVersionsPath,
+            null,
+            $activeMirrorsPath,
+            'MIRROR_CREDS',
+            ['MIRROR_CREDS' => '{}'],
+        );
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(
+            ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
+            $registry['asset_mirrors'],
+        );
+    }
+
+    public function testActiveMirrorWithValidCredentialIsAppendedAfterGithub(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
+
+        $activeMirrorsPath = $this->tempDir.'/active-mirrors';
+        file_put_contents($activeMirrorsPath, "mirror1\n");
+
+        $mirrorCreds = json_encode([
+            'mirror1' => [
+                'host' => 'ftp.example.tld',
+                'user' => 'u',
+                'password' => 'p',
+                'dir' => '/mirror',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
+            ],
+        ], \JSON_THROW_ON_ERROR);
+
+        [$output, $exitCode] = $this->runCli(
+            $repoRoot.'/plugins',
+            $publishedVersionsPath,
+            null,
+            $activeMirrorsPath,
+            'MIRROR_CREDS',
+            ['MIRROR_CREDS' => $mirrorCreds],
+        );
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(
+            [
+                'https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>',
+                'https://mirror1.example.org/mirror/<id>/<version>/<file>',
+            ],
+            $registry['asset_mirrors'],
+        );
+    }
+
+    public function testMirrorNotListedInActiveMirrorsIsNotAdvertised(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
+
+        // Not yet backfilled/verified — present in MIRROR_CREDS but absent from active-mirrors.
+        $activeMirrorsPath = $this->tempDir.'/active-mirrors';
+        file_put_contents($activeMirrorsPath, '');
+
+        $mirrorCreds = json_encode([
+            'mirror1' => [
+                'host' => 'ftp.example.tld',
+                'user' => 'u',
+                'password' => 'p',
+                'dir' => '/mirror',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
+            ],
+        ], \JSON_THROW_ON_ERROR);
+
+        [$output, $exitCode] = $this->runCli(
+            $repoRoot.'/plugins',
+            $publishedVersionsPath,
+            null,
+            $activeMirrorsPath,
+            'MIRROR_CREDS',
+            ['MIRROR_CREDS' => $mirrorCreds],
+        );
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(
+            ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
+            $registry['asset_mirrors'],
+        );
+    }
+
+    public function testInvalidPublicUrlIsDroppedWithWarningButBuildStillSucceeds(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
+
+        $activeMirrorsPath = $this->tempDir.'/active-mirrors';
+        file_put_contents($activeMirrorsPath, "mirror1\n");
+
+        $mirrorCreds = json_encode([
+            'mirror1' => [
+                'host' => 'ftp.example.tld',
+                'user' => 'u',
+                'password' => 'p',
+                'dir' => '/mirror',
+                // Missing macros and not https — an invalid public_url template.
+                'public_url' => 'http://mirror1.example.org/downloads',
+            ],
+        ], \JSON_THROW_ON_ERROR);
+
+        [$output, $exitCode] = $this->runCli(
+            $repoRoot.'/plugins',
+            $publishedVersionsPath,
+            null,
+            $activeMirrorsPath,
+            'MIRROR_CREDS',
+            ['MIRROR_CREDS' => $mirrorCreds],
+        );
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        self::assertStringContainsString('::warning::', implode("\n", $output));
+
+        $jsonStart = null;
+        foreach ($output as $index => $line) {
+            if (str_starts_with($line, '{')) {
+                $jsonStart = $index;
+                break;
+            }
+        }
+        self::assertNotNull($jsonStart);
+        $registry = json_decode(implode("\n", \array_slice($output, $jsonStart)), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(
+            ['https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>'],
+            $registry['asset_mirrors'],
+        );
+    }
+
+    /**
+     * @param array<string, string> $env
+     *
+     * @return array{0: list<string>, 1: int}
+     */
+    private function runCli(
+        string $pluginsDir,
+        string $publishedVersionsPath,
+        ?string $previousRegistryPath = null,
+        ?string $activeMirrorsPath = null,
+        ?string $credsEnvVar = null,
+        array $env = [],
+    ): array {
+        $repoRoot = \dirname(__DIR__);
+
+        $envPrefix = '';
+        foreach ($env as $name => $value) {
+            $envPrefix .= $name.'='.escapeshellarg($value).' ';
+        }
+
+        $command = $envPrefix.escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/build-registry.php').' '
             .escapeshellarg($pluginsDir).' '
             .escapeshellarg($publishedVersionsPath);
-        if ($previousRegistryPath !== null) {
-            $command .= ' '.escapeshellarg($previousRegistryPath);
+        if ($previousRegistryPath !== null || $activeMirrorsPath !== null) {
+            $command .= ' '.escapeshellarg($previousRegistryPath ?? '');
+        }
+        if ($activeMirrorsPath !== null) {
+            $command .= ' '.escapeshellarg($activeMirrorsPath);
+        }
+        if ($credsEnvVar !== null) {
+            $command .= ' '.escapeshellarg($credsEnvVar);
         }
 
         exec($command.' 2>&1', $output, $exitCode);

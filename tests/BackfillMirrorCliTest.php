@@ -30,15 +30,14 @@ namespace AnimeDb\Plugins\Tools\Tests;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Smoke-tests tools/push-mirror-assets.php as an actual CLI process, on top of the unit coverage
- * of {@see \AnimeDb\Plugins\Tools\MirrorAssetPublisher} and
- * {@see \AnimeDb\Plugins\Tools\MirrorCredentialsParser}.
+ * Smoke-tests tools/backfill-mirror.php as an actual CLI process, on top of the unit coverage of
+ * {@see \AnimeDb\Plugins\Tools\MirrorBackfillPublisher}.
  *
- * Only covers the paths that do not require a live FTP(S) server (usage/input validation, and
- * the "no mirrors configured" no-op) — actually reaching a mirror is exercised by the unit tests
- * against a fake {@see \AnimeDb\Plugins\Tools\MirrorTransport}, not here.
+ * Only covers the paths that do not require a real `gh` CLI / GitHub network or a live FTP(S)
+ * server (usage/input validation) — actually backfilling a mirror is exercised by the unit tests
+ * against fakes, not here. In every case here the active-mirrors file must be left untouched.
  */
-final class PushMirrorAssetsCliTest extends TestCase
+final class BackfillMirrorCliTest extends TestCase
 {
     private ?string $tempDir = null;
 
@@ -57,69 +56,60 @@ final class PushMirrorAssetsCliTest extends TestCase
         self::assertNotSame(0, $exitCode);
     }
 
-    public function testMissingAssetsDirExitsNonZero(): void
+    public function testMissingActiveMirrorsFileExitsNonZero(): void
     {
         [, $exitCode] = $this->runCli(
-            ['animedb-shikimori', '0.2.0', '/does/not/exist', 'MIRROR_CREDS'],
+            ['mirror1', 'MIRROR_CREDS', '/does/not/exist'],
             ['MIRROR_CREDS' => '{}'],
         );
 
         self::assertNotSame(0, $exitCode);
     }
 
-    public function testUnsetCredsEnvVarExitsZeroAsANoOp(): void
+    public function testUnsetCredsEnvVarExitsNonZero(): void
     {
-        $assetsDir = $this->makeAssetsDir();
+        $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
-        [$output, $exitCode] = $this->runCli(['animedb-shikimori', '0.2.0', $assetsDir, 'MIRROR_CREDS']);
+        [, $exitCode] = $this->runCli(['mirror1', 'MIRROR_CREDS', $activeMirrorsPath]);
 
-        self::assertSame(0, $exitCode, implode("\n", $output));
+        self::assertNotSame(0, $exitCode);
+        self::assertSame('', file_get_contents($activeMirrorsPath));
     }
 
-    public function testEmptyMirrorCredsObjectExitsZeroAsANoOp(): void
+    public function testUnknownMirrorIdExitsNonZero(): void
     {
-        $assetsDir = $this->makeAssetsDir();
+        $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
-        [$output, $exitCode] = $this->runCli(
-            ['animedb-shikimori', '0.2.0', $assetsDir, 'MIRROR_CREDS'],
+        [, $exitCode] = $this->runCli(
+            ['mirror1', 'MIRROR_CREDS', $activeMirrorsPath],
             ['MIRROR_CREDS' => '{}'],
         );
 
-        self::assertSame(0, $exitCode, implode("\n", $output));
+        self::assertNotSame(0, $exitCode);
+        self::assertSame('', file_get_contents($activeMirrorsPath));
     }
 
     public function testMalformedMirrorCredsJsonExitsNonZero(): void
     {
-        $assetsDir = $this->makeAssetsDir();
+        $activeMirrorsPath = $this->makeActiveMirrorsFile('');
 
         [, $exitCode] = $this->runCli(
-            ['animedb-shikimori', '0.2.0', $assetsDir, 'MIRROR_CREDS'],
+            ['mirror1', 'MIRROR_CREDS', $activeMirrorsPath],
             ['MIRROR_CREDS' => 'not json'],
         );
 
         self::assertNotSame(0, $exitCode);
+        self::assertSame('', file_get_contents($activeMirrorsPath));
     }
 
-    public function testMirrorCredsEntryMissingRequiredFieldExitsNonZero(): void
+    private function makeActiveMirrorsFile(string $content): string
     {
-        $assetsDir = $this->makeAssetsDir();
-
-        [, $exitCode] = $this->runCli(
-            ['animedb-shikimori', '0.2.0', $assetsDir, 'MIRROR_CREDS'],
-            ['MIRROR_CREDS' => json_encode(['mirror1' => ['host' => 'a.tld']], \JSON_THROW_ON_ERROR)],
-        );
-
-        self::assertNotSame(0, $exitCode);
-    }
-
-    private function makeAssetsDir(): string
-    {
-        $this->tempDir = sys_get_temp_dir().'/push-mirror-assets-cli-test-'.bin2hex(random_bytes(8));
+        $this->tempDir = sys_get_temp_dir().'/backfill-mirror-cli-test-'.bin2hex(random_bytes(8));
         mkdir($this->tempDir);
-        file_put_contents($this->tempDir.'/plugin.zip', 'zip-bytes');
-        file_put_contents($this->tempDir.'/manifest.json', '{"id":"animedb-shikimori"}');
+        $path = $this->tempDir.'/active-mirrors';
+        file_put_contents($path, $content);
 
-        return $this->tempDir;
+        return $path;
     }
 
     /**
@@ -137,7 +127,7 @@ final class PushMirrorAssetsCliTest extends TestCase
             $envPrefix .= $name.'='.escapeshellarg($value).' ';
         }
 
-        $command = $envPrefix.escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/push-mirror-assets.php');
+        $command = $envPrefix.escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/backfill-mirror.php');
         foreach ($args as $arg) {
             $command .= ' '.escapeshellarg($arg);
         }
