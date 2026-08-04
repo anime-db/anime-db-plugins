@@ -153,4 +153,13 @@ final class MirrorCredentialsParserTest extends TestCase
             'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'port' => 0],
         ], \JSON_THROW_ON_ERROR));
     }
+
+    public function testRelativeDirThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => 'mirror'],
+        ], \JSON_THROW_ON_ERROR));
+    }
 }

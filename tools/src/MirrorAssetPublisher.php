@@ -34,8 +34,10 @@ namespace AnimeDb\Plugins\Tools;
  *  - the on-mirror layout is the version-immutable tree `<id>/<version>/<file>` inside each
  *    mirror's own `dir` root, matching the `<id>/<version>/<file>` placeholders of the
  *    `asset_mirrors` URL templates in `plugins-registry.json`;
- *  - already-published files are never overwritten (idempotent re-runs) — a file is uploaded
- *    only when {@see MirrorTransport::fileExists()} reports it missing.
+ *  - each file is uploaded **overwriting** any existing copy. Re-runs are still safe (a version is
+ *    immutable, so the re-uploaded bytes are identical) — and overwrite is what makes them safe:
+ *    skipping on "already present" would leave a file truncated by an interrupted upload broken
+ *    forever, since an immutable asset never gets a corrected re-upload otherwise.
  *
  * Deliberately silent on ordering *with the registry*: this class only pushes assets. The
  * "assets before registry" invariant is enforced by the caller (CI) running this to completion —
@@ -91,10 +93,9 @@ final class MirrorAssetPublisher
                 $localPath = $assetsDir.'/'.$fileName;
                 $remotePath = rtrim($credential->dir, '/')."/{$pluginId}/{$version}/{$fileName}";
 
-                if ($this->transport->fileExists($credential, $remotePath)) {
-                    continue;
-                }
-
+                // Overwrite unconditionally (the transport overwrites): the version is immutable,
+                // so a re-upload is byte-identical, and overwriting self-heals a file truncated by
+                // an interrupted upload — skipping "already present" would leave it broken forever.
                 $this->transport->uploadFile($credential, $localPath, $remotePath);
             }
         }

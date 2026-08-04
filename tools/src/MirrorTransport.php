@@ -34,11 +34,12 @@ namespace AnimeDb\Plugins\Tools;
  */
 interface MirrorTransport
 {
-    public function fileExists(MirrorCredential $credential, string $remotePath): bool;
-
     /**
-     * Must create any missing intermediate directories of $remotePath itself — a mirror is a
-     * plain FTP root with no directory structure beyond what gets created on demand.
+     * Uploads $localPath to $remotePath, **overwriting** any existing file, and creating any
+     * missing intermediate directories of $remotePath itself — a mirror is a plain FTP root with
+     * no directory structure beyond what gets created on demand. Overwrite (rather than
+     * skip-if-present) is deliberate: it self-heals a truncated file left by an interrupted upload,
+     * which for immutable version assets would otherwise stay broken forever.
      */
     public function uploadFile(MirrorCredential $credential, string $localPath, string $remotePath): void;
 }

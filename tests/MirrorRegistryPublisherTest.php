@@ -70,28 +70,22 @@ final class MirrorRegistryPublisherTest extends TestCase
         );
     }
 
-    public function testOverwritesEvenWhenAlreadyPresent(): void
+    public function testRePublishUploadsEveryTimeRegistryIsMutable(): void
     {
         [$registry, $signature] = $this->makeRegistryFiles();
         $transport = new FakeMirrorTransport();
-        // The registry is mutable: unlike version assets, it MUST be re-uploaded even if a copy
-        // is already on the mirror.
-        $transport->existing[] = '/public_html/mirror/plugins-registry.json';
-        $transport->existing[] = '/public_html/mirror/plugins-registry.json.sig';
 
         $mirrors = [
             'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps'),
         ];
 
-        (new MirrorRegistryPublisher($transport))->publish($mirrors, $registry, $signature);
+        // The registry is mutable (changes every release): each publish re-uploads both files,
+        // overwriting the previous copy — no skip-if-present.
+        $publisher = new MirrorRegistryPublisher($transport);
+        $publisher->publish($mirrors, $registry, $signature);
+        $publisher->publish($mirrors, $registry, $signature);
 
-        self::assertSame(
-            [
-                '/public_html/mirror/plugins-registry.json',
-                '/public_html/mirror/plugins-registry.json.sig',
-            ],
-            $transport->uploaded,
-        );
+        self::assertCount(4, $transport->uploaded);
     }
 
     public function testRejectsMissingRegistryFile(): void

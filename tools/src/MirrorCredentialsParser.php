@@ -83,6 +83,14 @@ final class MirrorCredentialsParser
                 }
             }
 
+            // Require an absolute dir: FtpMirrorTransport creates directories from the FTP root
+            // (leading "/") while ftp_put() uses the path as given, so a relative dir would create
+            // "/mirror/..." but upload to "mirror/..." (relative to the login home) — a silent
+            // mismatch. Fail fast with a clear message instead.
+            if ($entry['dir'][0] !== '/') {
+                throw new \RuntimeException(\sprintf('MIRROR_CREDS entry "%s" has a "dir" that must be an absolute path starting with "/".', $id));
+            }
+
             $protocol = $entry['protocol'] ?? 'ftps';
             if (!\is_string($protocol) || !\in_array($protocol, self::VALID_PROTOCOLS, true)) {
                 throw new \RuntimeException(\sprintf('MIRROR_CREDS entry "%s" has an invalid "protocol"; expected one of: %s.', $id, implode(', ', self::VALID_PROTOCOLS)));

@@ -36,21 +36,6 @@ namespace AnimeDb\Plugins\Tools;
  */
 final class FtpMirrorTransport implements MirrorTransport
 {
-    public function fileExists(MirrorCredential $credential, string $remotePath): bool
-    {
-        $connection = $this->connect($credential);
-
-        try {
-            // ftp_size() returns -1 both for "does not exist" and for servers that don't support
-            // the SIZE command; treating -1 as "does not exist" is safe here because the worst
-            // case is a redundant re-upload of an already-existing, byte-identical asset — never
-            // a skipped upload of a missing one.
-            return ftp_size($connection, $remotePath) >= 0;
-        } finally {
-            ftp_close($connection);
-        }
-    }
-
     public function uploadFile(MirrorCredential $credential, string $localPath, string $remotePath): void
     {
         $connection = $this->connect($credential);
@@ -68,6 +53,13 @@ final class FtpMirrorTransport implements MirrorTransport
 
     private function connect(MirrorCredential $credential): \FTP\Connection
     {
+        // NB: ext-ftp's ftp_ssl_connect() encrypts the channel but does NOT validate the server
+        // certificate (no chain/hostname check) — so `ftps` here defends against passive
+        // eavesdropping, not an active MITM (which could steal the mirror's write credentials or
+        // substitute the endpoint). This is an accepted residual: a mirror is untrusted transport
+        // (client pins sha256 from the *signed* registry), so a compromised mirror can only degrade
+        // availability, never inject trusted content. Wanting real cert validation means a
+        // different transport (curl/SFTP); see README.
         $connection = $credential->protocol === 'ftps'
             ? ftp_ssl_connect($credential->host, $credential->port)
             : ftp_connect($credential->host, $credential->port);

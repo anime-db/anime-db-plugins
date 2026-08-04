@@ -75,26 +75,22 @@ final class MirrorAssetPublisherTest extends TestCase
         );
     }
 
-    public function testAlreadyPublishedFilesAreNeverReUploadedIdempotency(): void
+    public function testRePublishOverwritesRatherThanSkips(): void
     {
         $assetsDir = $this->makeAssetsDir();
         $transport = new FakeMirrorTransport();
-        $transport->existing[] = '/public_html/mirror/animedb-shikimori/0.2.0/plugin.zip';
-        $transport->existing[] = '/public_html/mirror/animedb-shikimori/0.2.0/manifest.json';
 
         $mirrors = [
             'reg-ru' => new MirrorCredential('reg-ru', 'a.tld', 21, 'u', 'p', '/public_html/mirror', 'ftps'),
         ];
 
-        (new MirrorAssetPublisher($transport))->publish(
-            $mirrors,
-            'animedb-shikimori',
-            '0.2.0',
-            $assetsDir,
-            ['plugin.zip', 'manifest.json'],
-        );
+        $publisher = new MirrorAssetPublisher($transport);
+        $publisher->publish($mirrors, 'animedb-shikimori', '0.2.0', $assetsDir, ['plugin.zip', 'manifest.json']);
+        $publisher->publish($mirrors, 'animedb-shikimori', '0.2.0', $assetsDir, ['plugin.zip', 'manifest.json']);
 
-        self::assertSame([], $transport->uploaded);
+        // Overwrite, not skip: a second publish re-uploads both files (self-heals a remote file
+        // truncated by an interrupted upload), rather than treating them as already-done.
+        self::assertCount(4, $transport->uploaded);
     }
 
     public function testRejectsInvalidPluginId(): void

@@ -36,16 +36,8 @@ use AnimeDb\Plugins\Tools\MirrorTransport;
  */
 final class FakeMirrorTransport implements MirrorTransport
 {
-    /** @var list<string> remote paths pre-seeded as "already present on the mirror" */
-    public array $existing = [];
-
     /** @var list<string> remote paths this fake actually received an upload for, in call order */
     public array $uploaded = [];
-
-    public function fileExists(MirrorCredential $credential, string $remotePath): bool
-    {
-        return \in_array($remotePath, $this->existing, true);
-    }
 
     public function uploadFile(MirrorCredential $credential, string $localPath, string $remotePath): void
     {
