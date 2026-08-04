@@ -1,0 +1,165 @@
+<?php
+
+/**
+ * AnimeDb package.
+ *
+ * @author    Peter Gribanov <info@peter-gribanov.ru>
+ * @copyright Copyright (c) 2026, Peter Gribanov
+ * @license   https://gnu.org GPL-3.0-or-later
+ */
+
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://gnu.org>.
+ */
+
+declare(strict_types=1);
+
+namespace AnimeDb\Plugins\Tools\Tests;
+
+use AnimeDb\Plugins\Tools\MirrorCredentialsParser;
+use PHPUnit\Framework\TestCase;
+
+final class MirrorCredentialsParserTest extends TestCase
+{
+    public function testParsesAllFieldsAndDefaultsProtocolToFtpsAndPortTo21(): void
+    {
+        $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => [
+                'host' => 'ftp.example.tld',
+                'user' => 'mirror_user',
+                'password' => 'secret',
+                'dir' => '/public_html/mirror',
+            ],
+        ], \JSON_THROW_ON_ERROR));
+
+        self::assertCount(1, $mirrors);
+        $mirror = $mirrors['reg-ru'];
+        self::assertSame('reg-ru', $mirror->id);
+        self::assertSame('ftp.example.tld', $mirror->host);
+        self::assertSame(21, $mirror->port);
+        self::assertSame('mirror_user', $mirror->user);
+        self::assertSame('secret', $mirror->password);
+        self::assertSame('/public_html/mirror', $mirror->dir);
+        self::assertSame('ftps', $mirror->protocol);
+    }
+
+    public function testExplicitPortAndFtpProtocolAreHonoured(): void
+    {
+        $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => [
+                'host' => 'ftp.example.tld',
+                'port' => 2121,
+                'user' => 'mirror_user',
+                'password' => 'secret',
+                'dir' => '/public_html/mirror',
+                'protocol' => 'ftp',
+            ],
+        ], \JSON_THROW_ON_ERROR));
+
+        self::assertSame(2121, $mirrors['reg-ru']->port);
+        self::assertSame('ftp', $mirrors['reg-ru']->protocol);
+    }
+
+    public function testMultipleMirrorsAreSortedByIdForADeterministicOrder(): void
+    {
+        $mirrors = (new MirrorCredentialsParser())->parse(json_encode([
+            'zzz-mirror' => ['host' => 'z.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d'],
+            'aaa-mirror' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d'],
+        ], \JSON_THROW_ON_ERROR));
+
+        self::assertSame(['aaa-mirror', 'zzz-mirror'], array_keys($mirrors));
+    }
+
+    public function testEmptyObjectYieldsNoMirrors(): void
+    {
+        self::assertSame([], (new MirrorCredentialsParser())->parse('{}'));
+    }
+
+    public function testMalformedJsonThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse('not json');
+    }
+
+    public function testJsonArrayAtTopLevelThrows(): void
+    {
+        // A non-empty JSON array; an empty "[]" is indistinguishable from an empty "{}" once
+        // decoded to a PHP array, and an empty object is the valid "no mirrors configured" case
+        // (see testEmptyObjectYieldsNoMirrors).
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse('["reg-ru"]');
+    }
+
+    public function testInvalidMirrorIdThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode([
+            'Reg_RU' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d'],
+        ], \JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @dataProvider provideMissingRequiredField
+     */
+    public function testMissingRequiredFieldThrows(string $field): void
+    {
+        $entry = ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d'];
+        unset($entry[$field]);
+
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode(['reg-ru' => $entry], \JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMissingRequiredField(): iterable
+    {
+        yield 'host' => ['host'];
+        yield 'user' => ['user'];
+        yield 'password' => ['password'];
+        yield 'dir' => ['dir'];
+    }
+
+    public function testInvalidProtocolThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'protocol' => 'sftp'],
+        ], \JSON_THROW_ON_ERROR));
+    }
+
+    public function testOutOfRangePortThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => '/d', 'port' => 0],
+        ], \JSON_THROW_ON_ERROR));
+    }
+
+    public function testRelativeDirThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+
+        (new MirrorCredentialsParser())->parse(json_encode([
+            'reg-ru' => ['host' => 'a.tld', 'user' => 'u', 'password' => 'p', 'dir' => 'mirror'],
+        ], \JSON_THROW_ON_ERROR));
+    }
+}

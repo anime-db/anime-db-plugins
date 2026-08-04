@@ -36,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      # Креды зеркал (JSON по id зеркала). Пусто/не задано → push-mirror-registry.php no-op.
+      MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,6 +47,8 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+          # ext-ftp нужен FtpMirrorTransport (composer.json требует ext-ftp).
+          extensions: ftp
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -149,6 +153,17 @@ jobs:
           # Самопроверка: подпись должна пройти против закоммиченного публичного ключа —
           # иначе CI подписал ключом, не совпадающим с тем, что зашивается в клиент (#292).
           php tools/verify-registry-signature.php plugins-registry.json plugins-registry.json.sig plugins-registry.pub
+
+      - name: Push registry to mirrors
+        if: steps.changed.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          # Заливаем подписанный реестр + подпись в корень каждого зеркала из MIRROR_CREDS
+          # (перезапись — реестр мутабелен). ДО коммита в master: провал заливки роняет
+          # джоб, коммита нет → на следующем прогоне реестр пересоберётся (changed=true)
+          # и заливка ретраится. Ассеты уже на зеркалах (release.yml отработал раньше).
+          # MIRROR_CREDS пусто/не задано → CLI no-op (зеркала опциональны).
+          php tools/push-mirror-registry.php plugins-registry.json plugins-registry.json.sig MIRROR_CREDS
 
       - name: Commit if changed
         if: steps.changed.outputs.changed == 'true'

@@ -7,10 +7,17 @@
 name: Release plugins
 
 # Reconcile: на каждый плагин в plugins/<id>/ проверяет, есть ли Release
-# <id>/<version> (version из manifest.json). Если нет — собирает ZIP и публикует
-# Release с ассетами plugin.zip + manifest.json + sha256. Идемпотентно: уже
-# опубликованные версии пропускаются. Первый прогон подхватит уже закоммиченные
-# плагины, у которых Release ещё нет.
+# <id>/<version> (version из manifest.json). Если нет — собирает ZIP, ЗАЛИВАЕТ
+# ассеты на зеркала (MIRROR_CREDS, см. issue #14) и публикует Release с ассетами
+# plugin.zip + manifest.json + sha256. Идемпотентно: уже опубликованные версии
+# пропускаются. Первый прогон подхватит уже закоммиченные плагины, у которых
+# Release ещё нет.
+#
+# Порядок «ассеты на зеркала → потом Release → потом реестр»: заливка на зеркала
+# идёт ДО gh release create. Провал заливки роняет джоб до создания Release, значит
+# версия не выходит, а registry.yml (триггерится по успешному завершению этого
+# воркфлоу) реестр не пересобирает — реестр никогда не сошлётся на неразложенные
+# по зеркалам ассеты (инвариант «ассеты до реестра», #14).
 
 on:
   push:
@@ -37,6 +44,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      # Креды зеркал: JSON, ключёванный по id зеркала (host/port/user/password/dir/protocol).
+      # Не задан/пуст → push-mirror-assets.php no-op (зеркала — опциональная инфра).
+      MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +54,9 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
+          # ext-ftp нужен FtpMirrorTransport (composer.json требует ext-ftp) —
+          # задаём явно, чтобы composer install не упал на platform-check.
+          extensions: ftp
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -81,6 +94,13 @@ jobs:
             # build-plugin-zip.php пишет plugin.zip и рядом файл sha256.
             php tools/build-plugin-zip.php "plugins/$id" "$workdir/plugin.zip"
             cp "$manifest" "$workdir/manifest.json"
+            # Заливаем ассеты (plugin.zip + manifest.json) на все зеркала из
+            # MIRROR_CREDS ДО публикации Release. Exit 1 → джоб падает здесь,
+            # Release не создаётся, реестр не публикуется (инвариант «ассеты до
+            # реестра»). Пусто/не задано → no-op. Идемпотентно: уже залитые файлы
+            # не перезаписываются.
+            echo "Pushing $tag assets to mirrors ..."
+            php tools/push-mirror-assets.php "$id" "$version" "$workdir" MIRROR_CREDS
             gh release create "$tag" \
               --title "$tag" \
               --notes "Автоматический релиз $id $version." \
