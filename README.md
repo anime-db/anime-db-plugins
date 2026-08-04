@@ -292,6 +292,21 @@ php tools/push-mirror-registry.php <registry.json> <signature-file> <mirror-cred
 # id в <active-mirrors-file> (см. "Активация зеркала" выше). HEAD здесь — hard-fail.
 php tools/backfill-mirror.php <mirror-id> <mirror-creds-env-var-name> <active-mirrors-file>
 
+# Сгенерировать markdown-тело релиза одного плагина — по аналогии с кнопкой GitHub
+# «Generate release notes», но с фильтрацией по plugins/<id>/ (монорепо с несколькими
+# плагинами и общей инфраструктурой) и с авторитетным commit→PR через `gh api
+# .../commits/<sha>/pulls`, а не регуляркой по "#NN" в subject (см. issue #28: в этом
+# репозитории "#NN" в subject часто ссылается на issue, а не на PR). Чистый инструмент:
+# без сети и без git внутри себя, сбор сырья и вызов из релизного воркфлоу — за ментейнером.
+
+# 1) выбрать предыдущий тег плагина (семантическое сравнение версий, не sort -V):
+git tag --list 'animedb-shikimori/*' | php tools/build-release-notes.php pick-prev 0.2.0
+
+# 2) отформатировать тело релиза из JSON коммитов диапазона (с полем "prs" на коммит):
+echo "$COMMITS_JSON" | php tools/build-release-notes.php format \
+  --id animedb-shikimori --version 0.2.0 --repo anime-db/anime-db-plugins \
+  [--prev animedb-shikimori/0.1.0]
+
 composer test      # PHPUnit
 composer phpstan    # статический анализ
 composer cs-check   # проверка стиля кода (php-cs-fixer, --dry-run)

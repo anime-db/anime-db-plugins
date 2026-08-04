@@ -9,3 +9,4 @@ parameters:
         - tools/verify-registry-signature.php
         - tools/generate-registry-keypair.php
         - tools/push-mirror-assets.php
+        - tools/build-release-notes.php
