@@ -39,9 +39,9 @@ final class ActiveMirrorsFileTest extends TestCase
 
     public function testBlankLinesAndCommentsAreIgnored(): void
     {
-        $content = "# comment\n\nreg-ru\n\n# another comment\nsecond-mirror\n";
+        $content = "# comment\n\nmirror1\n\n# another comment\nsecond-mirror\n";
 
-        self::assertSame(['reg-ru', 'second-mirror'], (new ActiveMirrorsFile())->parse($content));
+        self::assertSame(['mirror1', 'second-mirror'], (new ActiveMirrorsFile())->parse($content));
     }
 
     public function testIdsAreSortedAndDeduplicated(): void

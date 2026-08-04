@@ -35,7 +35,7 @@ final class AssetMirrorsResolverTest extends TestCase
 {
     public function testEmptyActiveMirrorsYieldsGithubOnly(): void
     {
-        $result = (new AssetMirrorsResolver())->resolve(['reg-ru' => $this->credential('reg-ru')], []);
+        $result = (new AssetMirrorsResolver())->resolve(['mirror1' => $this->credential('mirror1')], []);
 
         self::assertSame([AssetMirrorsResolver::GITHUB_MIRROR], $result['mirrors']);
         self::assertSame([], $result['warnings']);
@@ -44,16 +44,16 @@ final class AssetMirrorsResolverTest extends TestCase
     public function testGithubIsAlwaysFirstFollowedByActiveMirrorsInGivenOrder(): void
     {
         $mirrors = [
-            'reg-ru' => $this->credential('reg-ru', 'https://reg-ru.tld/<id>/<version>/<file>'),
+            'mirror1' => $this->credential('mirror1', 'https://mirror1.example.org/<id>/<version>/<file>'),
             'second' => $this->credential('second', 'https://second.tld/<id>/<version>/<file>'),
         ];
 
-        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['reg-ru', 'second']);
+        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['mirror1', 'second']);
 
         self::assertSame(
             [
                 AssetMirrorsResolver::GITHUB_MIRROR,
-                'https://reg-ru.tld/<id>/<version>/<file>',
+                'https://mirror1.example.org/<id>/<version>/<file>',
                 'https://second.tld/<id>/<version>/<file>',
             ],
             $result['mirrors'],
@@ -64,22 +64,22 @@ final class AssetMirrorsResolverTest extends TestCase
     public function testInactiveMirrorIsExcludedEvenIfCredentialExists(): void
     {
         $mirrors = [
-            'reg-ru' => $this->credential('reg-ru'),
+            'mirror1' => $this->credential('mirror1'),
             'not-active' => $this->credential('not-active'),
         ];
 
-        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['reg-ru']);
+        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['mirror1']);
 
-        self::assertSame([AssetMirrorsResolver::GITHUB_MIRROR, $mirrors['reg-ru']->publicUrl], $result['mirrors']);
+        self::assertSame([AssetMirrorsResolver::GITHUB_MIRROR, $mirrors['mirror1']->publicUrl], $result['mirrors']);
     }
 
     public function testActiveMirrorWithoutMatchingCredentialIsSkippedWithWarning(): void
     {
-        $result = (new AssetMirrorsResolver())->resolve([], ['reg-ru']);
+        $result = (new AssetMirrorsResolver())->resolve([], ['mirror1']);
 
         self::assertSame([AssetMirrorsResolver::GITHUB_MIRROR], $result['mirrors']);
         self::assertCount(1, $result['warnings']);
-        self::assertStringContainsString('reg-ru', $result['warnings'][0]);
+        self::assertStringContainsString('mirror1', $result['warnings'][0]);
     }
 
     /**
@@ -87,13 +87,13 @@ final class AssetMirrorsResolverTest extends TestCase
      */
     public function testInvalidPublicUrlIsSkippedWithWarningInsteadOfThrowing(string $publicUrl): void
     {
-        $mirrors = ['reg-ru' => $this->credential('reg-ru', $publicUrl)];
+        $mirrors = ['mirror1' => $this->credential('mirror1', $publicUrl)];
 
-        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['reg-ru']);
+        $result = (new AssetMirrorsResolver())->resolve($mirrors, ['mirror1']);
 
         self::assertSame([AssetMirrorsResolver::GITHUB_MIRROR], $result['mirrors']);
         self::assertCount(1, $result['warnings']);
-        self::assertStringContainsString('reg-ru', $result['warnings'][0]);
+        self::assertStringContainsString('mirror1', $result['warnings'][0]);
     }
 
     /**
@@ -101,8 +101,8 @@ final class AssetMirrorsResolverTest extends TestCase
      */
     public static function provideInvalidPublicUrl(): iterable
     {
-        yield 'not https' => ['http://reg-ru.tld/<id>/<version>/<file>'];
-        yield 'missing macros' => ['https://reg-ru.tld/downloads'];
+        yield 'not https' => ['http://mirror1.example.org/<id>/<version>/<file>'];
+        yield 'missing macros' => ['https://mirror1.example.org/downloads'];
         yield 'not a url' => ['not-a-url'];
     }
 

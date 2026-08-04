@@ -226,15 +226,15 @@ final class BuildRegistryCliTest extends TestCase
         file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
 
         $activeMirrorsPath = $this->tempDir.'/active-mirrors';
-        file_put_contents($activeMirrorsPath, "reg-ru\n");
+        file_put_contents($activeMirrorsPath, "mirror1\n");
 
         $mirrorCreds = json_encode([
-            'reg-ru' => [
+            'mirror1' => [
                 'host' => 'ftp.example.tld',
                 'user' => 'u',
                 'password' => 'p',
                 'dir' => '/mirror',
-                'public_url' => 'https://reg-ru.example.tld/mirror/<id>/<version>/<file>',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
             ],
         ], \JSON_THROW_ON_ERROR);
 
@@ -252,7 +252,7 @@ final class BuildRegistryCliTest extends TestCase
         self::assertSame(
             [
                 'https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>',
-                'https://reg-ru.example.tld/mirror/<id>/<version>/<file>',
+                'https://mirror1.example.org/mirror/<id>/<version>/<file>',
             ],
             $registry['asset_mirrors'],
         );
@@ -272,12 +272,12 @@ final class BuildRegistryCliTest extends TestCase
         file_put_contents($activeMirrorsPath, '');
 
         $mirrorCreds = json_encode([
-            'reg-ru' => [
+            'mirror1' => [
                 'host' => 'ftp.example.tld',
                 'user' => 'u',
                 'password' => 'p',
                 'dir' => '/mirror',
-                'public_url' => 'https://reg-ru.example.tld/mirror/<id>/<version>/<file>',
+                'public_url' => 'https://mirror1.example.org/mirror/<id>/<version>/<file>',
             ],
         ], \JSON_THROW_ON_ERROR);
 
@@ -308,16 +308,16 @@ final class BuildRegistryCliTest extends TestCase
         file_put_contents($publishedVersionsPath, json_encode([], \JSON_THROW_ON_ERROR));
 
         $activeMirrorsPath = $this->tempDir.'/active-mirrors';
-        file_put_contents($activeMirrorsPath, "reg-ru\n");
+        file_put_contents($activeMirrorsPath, "mirror1\n");
 
         $mirrorCreds = json_encode([
-            'reg-ru' => [
+            'mirror1' => [
                 'host' => 'ftp.example.tld',
                 'user' => 'u',
                 'password' => 'p',
                 'dir' => '/mirror',
                 // Missing macros and not https — an invalid public_url template.
-                'public_url' => 'http://reg-ru.example.tld/downloads',
+                'public_url' => 'http://mirror1.example.org/downloads',
             ],
         ], \JSON_THROW_ON_ERROR);
 
