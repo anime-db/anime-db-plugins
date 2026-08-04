@@ -49,10 +49,12 @@ declare(strict_types=1);
  * as [GitHub] + every `MIRROR_CREDS` entry whose id is listed in <active-mirrors-file> (see
  * AssetMirrorsResolver, issue #26). A mirror id with no matching MIRROR_CREDS entry, or whose
  * public_url is not a well-formed "https://...<id>...<version>...<file>..." template, is dropped
- * with a "::warning::" line on stdout — this NEVER fails the build (MIRROR_CREDS is a secret with
+ * with a "::warning::" line on STDERR — this NEVER fails the build (MIRROR_CREDS is a secret with
  * no PR gate; a typo in one replica must not block signing/publishing the registry for every
- * plugin). When either argument is omitted, `asset_mirrors` falls back to GitHub only, same as
- * before this option existed.
+ * plugin). Warnings go to STDERR, not STDOUT, because STDOUT carries the registry JSON payload
+ * (the caller redirects it to a file) — a "::warning::" line on STDOUT would corrupt that JSON and
+ * so re-introduce the very build-wide freeze this fail-open design exists to prevent. When either
+ * argument is omitted, `asset_mirrors` falls back to GitHub only, same as before this option existed.
  *
  * Exit code: 0 on success, 1 otherwise. Problems are printed to stderr.
  */
@@ -187,7 +189,7 @@ if ($activeMirrorsPath !== null && $activeMirrorsPath !== '' && $credsEnvVar !==
 
     $resolved = (new AssetMirrorsResolver())->resolve($mirrorCredentials, $activeMirrorIds);
     foreach ($resolved['warnings'] as $warning) {
-        fwrite(\STDOUT, "::warning::{$warning}\n");
+        fwrite(\STDERR, "::warning::{$warning}\n");
     }
     $assetMirrors = $resolved['mirrors'];
 }

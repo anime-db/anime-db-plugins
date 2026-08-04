@@ -46,6 +46,21 @@ final class ActiveMirrorsFile
     private const MIRROR_ID_PATTERN = '/^[a-z0-9]+(-[a-z0-9]+)*\z/';
 
     /**
+     * Documentation header re-emitted by {@see self::serialize()} so the file stays
+     * self-documenting even after a tool rewrites it (e.g. backfill-mirror.php appending an id) —
+     * without this, the first automated write would strip the guidance comment. `#`-lines are
+     * skipped by {@see self::parse()}, so the header round-trips cleanly.
+     */
+    public const HEADER = <<<'TXT'
+        # One mirror id per line (must match a key in the MIRROR_CREDS secret). Blank lines and lines
+        # starting with "#" are ignored. See README.md ("Зеркала (asset_mirrors)") and issue #26:
+        # an id belongs here only once its mirror has been fully backfilled from GitHub Releases and
+        # HEAD-verified (see tools/backfill-mirror.php) — this is what actually gets advertised to clients
+        # in plugins-registry.json's asset_mirrors, gated separately from MIRROR_CREDS.
+
+        TXT;
+
+    /**
      * @return list<string> sorted, de-duplicated mirror ids
      */
     public function parse(string $content): array
@@ -80,6 +95,6 @@ final class ActiveMirrorsFile
         $ids = array_values(array_unique($ids));
         sort($ids, \SORT_STRING);
 
-        return $ids === [] ? '' : implode("\n", $ids)."\n";
+        return self::HEADER.($ids === [] ? '' : implode("\n", $ids)."\n");
     }
 }

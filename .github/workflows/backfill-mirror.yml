@@ -1,0 +1,108 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
+name: Backfill mirror
+
+# Ручная активация зеркала (issue #26). Наполняет целевое зеркало ВСЕМИ историческими
+# версиями из GitHub Releases (топология «звезда»: источник — только GitHub, read-креды
+# других зеркал не нужны), HEAD-верифицирует каждый залитый файл по его public_url
+# (hard-fail — активировать недостижимое/неполное зеркало нельзя) и ТОЛЬКО при полном
+# успехе дописывает id зеркала в git-tracked `active-mirrors` и коммитит его в master.
+#
+# `active-mirrors` — это гейт «что рекламируем клиентам»: пока id там нет, зеркало не
+# попадает в подписанный `asset_mirrors`, даже если его креды уже в секрете MIRROR_CREDS.
+#
+# ПОСЛЕ успешного прогона нужно вручную запустить workflow «Build plugins registry»
+# (workflow_dispatch) — он пересоберёт и подпишет реестр, подтянув новое зеркало в
+# `asset_mirrors`. Автотриггером это не делается намеренно: коммит от GITHUB_TOKEN не
+# порождает новых прогонов (защита от рекурсии), поэтому шаг явный и наблюдаемый.
+#
+# Тот же прогон = само-исцеление: если активное зеркало дрейфануло (prune/вайп), повтор
+# перельёт историю из GitHub (id уже в списке → просто перезальёт и оставит как есть).
+
+on:
+  workflow_dispatch:
+    inputs:
+      mirror_id:
+        description: 'Id зеркала (должен совпадать с ключом в секрете MIRROR_CREDS), напр. reg-ru'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+# Сериализуем: два параллельных бэкофилла конкурировали бы за push `active-mirrors` в master.
+concurrency:
+  group: backfill-mirror
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Backfill mirror from GitHub Releases
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Креды зеркал (JSON по id): host/port/user/password/dir/protocol + public_url.
+      MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          # ext-ftp нужен FtpMirrorTransport (composer.json требует ext-ftp).
+          extensions: ftp
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.json') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      # Контракт — из публичного VCS-репозитория (composer.json), токен не нужен.
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Backfill mirror from GitHub Releases
+        # mirror_id прокидываем через env, а не интерполяцией ${{ }} прямо в скрипт —
+        # чтобы значение из workflow_dispatch не могло инъектироваться в шелл.
+        env:
+          MIRROR_ID: ${{ inputs.mirror_id }}
+        run: php tools/backfill-mirror.php "$MIRROR_ID" MIRROR_CREDS active-mirrors
+
+      - name: Commit active-mirrors if changed
+        env:
+          MIRROR_ID: ${{ inputs.mirror_id }}
+        run: |
+          set -euo pipefail
+          git add active-mirrors
+          if git diff --cached --quiet; then
+            echo "active-mirrors не изменился — зеркало уже активно, коммитить нечего."
+            exit 0
+          fi
+          git config user.name "anime-db-bot"
+          git config user.email "bot@anime-db.org"
+          git commit -m "ci: активировать зеркало \"$MIRROR_ID\" в active-mirrors"
+          # master мог уйти вперёд между checkout и push — ребейзим и ретраим.
+          for attempt in 1 2 3; do
+            if git pull --rebase origin master && git push origin HEAD:master; then
+              echo "Запушено с попытки $attempt."
+              echo "::notice::Зеркало \"$MIRROR_ID\" активировано. Теперь запустите workflow \"Build plugins registry\" (Run workflow), чтобы пересобрать и подписать реестр с новым зеркалом в asset_mirrors."
+              exit 0
+            fi
+            echo "::warning::Push попытка $attempt не удалась — ретрай после ребейза."
+            sleep "$((attempt * 3))"
+          done
+          echo "::error::Не удалось запушить active-mirrors после 3 попыток."
+          exit 1

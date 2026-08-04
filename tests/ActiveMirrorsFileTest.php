@@ -62,14 +62,14 @@ final class ActiveMirrorsFileTest extends TestCase
     public function testSerializeSortsDeduplicatesAndAppendsTrailingNewline(): void
     {
         self::assertSame(
-            "aaa-mirror\nzzz-mirror\n",
+            ActiveMirrorsFile::HEADER."aaa-mirror\nzzz-mirror\n",
             (new ActiveMirrorsFile())->serialize(['zzz-mirror', 'aaa-mirror', 'zzz-mirror']),
         );
     }
 
-    public function testSerializeOfEmptyListIsEmptyString(): void
+    public function testSerializeOfEmptyListIsHeaderOnly(): void
     {
-        self::assertSame('', (new ActiveMirrorsFile())->serialize([]));
+        self::assertSame(ActiveMirrorsFile::HEADER, (new ActiveMirrorsFile())->serialize([]));
     }
 
     public function testSerializeThenParseRoundTrips(): void
