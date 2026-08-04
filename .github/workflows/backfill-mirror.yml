@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       mirror_id:
-        description: 'Id зеркала (должен совпадать с ключом в секрете MIRROR_CREDS), напр. reg-ru'
+        description: 'Id зеркала (должен совпадать с ключом в секрете MIRROR_CREDS), напр. mirror1'
         required: true
         type: string
 
