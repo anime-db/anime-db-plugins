@@ -3,3 +3,4 @@
 # an id belongs here only once its mirror has been fully backfilled from GitHub Releases and
 # HEAD-verified (see tools/backfill-mirror.php) — this is what actually gets advertised to clients
 # in plugins-registry.json's asset_mirrors, gated separately from MIRROR_CREDS.
+reg-ru
