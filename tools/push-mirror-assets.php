@@ -41,6 +41,11 @@ declare(strict_types=1);
  * input, or a connect/auth/upload failure against ANY mirror): the caller (CI) MUST treat that
  * as "do not publish the registry" — the assets-before-registry invariant means a
  * partially-mirrored version must never be advertised as available (see issue #14).
+ *
+ * After a mirror's upload succeeds, its public_url is HEAD-verified for each asset (issue #26).
+ * Unlike the upload itself, a failed HEAD check is SOFT: it prints a loud "::warning::" line and
+ * the script still exits 0 — a release must not be blocked by one replica's transient propagation
+ * lag or outage, since GitHub Releases (asset_mirrors[0]) already serves the asset either way.
  */
 
 function locateAutoloader(): string
@@ -59,7 +64,9 @@ function locateAutoloader(): string
 require locateAutoloader();
 
 use AnimeDb\Plugins\Tools\FtpMirrorTransport;
+use AnimeDb\Plugins\Tools\HttpMirrorReachabilityChecker;
 use AnimeDb\Plugins\Tools\MirrorAssetPublisher;
+use AnimeDb\Plugins\Tools\MirrorAssetReachabilityVerifier;
 use AnimeDb\Plugins\Tools\MirrorCredentialsParser;
 
 $pluginId = $_SERVER['argv'][1] ?? null;
@@ -114,5 +121,17 @@ try {
 }
 
 fwrite(\STDOUT, \sprintf('Pushed %s/%s to %d mirror(s).'."\n", $pluginId, $version, \count($mirrors)));
+
+$reports = (new MirrorAssetReachabilityVerifier(new HttpMirrorReachabilityChecker()))->verify(
+    $mirrors,
+    $pluginId,
+    $version,
+    ['plugin.zip', 'manifest.json'],
+);
+foreach ($reports as $report) {
+    if (!$report->reachable) {
+        fwrite(\STDOUT, \sprintf('::warning::Mirror "%s" uploaded successfully but "%s" is not reachable yet — leaving asset_mirrors unchanged, GitHub remains authoritative.'."\n", $report->mirrorId, $report->url));
+    }
+}
 
 exit(0);

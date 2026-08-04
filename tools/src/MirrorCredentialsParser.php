@@ -29,12 +29,22 @@ namespace AnimeDb\Plugins\Tools;
 
 /**
  * Parses the `MIRROR_CREDS` GitHub Actions secret — a single JSON object keyed by mirror id,
- * each value carrying that mirror's write credentials — into {@see MirrorCredential} objects.
+ * each value carrying that mirror's write credentials plus its `public_url` download template —
+ * into {@see MirrorCredential} objects.
  *
  * Keeping every mirror's credentials in one structured secret, rather than one secret per mirror
  * (`FTP_HOST_1`, `FTP_HOST_2`, ...), is deliberate: adding a mirror becomes "append a key to this
  * JSON", not "provision a new GitHub secret", and the number of secrets stays constant as the
  * mirror list grows. See issue #14.
+ *
+ * `public_url` sits in the same entry as the write credentials (issue #26): the one edit that
+ * gives a mirror somewhere to write assets also gives clients somewhere to read them from, instead
+ * of those two facts living in unrelated places that can drift apart. Only *structural* presence
+ * (non-empty string) is enforced here — whether it is actually a well-formed `https://` template
+ * with the `<id>`/`<version>`/`<file>` macros is checked later, at `asset_mirrors` build time (see
+ * {@see AssetMirrorsResolver}), and fails open (the mirror is dropped with a warning) rather than
+ * failing this parse, since MIRROR_CREDS lives in a secret with no PR review and a typo there must
+ * not block signing/publishing the registry for every plugin.
  */
 final class MirrorCredentialsParser
 {
@@ -77,7 +87,7 @@ final class MirrorCredentialsParser
                 throw new \RuntimeException(\sprintf('MIRROR_CREDS entry "%s" must be a JSON object.', $id));
             }
 
-            foreach (['host', 'user', 'password', 'dir'] as $field) {
+            foreach (['host', 'user', 'password', 'dir', 'public_url'] as $field) {
                 if (!\is_string($entry[$field] ?? null) || $entry[$field] === '') {
                     throw new \RuntimeException(\sprintf('MIRROR_CREDS entry "%s" is missing a non-empty "%s" string field.', $id, $field));
                 }
@@ -109,6 +119,7 @@ final class MirrorCredentialsParser
                 password: $entry['password'],
                 dir: $entry['dir'],
                 protocol: $protocol,
+                publicUrl: $entry['public_url'],
             );
         }
 

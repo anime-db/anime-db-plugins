@@ -44,3 +44,24 @@ mv plugins-registry.json.new plugins-registry.json
 ```
 
 See issue #12 and the README's "Маркет и версии" section.
+
+## Issue #26 (mirror `public_url`/`active-mirrors`): tooling is done, workflow wiring is not
+
+`MIRROR_CREDS` now carries a `public_url` per mirror (`MirrorCredential`,
+`MirrorCredentialsParser`), a git-tracked `active-mirrors` file gates which of those get
+advertised (`ActiveMirrorsFile`, `AssetMirrorsResolver`), `tools/build-registry.php` takes
+two new optional argv (`<active-mirrors-file> <mirror-creds-env-var-name>`) to wire that
+in, `tools/push-mirror-assets.php` now does a soft-fail HEAD-verify after upload, and
+`tools/backfill-mirror.php` (`MirrorBackfillPublisher`) re-projects a mirror's full
+history from GitHub Releases and hard-fails on any unreachable asset. All of this is
+implemented and unit/CLI-tested (see README's "Зеркала" section for the full picture).
+
+**What is deliberately still missing:** nothing in `.github/workflows/` calls any of
+this. `registry.yml` has no `workflow_dispatch` trigger, its "Build registry" step does
+not pass the two new argv to `build-registry.php`, and there is no dispatch job wired to
+`tools/backfill-mirror.php` (which would also need a `git add active-mirrors && git
+commit && git push` step after it succeeds — the script itself never touches git, same as
+every other tool here). This was a boundary of the task that implemented the above (an
+automated PR forbidden from touching `.github/workflows/`), not a design decision — a
+future change wiring these up should read this file's tools before writing new CI logic,
+not reimplement the resolution/verification logic inline in YAML.
