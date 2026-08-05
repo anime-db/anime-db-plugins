@@ -110,8 +110,11 @@ jobs:
             commits_json="$(
               git log "$range" --format='%H%x1f%s%x1f%an' -- "plugins/$id/" \
                 | while IFS=$'\x1f' read -r sha subject author; do
+                    # .user == null у PR с удалённым аккаунтом автора (ghost) — иначе author
+                    # стал бы null, парсер отверг бы его и по fail-open весь релиз ушёл бы в
+                    # заглушку из-за одного такого PR. "ghost" совпадает с рендером GitHub.
                     prs="$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/pulls" \
-                      --jq '[.[] | {number, title, url: .html_url, author: .user.login}]')" || exit 1
+                      --jq '[.[] | {number, title, url: .html_url, author: (.user.login // "ghost")}]')" || exit 1
                     jq -n \
                       --arg sha "$sha" --arg subject "$subject" --arg author "$author" \
                       --argjson prs "$prs" \
