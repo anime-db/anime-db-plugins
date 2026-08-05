@@ -185,8 +185,13 @@ final class GraphQlClientTest extends TestCase
         $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter());
         $client->query('query {}');
 
+        $manifest = json_decode((string) file_get_contents(__DIR__.'/../../manifest.json'), true);
+
         self::assertSame('application/json', $headers['Content-Type'] ?? null);
-        self::assertSame('animedb-shikimori/0.3.0 (+https://github.com/anime-db)', $headers['User-Agent'] ?? null);
+        self::assertSame(
+            \sprintf('AnimeDB animedb-shikimori/%s (+https://anime-db.org/)', $manifest['version']),
+            $headers['User-Agent'] ?? null,
+        );
     }
 
     public function testUsesApiEndpointFromSettingsStore(): void

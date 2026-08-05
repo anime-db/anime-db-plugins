@@ -53,7 +53,7 @@ use Psr\Http\Message\StreamFactoryInterface;
 class GraphQlClient
 {
     private const DEFAULT_ENDPOINT = 'https://shikimori.io';
-    private const USER_AGENT = 'animedb-shikimori/0.3.0 (+https://github.com/anime-db)';
+    private const FALLBACK_VERSION = '0.0.0';
     private const MAX_RETRIES = 5;
     private const MAX_RETRY_WAIT_SECONDS = 60.0;
     private const DEFAULT_RETRY_AFTER_SECONDS = 1.0;
@@ -136,7 +136,7 @@ class GraphQlClient
 
         $request = $this->requestFactory->createRequest('POST', $endpoint)
             ->withHeader('Content-Type', 'application/json')
-            ->withHeader('User-Agent', self::USER_AGENT)
+            ->withHeader('User-Agent', $this->userAgent())
             ->withBody($body);
 
         try {
@@ -151,6 +151,27 @@ class GraphQlClient
         $endpoint = $this->settings->read()['api_endpoint'] ?? null;
 
         return \is_string($endpoint) && $endpoint !== '' ? $endpoint : self::DEFAULT_ENDPOINT;
+    }
+
+    /**
+     * `AnimeDB` is the registered OAuth application name at Shikimori; Shikimori requires it to
+     * be present in the `User-Agent` or the caller's IP gets banned, and the same identity is
+     * needed for the OAuth requests planned in a later phase. The version is read from
+     * `manifest.json` at runtime so a version bump only needs to touch one file.
+     */
+    private function userAgent(): string
+    {
+        $manifestPath = dirname(__DIR__, 2).'/manifest.json';
+        $version = self::FALLBACK_VERSION;
+        $raw = @file_get_contents($manifestPath);
+        if ($raw !== false) {
+            $manifest = json_decode($raw, true);
+            if (\is_array($manifest) && \is_string($manifest['version'] ?? null)) {
+                $version = $manifest['version'];
+            }
+        }
+
+        return \sprintf('AnimeDB animedb-shikimori/%s (+https://anime-db.org/)', $version);
     }
 
     /**
