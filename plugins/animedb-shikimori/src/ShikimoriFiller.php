@@ -30,23 +30,68 @@ namespace AnimeDb\Plugins\AnimedbShikimori;
 use AnimeDb\PluginContracts\Filler\FillerInterface;
 use AnimeDb\PluginContracts\Filler\PluginAnimeData;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
+use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
+use AnimeDb\Plugins\AnimedbShikimori\Mapping\AnimeTypeMapper;
+use AnimeDb\Plugins\AnimedbShikimori\Mapping\DescriptionCleaner;
+use AnimeDb\Plugins\AnimedbShikimori\Mapping\GenreMapper;
 
 /**
- * Источник Shikimori — поиск и заполнение карточек аниме.
+ * Источник Shikimori — поиск и заполнение карточек аниме через анонимные чтения GraphQL API
+ * Shikimori (без OAuth: `find()`/`findById()` не читают и не пишут пользовательские данные).
  *
- * Скелет плагина: контрактную границу с хостом уже держит целиком
- * ({@see FillerInterface} наследует SearchByPluginInterface, поэтому один класс
- * закрывает и поиск, и заполнение). Реально реализован пока только
- * {@see self::resolveExternalId()} — распознавание внешнего id по ссылкам на
- * Shikimori. Сам поиск и заполнение ({@see self::find()}/{@see self::findById()})
- * — заглушки: их наполнение через GraphQL API Shikimori (OAuth2, настраиваемый
- * endpoint) — следующий релиз плагина.
+ * Фаза 1 плагина (v0.3.0): {@see self::resolveExternalId()} и поиск/заполнение полностью
+ * реализованы. Вне рамок этой фазы — OAuth, страница настроек (endpoint читается из
+ * {@see \AnimeDb\PluginContracts\Settings\SettingsStoreInterface} уже сейчас, но форму для его
+ * редактирования даёт следующая фаза), sync, виджеты.
  *
- * DI-конфига и класса бандла у плагина нет намеренно: хост сам регистрирует
- * классы из `src/` как сервисы и тегирует их по контрактным интерфейсам.
+ * Маппинг словарей жанров/тем/демографии не полагается на `genres[].kind` Shikimori — см. класс
+ * {@see GenreMapper}.
  */
 final class ShikimoriFiller implements FillerInterface
 {
+    private const SEARCH_LIMIT = 15;
+
+    private const SEARCH_QUERY = <<<'GRAPHQL'
+        query($search: String, $limit: Int) {
+            animes(search: $search, limit: $limit) {
+                id
+                name
+                russian
+                kind
+            }
+        }
+        GRAPHQL;
+
+    private const CARD_QUERY = <<<'GRAPHQL'
+        query($ids: String, $limit: Int) {
+            animes(ids: $ids, limit: $limit) {
+                id
+                name
+                russian
+                english
+                japanese
+                synonyms
+                kind
+                rating
+                status
+                episodes
+                duration
+                score
+                airedOn { date }
+                releasedOn { date }
+                poster { originalUrl mainUrl }
+                studios { id name }
+                genres { id name russian kind }
+                description
+            }
+        }
+        GRAPHQL;
+
+    public function __construct(
+        private readonly GraphQlClient $client,
+    ) {
+    }
+
     /**
      * Распознаёт id аниме на Shikimori по уже прикреплённым к записи ссылкам.
      *
@@ -83,16 +128,55 @@ final class ShikimoriFiller implements FillerInterface
      */
     public function find(string $name, ?callable $onHeartbeat = null): array
     {
-        // TODO: поиск через GraphQL API Shikimori (OAuth2, настраиваемый endpoint).
-        // Скелет — поиск ещё не реализован, наполнится следующим релизом плагина.
-        return [];
+        $data = $this->client->query(self::SEARCH_QUERY, ['search' => $name, 'limit' => self::SEARCH_LIMIT], $onHeartbeat);
+        $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
+
+        $candidates = [];
+        foreach ($animes as $anime) {
+            if (!\is_array($anime) || !isset($anime['id'])) {
+                continue;
+            }
+
+            $displayName = $anime['name'] ?? $anime['russian'] ?? null;
+            if (!\is_string($displayName) || $displayName === '') {
+                continue;
+            }
+
+            $candidates[] = new SearchByPluginCandidate('animedb-shikimori', $displayName, (string) $anime['id']);
+        }
+
+        return $candidates;
     }
 
     public function findById(string $externalId): ?PluginAnimeData
     {
-        // TODO: заполнение карточки через GraphQL API Shikimori.
-        // Скелет — заполнение ещё не реализовано, наполнится следующим релизом плагина.
-        return null;
+        $data = $this->client->query(self::CARD_QUERY, ['ids' => $externalId, 'limit' => 1]);
+        $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
+        $anime = $animes[0] ?? null;
+
+        if (!\is_array($anime) || !\is_string($anime['name'] ?? null) || $anime['name'] === '') {
+            return null;
+        }
+
+        $title = $anime['name'];
+        $genres = \is_array($anime['genres'] ?? null) ? $anime['genres'] : [];
+        $mappedGenres = GenreMapper::map($genres);
+
+        return new PluginAnimeData(
+            title: $title,
+            alternativeNames: self::buildAlternativeNames($title, $anime),
+            descriptions: self::buildDescriptions($anime),
+            genres: $mappedGenres['genres'] === [] ? null : $mappedGenres['genres'],
+            themes: $mappedGenres['themes'] === [] ? null : $mappedGenres['themes'],
+            demographic: $mappedGenres['demographics'][0] ?? null,
+            studios: self::buildStudios($anime),
+            type: AnimeTypeMapper::map(\is_string($anime['kind'] ?? null) ? $anime['kind'] : null),
+            datePremiere: self::parseDate($anime['airedOn']['date'] ?? null),
+            dateEnd: self::parseDate($anime['releasedOn']['date'] ?? null),
+            durationMinutes: \is_int($anime['duration'] ?? null) ? $anime['duration'] : null,
+            episodesCount: \is_int($anime['episodes'] ?? null) && $anime['episodes'] > 0 ? $anime['episodes'] : null,
+            cover: \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
+        );
     }
 
     /**
@@ -100,8 +184,92 @@ final class ShikimoriFiller implements FillerInterface
      */
     public function getFillableFields(): array
     {
-        // TODO: перечислить реально заполняемые поля PluginAnimeData, когда
-        // findById() будет реализован.
-        return [];
+        return [
+            'title',
+            'alternativeNames',
+            'descriptions',
+            'genres',
+            'themes',
+            'demographic',
+            'studios',
+            'type',
+            'datePremiere',
+            'dateEnd',
+            'durationMinutes',
+            'episodesCount',
+            'cover',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $anime
+     *
+     * @return list<string>|null
+     */
+    private static function buildAlternativeNames(string $title, array $anime): ?array
+    {
+        $synonyms = \is_array($anime['synonyms'] ?? null) ? $anime['synonyms'] : [];
+        $candidates = [$anime['russian'] ?? null, $anime['english'] ?? null, $anime['japanese'] ?? null, ...$synonyms];
+
+        $names = [];
+        foreach ($candidates as $candidate) {
+            if (!\is_string($candidate) || $candidate === '' || $candidate === $title) {
+                continue;
+            }
+
+            if (!\in_array($candidate, $names, true)) {
+                $names[] = $candidate;
+            }
+        }
+
+        return $names === [] ? null : $names;
+    }
+
+    /**
+     * @param array<string, mixed> $anime
+     *
+     * @return array<string, string>|null
+     */
+    private static function buildDescriptions(array $anime): ?array
+    {
+        $raw = $anime['description'] ?? null;
+        if (!\is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $cleaned = DescriptionCleaner::clean($raw);
+
+        return $cleaned === '' ? null : ['ru' => $cleaned];
+    }
+
+    /**
+     * @param array<string, mixed> $anime
+     *
+     * @return list<string>|null
+     */
+    private static function buildStudios(array $anime): ?array
+    {
+        $studios = \is_array($anime['studios'] ?? null) ? $anime['studios'] : [];
+
+        $names = [];
+        foreach ($studios as $studio) {
+            $name = \is_array($studio) ? $studio['name'] ?? null : null;
+            if (\is_string($name) && $name !== '') {
+                $names[] = $name;
+            }
+        }
+
+        return $names === [] ? null : $names;
+    }
+
+    private static function parseDate(mixed $raw): ?\DateTimeImmutable
+    {
+        if (!\is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
+
+        return $date !== false && $date->format('Y-m-d') === $raw ? $date : null;
     }
 }
