@@ -30,6 +30,8 @@ on:
 
 permissions:
   contents: write
+  # Генерация release notes читает связку commit→PR через gh api .../commits/<sha>/pulls.
+  pull-requests: read
 
 # Сериализуем прогоны: два параллельных reconcile-джоба могли бы оба увидеть
 # «релиза ещё нет» и оба дойти до gh release create одного тега — проигравший
@@ -49,6 +51,11 @@ jobs:
       MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Полная история + теги нужны генерации release notes: выбор предыдущего
+          # тега плагина (pick-prev) и git log по диапазону предыдущий-тег..HEAD.
+          # Shallow-checkout (глубина 1, по умолчанию) их не даёт.
+          fetch-depth: 0
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -76,6 +83,51 @@ jobs:
       - name: Reconcile releases
         run: |
           set -euo pipefail
+
+          # Собирает тело release notes для одного плагина и печатает его в stdout.
+          # Диапазон — предыдущий-тег-этого-плагина..HEAD, отфильтрованный по plugins/<id>/
+          # (в монорепе gh --generate-notes так по пути не умеет). Связка commit→PR — через
+          # авторитетный gh api .../commits/<sha>/pulls, не regex по subject (#28: "#NN" в
+          # subject часто оказывается номером issue, а не PR). Возвращает ненулевой код при
+          # любой ошибке — вызывающий код (fail-open ниже) тогда откатится на заглушку, чтобы
+          # генерация заметок никогда не срывала публикацию релиза.
+          generate_release_notes() {
+            local id="$1" version="$2"
+            local prev range commits_json prs
+            local -a prev_arg=()
+
+            prev="$(git tag --list "$id/*" | php tools/build-release-notes.php pick-prev "$version")" || return 1
+            if [ -n "$prev" ]; then
+              range="$prev..HEAD"
+              prev_arg=(--prev "$prev")
+            else
+              range="HEAD"
+            fi
+
+            # По каждому коммиту диапазона (уже отфильтрован по пути плагина) добираем
+            # связанные PR и собираем JSON-массив, который ест `format`. Строковые поля
+            # передаём как данные (jq --arg / --argjson), без склейки строк.
+            commits_json="$(
+              git log "$range" --format='%H%x1f%s%x1f%an' -- "plugins/$id/" \
+                | while IFS=$'\x1f' read -r sha subject author; do
+                    # .user == null у PR с удалённым аккаунтом автора (ghost) — иначе author
+                    # стал бы null, парсер отверг бы его и по fail-open весь релиз ушёл бы в
+                    # заглушку из-за одного такого PR. "ghost" совпадает с рендером GitHub.
+                    prs="$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/pulls" \
+                      --jq '[.[] | {number, title, url: .html_url, author: (.user.login // "ghost")}]')" || exit 1
+                    jq -n \
+                      --arg sha "$sha" --arg subject "$subject" --arg author "$author" \
+                      --argjson prs "$prs" \
+                      '{sha: $sha, subject: $subject, author: $author, prs: $prs}'
+                  done \
+                | jq -s '.'
+            )" || return 1
+
+            php tools/build-release-notes.php format \
+              --id "$id" --version "$version" --repo "$GITHUB_REPOSITORY" "${prev_arg[@]}" \
+              <<<"$commits_json" || return 1
+          }
+
           for plugin in plugins/*/; do
             id="$(basename "$plugin")"
             manifest="plugins/$id/manifest.json"
@@ -101,9 +153,20 @@ jobs:
             # не перезаписываются.
             echo "Pushing $tag assets to mirrors ..."
             php tools/push-mirror-assets.php "$id" "$version" "$workdir" MIRROR_CREDS
+
+            # Информативные release notes. Fail-open: любая ошибка генерации (сеть gh api,
+            # git, парсинг) → заглушка, публикация релиза не срывается.
+            notes_file="$workdir/notes.md"
+            notes_args=(--notes "Автоматический релиз $id $version.")
+            if generate_release_notes "$id" "$version" > "$notes_file" 2>"$workdir/notes.err"; then
+              notes_args=(--notes-file "$notes_file")
+            else
+              echo "::warning::Не удалось сгенерировать release notes для $tag, использую заглушку. $(tr '\n' ' ' < "$workdir/notes.err")"
+            fi
+
             gh release create "$tag" \
               --title "$tag" \
-              --notes "Автоматический релиз $id $version." \
+              "${notes_args[@]}" \
               "$workdir/plugin.zip" "$workdir/manifest.json" "$workdir/sha256"
             rm -rf "$workdir"
           done
