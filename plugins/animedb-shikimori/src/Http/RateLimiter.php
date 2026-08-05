@@ -41,6 +41,10 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Http;
  */
 final class RateLimiter
 {
+    private const DEFAULT_MAX_PER_SECOND = 5;
+    private const DEFAULT_MAX_PER_MINUTE = 90;
+    private const MICROSECONDS_PER_SECOND = 1_000_000;
+
     private float $secondBucketTokens;
     private float $lastSecondRefill;
     private float $minuteBucketTokens;
@@ -53,15 +57,15 @@ final class RateLimiter
     private $sleeper;
 
     public function __construct(
-        private readonly int $maxPerSecond = 5,
-        private readonly int $maxPerMinute = 90,
+        private readonly int $maxPerSecond = self::DEFAULT_MAX_PER_SECOND,
+        private readonly int $maxPerMinute = self::DEFAULT_MAX_PER_MINUTE,
         ?callable $clock = null,
         ?callable $sleeper = null,
     ) {
         $this->clock = $clock ?? static fn (): float => microtime(true);
         $this->sleeper = $sleeper ?? static function (float $seconds): void {
             if ($seconds > 0) {
-                usleep((int) round($seconds * 1_000_000));
+                usleep((int) round($seconds * self::MICROSECONDS_PER_SECOND));
             }
         };
 

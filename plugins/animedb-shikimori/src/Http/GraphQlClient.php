@@ -57,6 +57,11 @@ class GraphQlClient
     private const MAX_RETRIES = 5;
     private const MAX_RETRY_WAIT_SECONDS = 60.0;
     private const DEFAULT_RETRY_AFTER_SECONDS = 1.0;
+    private const HTTP_TOO_MANY_REQUESTS = 429;
+    private const HTTP_SUCCESS_STATUS_MIN = 200;
+    private const HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300;
+    private const USER_AGENT_FORMAT = 'AnimeDB %s/%s (+https://anime-db.org/)';
+    private const UNKNOWN_GRAPHQL_ERROR_MESSAGE = 'unknown error';
 
     public function __construct(
         private readonly ClientInterface $httpClient,
@@ -94,7 +99,7 @@ class GraphQlClient
             $response = $this->send($query, $variables);
             $status = $response->getStatusCode();
 
-            if ($status === 429) {
+            if ($status === self::HTTP_TOO_MANY_REQUESTS) {
                 $retryAfter = self::parseRetryAfter($response);
                 $waitedSeconds += $retryAfter;
                 ++$attempt;
@@ -110,7 +115,7 @@ class GraphQlClient
                 continue;
             }
 
-            if ($status < 200 || $status >= 300) {
+            if ($status < self::HTTP_SUCCESS_STATUS_MIN || $status >= self::HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE) {
                 throw new GraphQlRequestException(\sprintf('Shikimori GraphQL API responded with HTTP %d.', $status));
             }
 
@@ -161,7 +166,7 @@ class GraphQlClient
      */
     private function userAgent(): string
     {
-        return \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', Manifest::getId(), Manifest::getVersion());
+        return \sprintf(self::USER_AGENT_FORMAT, Manifest::getId(), Manifest::getVersion());
     }
 
     /**
@@ -186,7 +191,7 @@ class GraphQlClient
         $messages = array_map(
             static fn (mixed $error): string => \is_array($error) && \is_string($error['message'] ?? null)
                 ? $error['message']
-                : 'unknown error',
+                : self::UNKNOWN_GRAPHQL_ERROR_MESSAGE,
             $errors,
         );
 
