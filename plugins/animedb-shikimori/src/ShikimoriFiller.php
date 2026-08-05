@@ -39,7 +39,7 @@ use AnimeDb\Plugins\AnimedbShikimori\Mapping\GenreMapper;
  * Источник Shikimori — поиск и заполнение карточек аниме через анонимные чтения GraphQL API
  * Shikimori (без OAuth: `find()`/`findById()` не читают и не пишут пользовательские данные).
  *
- * Фаза 1 плагина (v0.3.0): {@see self::resolveExternalId()} и поиск/заполнение полностью
+ * Фаза 1 плагина: {@see self::resolveExternalId()} и поиск/заполнение полностью
  * реализованы. Вне рамок этой фазы — OAuth, страница настроек (endpoint читается из
  * {@see \AnimeDb\PluginContracts\Settings\SettingsStoreInterface} уже сейчас, но форму для его
  * редактирования даёт следующая фаза), sync, виджеты.
@@ -142,7 +142,7 @@ final class ShikimoriFiller implements FillerInterface
                 continue;
             }
 
-            $candidates[] = new SearchByPluginCandidate('animedb-shikimori', $displayName, (string) $anime['id']);
+            $candidates[] = new SearchByPluginCandidate(Manifest::getId(), $displayName, (string) $anime['id']);
         }
 
         return $candidates;
