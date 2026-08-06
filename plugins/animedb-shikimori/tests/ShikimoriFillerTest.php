@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests;
 
+use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Model\AnimeType;
 use AnimeDb\PluginContracts\Model\Demographic;
 use AnimeDb\PluginContracts\Model\GenreCode;
@@ -38,6 +39,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ShikimoriFillerTest extends TestCase
 {
+    private const STUB_MANIFEST_ID = 'animedb-shikimori';
     public function testFindMapsCandidates(): void
     {
         $client = $this->createMock(GraphQlClient::class);
@@ -48,12 +50,12 @@ final class ShikimoriFillerTest extends TestCase
             ],
         ]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
         $candidates = $filler->find('naruto');
 
         self::assertEquals([
-            new SearchByPluginCandidate('animedb-shikimori', 'Naruto', '20'),
-            new SearchByPluginCandidate('animedb-shikimori', 'Dragon Ball Z', '813'),
+            new SearchByPluginCandidate(self::STUB_MANIFEST_ID, 'Naruto', '20'),
+            new SearchByPluginCandidate(self::STUB_MANIFEST_ID, 'Dragon Ball Z', '813'),
         ], $candidates);
     }
 
@@ -62,7 +64,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => []]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertSame([], $filler->find('does not exist'));
     }
@@ -72,7 +74,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => []]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertNull($filler->findById('999999999'));
     }
@@ -82,7 +84,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [self::narutoFixture()]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
         $data = $filler->findById('20');
 
         self::assertNotNull($data);
@@ -115,7 +117,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
         $data = $filler->findById('20');
 
         self::assertSame(['NARUTO -ナルト-'], $data->alternativeNames);
@@ -129,7 +131,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertSame(AnimeType::Special, $filler->findById('20')->type);
     }
@@ -142,7 +144,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertNull($filler->findById('20')->type);
     }
@@ -158,7 +160,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertSame(Demographic::Seinen, $filler->findById('20')->demographic);
     }
@@ -172,7 +174,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
         $data = $filler->findById('20');
 
         self::assertNull($data->datePremiere);
@@ -187,14 +189,14 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client);
+        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
 
         self::assertNull($filler->findById('20')->episodesCount);
     }
 
     public function testGetFillableFieldsExcludesCountriesAndImages(): void
     {
-        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class));
+        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class), $this->stubOwnManifest());
 
         $fields = $filler->getFillableFields();
 
@@ -207,11 +209,19 @@ final class ShikimoriFillerTest extends TestCase
 
     public function testResolveExternalIdMatchesShikimoriDomainsAndPaths(): void
     {
-        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class));
+        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class), $this->stubOwnManifest());
 
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.one/animes/z20-naruto']));
         self::assertNull($filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+    }
+
+    private function stubOwnManifest(): OwnManifestInterface
+    {
+        $manifest = $this->createMock(OwnManifestInterface::class);
+        $manifest->method('id')->willReturn(self::STUB_MANIFEST_ID);
+
+        return $manifest;
     }
 
     /**

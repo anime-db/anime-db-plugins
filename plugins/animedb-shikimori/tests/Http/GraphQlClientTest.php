@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Http;
 
+use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlRequestException;
@@ -42,6 +43,9 @@ use Psr\Http\Message\StreamInterface;
 
 final class GraphQlClientTest extends TestCase
 {
+    private const STUB_MANIFEST_ID = 'animedb-shikimori-stub';
+    private const STUB_MANIFEST_VERSION = '9.9.9';
+
     public function testQueryReturnsDataPayloadOnSuccess(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);
@@ -182,14 +186,12 @@ final class GraphQlClientTest extends TestCase
         $httpClient = $this->createMock(ClientInterface::class);
         $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
 
-        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter());
+        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter(), $this->stubOwnManifest());
         $client->query('query {}');
-
-        $manifest = json_decode((string) file_get_contents(__DIR__.'/../../manifest.json'), true);
 
         self::assertSame('application/json', $headers['Content-Type'] ?? null);
         self::assertSame(
-            \sprintf('AnimeDB animedb-shikimori/%s (+https://anime-db.org/)', $manifest['version']),
+            \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', self::STUB_MANIFEST_ID, self::STUB_MANIFEST_VERSION),
             $headers['User-Agent'] ?? null,
         );
     }
@@ -211,7 +213,7 @@ final class GraphQlClientTest extends TestCase
         $httpClient = $this->createMock(ClientInterface::class);
         $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
 
-        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter());
+        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter(), $this->stubOwnManifest());
         $client->query('query {}');
     }
 
@@ -254,7 +256,16 @@ final class GraphQlClientTest extends TestCase
         $settingsStore = $this->createMock(SettingsStoreInterface::class);
         $settingsStore->method('read')->willReturn($settings);
 
-        return new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settingsStore, $this->noSleepRateLimiter());
+        return new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settingsStore, $this->noSleepRateLimiter(), $this->stubOwnManifest());
+    }
+
+    private function stubOwnManifest(): OwnManifestInterface
+    {
+        $manifest = $this->createMock(OwnManifestInterface::class);
+        $manifest->method('id')->willReturn(self::STUB_MANIFEST_ID);
+        $manifest->method('version')->willReturn(self::STUB_MANIFEST_VERSION);
+
+        return $manifest;
     }
 
     private function noSleepRateLimiter(): RateLimiter

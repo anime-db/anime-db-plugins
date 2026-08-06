@@ -27,8 +27,8 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Http;
 
+use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
-use AnimeDb\Plugins\AnimedbShikimori\Manifest;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -69,6 +69,7 @@ class GraphQlClient
         private readonly StreamFactoryInterface $streamFactory,
         private readonly SettingsStoreInterface $settings,
         private readonly RateLimiter $rateLimiter,
+        private readonly OwnManifestInterface $ownManifest,
     ) {
     }
 
@@ -161,12 +162,12 @@ class GraphQlClient
     /**
      * `AnimeDB` is the registered OAuth application name at Shikimori; Shikimori requires it to
      * be present in the `User-Agent` or the caller's IP gets banned, and the same identity is
-     * needed for the OAuth requests planned in a later phase. The version is read from
-     * {@see Manifest} so a version bump only needs to touch one file.
+     * needed for the OAuth requests planned in a later phase. The id and version come from the
+     * host-injected {@see OwnManifestInterface} rather than being duplicated as literals.
      */
     private function userAgent(): string
     {
-        return \sprintf(self::USER_AGENT_FORMAT, Manifest::getId(), Manifest::getVersion());
+        return \sprintf(self::USER_AGENT_FORMAT, $this->ownManifest->id(), $this->ownManifest->version());
     }
 
     /**
