@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\AnimedbShikimori;
 
 use AnimeDb\PluginContracts\Filler\FillerInterface;
 use AnimeDb\PluginContracts\Filler\PluginAnimeData;
+use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Mapping\AnimeTypeMapper;
@@ -89,6 +90,7 @@ final class ShikimoriFiller implements FillerInterface
 
     public function __construct(
         private readonly GraphQlClient $client,
+        private readonly OwnManifestInterface $ownManifest,
     ) {
     }
 
@@ -142,7 +144,7 @@ final class ShikimoriFiller implements FillerInterface
                 continue;
             }
 
-            $candidates[] = new SearchByPluginCandidate(Manifest::getId(), $displayName, (string) $anime['id']);
+            $candidates[] = new SearchByPluginCandidate($this->ownManifest->id(), $displayName, (string) $anime['id']);
         }
 
         return $candidates;
