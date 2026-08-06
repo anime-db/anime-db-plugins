@@ -39,7 +39,8 @@ use PHPUnit\Framework\TestCase;
 
 final class ShikimoriFillerTest extends TestCase
 {
-    private const STUB_MANIFEST_ID = 'animedb-shikimori';
+    private const STUB_MANIFEST_ID = 'animedb-shikimori-stub';
+
     public function testFindMapsCandidates(): void
     {
         $client = $this->createMock(GraphQlClient::class);
