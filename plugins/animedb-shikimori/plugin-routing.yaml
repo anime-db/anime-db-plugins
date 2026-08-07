@@ -1,0 +1,13 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+#
+# This plugin's own routes. The host reads this file from the plugin's root (not `config/`),
+# see AnimeDb\Plugins\AnimedbShikimori\Settings\ShikimoriSettingsController.
+
+animedb_shikimori_settings_save:
+    path: /plugins/animedb-shikimori/settings
+    controller: AnimeDb\Plugins\AnimedbShikimori\Settings\ShikimoriSettingsController
+    methods: [POST]

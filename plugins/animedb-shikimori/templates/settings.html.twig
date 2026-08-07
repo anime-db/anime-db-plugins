@@ -1,0 +1,39 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://gnu.org GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://gnu.org>.
+ #}
+{# Raw fragment, embedded by the host via `content|raw` — no `extends`, this is not a full page. #}
+<div id="animedb-shikimori-settings">
+    <form hx-post="{{ path('animedb_shikimori_settings_save') }}" hx-target="#animedb-shikimori-settings" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('animedb_shikimori_settings_save') }}">
+
+        <label for="animedb-shikimori-api-endpoint">Shikimori API endpoint</label>
+        <input type="text" id="animedb-shikimori-api-endpoint" name="api_endpoint" value="{{ apiEndpoint }}" placeholder="https://shikimori.io">
+        <p class="hint">Leave empty to use the default, https://shikimori.io. Use this to point at a mirror if the default is blocked.</p>
+
+        <button type="submit">Save</button>
+    </form>
+
+    {% if saved %}
+        <p class="success">Saved.</p>
+    {% endif %}
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+</div>
