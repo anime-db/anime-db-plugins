@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Settings;
 
+use AnimeDb\PluginContracts\Settings\ConcurrentWriteException;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -43,7 +44,7 @@ use Twig\Environment;
  * Unlike the settings page's GET render(), which the host wraps in a try/catch
  * ({@see \AnimeDb\PluginContracts\Settings\SettingsPageInterface}), this save route is not
  * wrapped by the host at all — every failure path here (bad CSRF token, an implausible
- * endpoint, {@see SettingsStoreInterface::write()} throwing, even the fragment itself failing to
+ * endpoint, {@see SettingsStoreInterface::update()} throwing, even the fragment itself failing to
  * render) is caught and turned into an inline error response, never a raw 500 or a response HTMX
  * can't swap.
  *
@@ -53,10 +54,12 @@ use Twig\Environment;
  * swallows request failures into an empty filled card during a bulk scan, so a bad endpoint
  * would otherwise fail silently far away from this form.
  *
- * Saving is read-modify-write: the whole settings payload is read, only `api_endpoint` is
- * changed, and the whole payload is written back, because
- * {@see SettingsStoreInterface::write()} overrides rather than merges — writing just the one
- * field would drop every other stored key (OAuth tokens, from phase 3, among them).
+ * Saving goes through {@see SettingsStoreInterface::update()}: the modifier closure merges
+ * `api_endpoint` into whatever payload the host hands it and returns the whole thing, rather
+ * than replacing it — dropping every other stored key (OAuth tokens, from phase 3, among them)
+ * would otherwise be one accidental `return` away. update() runs the closure under the host's
+ * exclusive lock on this plugin's settings, closing the read-then-write race a second writer
+ * (phase 3's background token rotation) could otherwise land in.
  */
 #[AsController]
 final class ShikimoriSettingsController
@@ -86,13 +89,17 @@ final class ShikimoriSettingsController
         }
 
         try {
-            $stored = $this->settings->read();
-            if ($endpoint === '') {
-                unset($stored[SettingsFields::API_ENDPOINT]);
-            } else {
-                $stored[SettingsFields::API_ENDPOINT] = $endpoint;
-            }
-            $this->settings->write($stored);
+            $this->settings->update(static function (array $settings) use ($endpoint): array {
+                if ($endpoint === '') {
+                    unset($settings[SettingsFields::API_ENDPOINT]);
+                } else {
+                    $settings[SettingsFields::API_ENDPOINT] = $endpoint;
+                }
+
+                return $settings;
+            });
+        } catch (ConcurrentWriteException) {
+            return $this->renderFragment($endpoint, saved: false, error: 'Settings are busy being saved elsewhere, please try again.');
         } catch (\Throwable) {
             return $this->renderFragment($endpoint, saved: false, error: 'Could not save settings, please try again.');
         }
