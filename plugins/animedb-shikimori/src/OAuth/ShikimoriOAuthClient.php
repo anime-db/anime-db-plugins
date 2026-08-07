@@ -70,8 +70,8 @@ class ShikimoriOAuthClient extends AbstractOAuthClient
      * before the OAuth 0.4.0 release (the plugin version is deliberately not bumped by this
      * change, see issue #40's "Границы").
      */
-    private const CLIENT_ID = 'SHIKIMORI_APP_2212_CLIENT_ID';
-    private const CLIENT_SECRET = 'SHIKIMORI_APP_2212_CLIENT_SECRET';
+    private const CLIENT_ID = 'dGHCKk7JH1o546hnWMueT3xodrONWNpVWU_eQbMqc08';
+    private const CLIENT_SECRET = 'Z6EAyxXuWKxPAUikq5RsaJFGPfVhggJ2psKTaRJLcw0';
 
     public function __construct(
         ClientInterface $httpClient,
