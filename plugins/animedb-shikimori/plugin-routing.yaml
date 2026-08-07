@@ -11,3 +11,20 @@ animedb_shikimori_settings_save:
     path: /plugins/animedb-shikimori/settings
     controller: AnimeDb\Plugins\AnimedbShikimori\Settings\ShikimoriSettingsController
     methods: [POST]
+
+animedb_shikimori_oauth_start:
+    path: /oauth/shikimori/start
+    controller: AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthStartController
+    methods: [GET]
+
+# Must match Shikimori app #2212's registered `redirect_uri` path byte-for-byte:
+# http://127.0.0.1/oauth/shikimori (portless; RFC 8252 §7.3 only relaxes the port).
+animedb_shikimori_oauth_callback:
+    path: /oauth/shikimori
+    controller: AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthCallbackController
+    methods: [GET]
+
+animedb_shikimori_oauth_disconnect:
+    path: /plugins/animedb-shikimori/oauth/disconnect
+    controller: AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthDisconnectController
+    methods: [POST]

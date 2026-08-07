@@ -36,4 +36,19 @@
     {% if error %}
         <p class="error">{{ error }}</p>
     {% endif %}
+
+    <div class="oauth">
+        <h3>Shikimori account</h3>
+        {% if authorized %}
+            <p class="status status-authorized">Authorized</p>
+            <a href="{{ path('animedb_shikimori_oauth_start') }}">Re-authorize</a>
+            <form hx-post="{{ path('animedb_shikimori_oauth_disconnect') }}" hx-target="#animedb-shikimori-settings" hx-swap="outerHTML">
+                <input type="hidden" name="_token" value="{{ csrf_token('animedb_shikimori_oauth_disconnect') }}">
+                <button type="submit">Disconnect</button>
+            </form>
+        {% else %}
+            <p class="status status-not-authorized">Not authorized</p>
+            <a href="{{ path('animedb_shikimori_oauth_start') }}">Authorize</a>
+        {% endif %}
+    </div>
 </div>

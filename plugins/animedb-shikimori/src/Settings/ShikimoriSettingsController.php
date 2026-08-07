@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Settings;
 
 use AnimeDb\PluginContracts\Settings\ConcurrentWriteException;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
+use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
@@ -66,6 +67,7 @@ final class ShikimoriSettingsController
 {
     public function __construct(
         private readonly SettingsStoreInterface $settings,
+        private readonly ShikimoriOAuthClient $oauth,
         private readonly CsrfTokenManagerInterface $csrfTokenManager,
         private readonly Environment $twig,
     ) {
@@ -114,6 +116,7 @@ final class ShikimoriSettingsController
                 'apiEndpoint' => $apiEndpoint ?? '',
                 'saved' => $saved,
                 'error' => $error,
+                'authorized' => $this->oauth->accessToken() !== null,
             ]);
         } catch (\Throwable) {
             return new Response('<p class="error">Could not render the settings form.</p>');
