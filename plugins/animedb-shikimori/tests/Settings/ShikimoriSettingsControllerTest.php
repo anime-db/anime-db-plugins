@@ -123,13 +123,25 @@ final class ShikimoriSettingsControllerTest extends TestCase
     public function testWriteFailureIsReportedInlineWithoutCrashing(): void
     {
         $store = new FakeSettingsStore([]);
-        $store->failOnNextWrite();
+        $store->failOnNextUpdate();
         $controller = $this->makeController($store);
 
         $response = $controller(self::postRequest(['api_endpoint' => 'https://shikimori.io']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertStringContainsString('Could not save', (string) $response->getContent());
+    }
+
+    public function testConcurrentWriteIsReportedInlineWithoutCrashing(): void
+    {
+        $store = new FakeSettingsStore([]);
+        $store->throwConcurrentWriteOnNextUpdate();
+        $controller = $this->makeController($store);
+
+        $response = $controller(self::postRequest(['api_endpoint' => 'https://shikimori.io']));
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertStringContainsString('busy', (string) $response->getContent());
     }
 
     private function makeController(FakeSettingsStore $store): ShikimoriSettingsController

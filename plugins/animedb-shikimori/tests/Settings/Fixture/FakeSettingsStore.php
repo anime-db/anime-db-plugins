@@ -27,19 +27,22 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Settings\Fixture;
 
+use AnimeDb\PluginContracts\Settings\ConcurrentWriteException;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 
 /**
- * In-memory {@see SettingsStoreInterface}, so the controller's read-modify-write behaviour (does
- * `write()` really override the whole payload, does it really preserve unrelated keys) can be
- * asserted directly on {@see self::$data} instead of through mock call-argument matchers.
+ * In-memory {@see SettingsStoreInterface}, so the controller's merge behaviour (does the
+ * modifier closure really preserve unrelated keys, is it really called with the current
+ * payload) can be asserted directly on {@see self::$data} instead of through mock
+ * call-argument matchers.
  */
 final class FakeSettingsStore implements SettingsStoreInterface
 {
     /** @var array<string, mixed> */
     public array $data;
 
-    private bool $throwOnWrite = false;
+    private bool $throwOnUpdate = false;
+    private bool $throwConcurrentWriteOnUpdate = false;
 
     /**
      * @param array<string, mixed> $initial
@@ -54,17 +57,26 @@ final class FakeSettingsStore implements SettingsStoreInterface
         return $this->data;
     }
 
-    public function write(array $settings): void
+    public function update(callable $modifier): void
     {
-        if ($this->throwOnWrite) {
+        if ($this->throwConcurrentWriteOnUpdate) {
+            throw new ConcurrentWriteException('Simulated concurrent write.');
+        }
+
+        if ($this->throwOnUpdate) {
             throw new \RuntimeException('Simulated write failure.');
         }
 
-        $this->data = $settings;
+        $this->data = $modifier($this->data);
     }
 
-    public function failOnNextWrite(): void
+    public function failOnNextUpdate(): void
     {
-        $this->throwOnWrite = true;
+        $this->throwOnUpdate = true;
+    }
+
+    public function throwConcurrentWriteOnNextUpdate(): void
+    {
+        $this->throwConcurrentWriteOnUpdate = true;
     }
 }
