@@ -70,12 +70,16 @@ final class ShikimoriSettingsController
 
     public function __invoke(Request $request): Response
     {
-        $submittedToken = $request->request->getString('_token');
-        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SettingsFields::CSRF_TOKEN_ID, $submittedToken))) {
-            return $this->renderFragment(null, saved: false, error: 'Invalid CSRF token, please reload the page and try again.', statusCode: Response::HTTP_BAD_REQUEST);
+        try {
+            $submittedToken = $request->request->getString('_token');
+            $endpoint = trim($request->request->getString(SettingsFields::API_ENDPOINT));
+        } catch (\Throwable) {
+            return $this->renderFragment(null, saved: false, error: 'Invalid form submission, please reload the page and try again.');
         }
 
-        $endpoint = trim($request->request->getString(SettingsFields::API_ENDPOINT));
+        if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SettingsFields::CSRF_TOKEN_ID, $submittedToken))) {
+            return $this->renderFragment(null, saved: false, error: 'Invalid CSRF token, please reload the page and try again.');
+        }
 
         if ($endpoint !== '' && !self::isPlausibleHttpsUrl($endpoint)) {
             return $this->renderFragment($endpoint, saved: false, error: 'Enter a valid https:// URL (e.g. https://shikimori.io).');
@@ -96,7 +100,7 @@ final class ShikimoriSettingsController
         return $this->renderFragment($endpoint === '' ? null : $endpoint, saved: true, error: null);
     }
 
-    private function renderFragment(?string $apiEndpoint, bool $saved, ?string $error, int $statusCode = Response::HTTP_OK): Response
+    private function renderFragment(?string $apiEndpoint, bool $saved, ?string $error): Response
     {
         try {
             $html = $this->twig->render('@AnimedbShikimori/settings.html.twig', [
@@ -105,10 +109,10 @@ final class ShikimoriSettingsController
                 'error' => $error,
             ]);
         } catch (\Throwable) {
-            return new Response('<p class="error">Could not render the settings form.</p>', $statusCode);
+            return new Response('<p class="error">Could not render the settings form.</p>');
         }
 
-        return new Response($html, $statusCode);
+        return new Response($html);
     }
 
     private static function isPlausibleHttpsUrl(string $url): bool

@@ -96,7 +96,27 @@ final class ShikimoriSettingsControllerTest extends TestCase
 
         $response = $controller(self::postRequest(['api_endpoint' => 'https://shikimori.io'], token: 'wrong-token'));
 
-        self::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        // HTMX only swaps 2xx responses (hx-swap="outerHTML"), so the inline error and the
+        // refreshed CSRF token must travel back in a 200, or the user never sees them.
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertStringContainsString('Invalid CSRF token', (string) $response->getContent());
+        self::assertSame(['api_endpoint' => 'https://shikimori.one'], $store->data);
+    }
+
+    public function testNonScalarInputIsRejectedInlineWithoutCrashing(): void
+    {
+        $store = new FakeSettingsStore(['api_endpoint' => 'https://shikimori.one']);
+        $controller = $this->makeController($store);
+
+        $request = Request::create('/plugins/animedb-shikimori/settings', 'POST', [
+            '_token' => [self::VALID_TOKEN],
+            'api_endpoint' => 'https://shikimori.io',
+        ]);
+
+        $response = $controller($request);
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertStringContainsString('Invalid form submission', (string) $response->getContent());
         self::assertSame(['api_endpoint' => 'https://shikimori.one'], $store->data);
     }
 
