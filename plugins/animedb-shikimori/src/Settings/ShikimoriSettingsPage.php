@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Settings;
 
 use AnimeDb\PluginContracts\Settings\SettingsPageInterface;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
+use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use Twig\Environment;
 
 /**
@@ -37,13 +38,21 @@ use Twig\Environment;
  * at a mirror or proxy; {@see \AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient} already reads
  * this key and falls back to the default host when it is absent.
  *
- * Rendering only — saving goes through {@see ShikimoriSettingsController}'s own route, per
- * {@see SettingsPageInterface}.
+ * Phase 3 adds the OAuth status: {@see ShikimoriOAuthClient::accessToken()} `!== null` is
+ * rendered as "Authorized"/"Not authorized". That only means a token is present, not that it
+ * is still valid — the access token lives about a day and this page never refreshes it; phase
+ * 4's sync is the first thing that calls {@see ShikimoriOAuthClient::refreshAccessToken()} or
+ * reacts to a 401.
+ *
+ * Rendering only — saving goes through {@see ShikimoriSettingsController}'s own route, and
+ * disconnecting through {@see \AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthDisconnectController}'s,
+ * per {@see SettingsPageInterface}.
  */
 final class ShikimoriSettingsPage implements SettingsPageInterface
 {
     public function __construct(
         private readonly SettingsStoreInterface $settings,
+        private readonly ShikimoriOAuthClient $oauth,
         private readonly Environment $twig,
     ) {
     }
@@ -56,6 +65,7 @@ final class ShikimoriSettingsPage implements SettingsPageInterface
             'apiEndpoint' => \is_string($endpoint) ? $endpoint : '',
             'saved' => false,
             'error' => null,
+            'authorized' => $this->oauth->accessToken() !== null,
         ]);
     }
 }

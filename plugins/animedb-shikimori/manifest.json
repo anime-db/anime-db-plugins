@@ -11,6 +11,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.1",
-        "plugin-contracts": "^0.10"
+        "plugin-contracts": "^0.11"
     }
 }

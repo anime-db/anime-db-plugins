@@ -25,27 +25,27 @@
 
 declare(strict_types=1);
 
-namespace AnimeDb\Plugins\AnimedbShikimori\Settings;
+namespace AnimeDb\Plugins\AnimedbShikimori\OAuth;
+
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 
 /**
- * Shared constants between {@see ShikimoriSettingsPage} (renders the form) and
- * {@see ShikimoriSettingsController} (saves it) / {@see \AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthDisconnectController}
- * (disconnects the OAuth session), so the settings key and CSRF token ids can't drift apart
- * between them.
+ * `GET /oauth/shikimori/start`: sends the user's browser straight to Shikimori's authorize
+ * screen. The settings page links here with a plain top-level `<a href>`, not an HTMX swap —
+ * the desktop shell only hands a top-level navigation to a vendor domain off to the system
+ * browser (see {@see \AnimeDb\Plugins\AnimedbShikimori\Settings\ShikimoriSettingsPage}).
  */
-final class SettingsFields
+#[AsController]
+final class ShikimoriOAuthStartController
 {
-    public const API_ENDPOINT = 'api_endpoint';
-    public const CSRF_TOKEN_ID = 'animedb_shikimori_settings_save';
+    public function __construct(
+        private readonly ShikimoriOAuthClient $oauth,
+    ) {
+    }
 
-    /**
-     * A CSRF token id of its own, distinct from {@see self::CSRF_TOKEN_ID}: the disconnect
-     * form is a separate action from the settings save form and must not accept a token minted
-     * for the other.
-     */
-    public const OAUTH_DISCONNECT_CSRF_TOKEN_ID = 'animedb_shikimori_oauth_disconnect';
-
-    private function __construct()
+    public function __invoke(): RedirectResponse
     {
+        return new RedirectResponse($this->oauth->buildAuthorizeUrl());
     }
 }

@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Settings;
 
+use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use AnimeDb\Plugins\AnimedbShikimori\Settings\ShikimoriSettingsController;
 use AnimeDb\Plugins\AnimedbShikimori\Tests\Settings\Fixture\FakeSettingsStore;
 use AnimeDb\Plugins\AnimedbShikimori\Tests\Settings\Fixture\StubTwigFactory;
@@ -53,6 +54,22 @@ final class ShikimoriSettingsControllerTest extends TestCase
             'api_endpoint' => 'https://shikimori.one/',
         ], $store->data);
         self::assertStringContainsString('Saved', (string) $response->getContent());
+    }
+
+    public function testResponseShowsAuthorizedStatusWhenAnAccessTokenIsPresent(): void
+    {
+        $store = new FakeSettingsStore([]);
+        $csrfTokenManager = $this->createMock(CsrfTokenManagerInterface::class);
+        $csrfTokenManager->method('isTokenValid')
+            ->willReturnCallback(static fn (CsrfToken $token): bool => $token->getValue() === self::VALID_TOKEN);
+        $oauth = $this->createMock(ShikimoriOAuthClient::class);
+        $oauth->method('accessToken')->willReturn('the-token');
+        $controller = new ShikimoriSettingsController($store, $oauth, $csrfTokenManager, StubTwigFactory::create());
+
+        $response = $controller(self::postRequest(['api_endpoint' => '']));
+
+        self::assertStringContainsString('Authorized', (string) $response->getContent());
+        self::assertStringNotContainsString('Not authorized', (string) $response->getContent());
     }
 
     public function testEmptyEndpointRemovesTheKeyButKeepsOtherKeys(): void
@@ -92,7 +109,7 @@ final class ShikimoriSettingsControllerTest extends TestCase
         $store = new FakeSettingsStore(['api_endpoint' => 'https://shikimori.one']);
         $csrfTokenManager = $this->createMock(CsrfTokenManagerInterface::class);
         $csrfTokenManager->method('isTokenValid')->willReturn(false);
-        $controller = new ShikimoriSettingsController($store, $csrfTokenManager, StubTwigFactory::create());
+        $controller = new ShikimoriSettingsController($store, $this->createMock(ShikimoriOAuthClient::class), $csrfTokenManager, StubTwigFactory::create());
 
         $response = $controller(self::postRequest(['api_endpoint' => 'https://shikimori.io'], token: 'wrong-token'));
 
@@ -150,7 +167,7 @@ final class ShikimoriSettingsControllerTest extends TestCase
         $csrfTokenManager->method('isTokenValid')
             ->willReturnCallback(static fn (CsrfToken $token): bool => $token->getValue() === self::VALID_TOKEN);
 
-        return new ShikimoriSettingsController($store, $csrfTokenManager, StubTwigFactory::create());
+        return new ShikimoriSettingsController($store, $this->createMock(ShikimoriOAuthClient::class), $csrfTokenManager, StubTwigFactory::create());
     }
 
     /**

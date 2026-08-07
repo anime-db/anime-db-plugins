@@ -5,12 +5,29 @@
 
 ## Статус
 
-**Фаза 2 — страница настроек.** `api_endpoint` теперь редактируется прямо в UI:
-`Settings\ShikimoriSettingsPage` (`SettingsPageInterface::render()`) рендерит форму, а
-`Settings\ShikimoriSettingsController` (первый собственный роут плагина,
-`plugin-routing.yaml` в корне, CSRF через host-`CsrfTokenManagerInterface`) сохраняет её
-read-modify-write в `SettingsStore` — так остальные ключи payload (в фазе 3 — OAuth-токены)
-не затираются. Это же закладывает паттерн под OAuth (кнопка «Авторизоваться» — фаза 3).
+**Фаза 3 — OAuth (Authorization Code + PKCE S256).** `OAuth\ShikimoriOAuthClient` расширяет
+контрактный `AbstractOAuthClient` (plugin-contracts v0.11.0): эндпоинты авторизации/обмена
+токена захардкожены на `shikimori.io` (никогда не берутся из `api_endpoint` — иначе плановый
+`refreshAccessToken()`, фаза 4, мог бы утечь refresh-токен на подменный домен), клиент —
+confidential (Shikimori app #2212), скоуп `user_rates`, `callbackPath()` — `/oauth/shikimori`
+байт-в-байт совпадает с зарегистрированным `redirect_uri`. `tokenRequestHeaders()` шлёт
+`User-Agent` (Shikimori банит token/refresh без него) через новый `Http\UserAgent::forManifest()`.
+
+Три собственных роута (`plugin-routing.yaml`, `#[AsController]`):
+`GET /oauth/shikimori/start` (302 на вендора, top-level-навигация, не HTMX — так Electron
+открывает системный браузер), `GET /oauth/shikimori` (callback: до `handleCallback()`
+проверяет `error`/отсутствие `code`, чтобы не сжечь одноразовый `state`; после успеха —
+живая проба `GET /api/users/whoami` через `OAuth\ShikimoriTokenProbe`, не фатальная) и
+`POST /plugins/animedb-shikimori/oauth/disconnect` (CSRF, `disconnect()`).
+
+`refreshAccessToken()` в этой фазе не вызывается — это задача фазы 4 (sync).
+
+**Фаза 2 — страница настроек.** `api_endpoint` редактируется прямо в UI:
+`Settings\ShikimoriSettingsPage` (`SettingsPageInterface::render()`) рендерит форму (и, с
+фазы 3, статус авторизации), а `Settings\ShikimoriSettingsController` (первый собственный
+роут плагина, CSRF через host-`CsrfTokenManagerInterface`) сохраняет её read-modify-write в
+`SettingsStore` — так остальные ключи payload (OAuth-токены) не затираются. Это же
+закладывало паттерн, который фаза 3 переиспользует для `oauth/disconnect`.
 
 **Фаза 1 — Filler.** Контрактная граница с хостом реализована целиком
 (плагин — `filler`, а значит и `search`: `FillerInterface` наследует
@@ -43,16 +60,17 @@ HTTP-вызовы плагинов, поэтому клиент (`Http\GraphQlCl
 `plugin-routing.yaml`:
 
 - **нет DI-конфига** — хост сам регистрирует классы из `src/` как сервисы (в т.ч.
-  `#[AsController]`-контроллер);
+  `#[AsController]`-контроллеры);
 - **нет класса бандла** — он не нужен, пока плагину не потребуется собственное
   DI-расширение / компайлер-пассы / Doctrine-маппинги;
 - **нет тегов** — хост сам тегирует классы по реализованным контрактным
   интерфейсам;
 - **`templates/`** — Twig-шаблоны плагина, рендерятся через host-`Twig\Environment`
   под неймспейсом `@AnimedbShikimori`;
-- **`plugin-routing.yaml`** — собственные роуты плагина (сейчас только
-  `POST /plugins/animedb-shikimori/settings`), хост читает файл из корня плагина,
-  не из `config/`.
+- **`plugin-routing.yaml`** — собственные роуты плагина (`POST
+  /plugins/animedb-shikimori/settings`, `GET /oauth/shikimori/start`, `GET
+  /oauth/shikimori`, `POST /plugins/animedb-shikimori/oauth/disconnect`), хост читает
+  файл из корня плагина, не из `config/`.
 
 `features.filler: true` в манифесте включает функциональность филлера (поиск
 активен вместе с ней — отдельного `search`-флага нет).
