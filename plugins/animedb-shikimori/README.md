@@ -5,6 +5,47 @@
 
 ## Статус
 
+**Фаза 4 — Sync (push REST v2 find-or-create, pull GraphQL `userRates`).**
+`ShikimoriFiller` реализует `Sync\SyncInterface` (plugin-contracts v0.12.0) вместо
+`FillerInterface` напрямую — единственный filler-совместимый сервис плагина (второй
+filler-класс на тот же id дал бы коллизию тегов `app.filler`/`app.sync` на хосте).
+
+- **`push(SyncItem $item)`** — REST v2 (`Http\ShikimoriRestClient`), find-or-create:
+  `GET /api/v2/user_rates?user_id=&target_id=&target_type=Anime` ищет существующую
+  запись пользователя, `PATCH /api/v2/user_rates/:id` обновляет статус или
+  `POST /api/v2/user_rates` создаёт новую (REST v2 `create` — без upsert). Идемпотентно:
+  повторный push того же статуса резолвится в существующий rate и `PATCH`-ится тем же
+  значением (no-op) — этим полагается безопасность повторов `PushSyncMessageHandler`
+  хоста. `user_id` в теле `create` обязателен по живой (неавторизованной) API-доке
+  Shikimori (`/api/doc/2.0/user_rates`, поле `user_rate[user_id]` помечено
+  `"required": true`) и резолвится один раз через GraphQL `currentUser { id }`,
+  кэшируется на время жизни `ShikimoriFiller`.
+- **`pull(): iterable<SyncItem>`** — GraphQL `userRates` (переиспользует `Http\GraphQlClient`,
+  `userId` не передаётся — по схеме дефолтится на Bearer-пользователя), постранично
+  (лимит страницы — 50, максимум по схеме Shikimori). Реализовано генератором: HTTP-запрос
+  за следующую страницу уходит только когда вызывающий код запросил следующий элемент —
+  `SyncInterface::pull()` не принимает heartbeat-колбэк, так что именно эта ленивость и
+  играет его роль.
+- **Маппинг статусов** — `Mapping\SyncStatusMapper`. Словари не симметричны: у Shikimori
+  есть `rewatching`, у контракта — нет, `fromShikimori()` схлопывает его в `Watching`;
+  `toShikimori()`, соответственно, никогда `rewatching` не производит.
+- **401 → refresh → retry** — общая для REST push и GraphQL pull политика,
+  `Sync\ShikimoriAuthRetrier`: оба транспорта на HTTP 401 бросают один и тот же
+  `Http\UnauthorizedHttpException`. При 401: пробуем `refreshAccessToken()`; успех —
+  повтор запроса с новым токеном; сбой (`OAuthTokenExchangeException`/`\LogicException`,
+  включая «нет refresh-токена») — сверяем токен до/после: изменился (кто-то другой уже
+  обновил, гонка ротации) → повтор с текущим токеном, стор не трогаем; не изменился →
+  сессия подтверждённо мертва → `disconnect()` + `OAuth\ReauthRequiredException`. Сетевой
+  сбой самого refresh-запроса (`ClientExceptionInterface`) ничего не говорит о состоянии
+  сессии — не трактуется как «мертво», токены не трогаются, ошибка просто пробрасывается.
+  Отсутствие токена вовсе (`accessToken() === null`) — сразу `ReauthRequiredException`, без
+  попытки refresh.
+
+`Http\GraphQlClient::query()` получил опциональный `$bearer` (передаётся вызывающим кодом
+за каждый вызов, не читается из настроек самим клиентом) — так анонимные вызовы фазы 1
+(`find()`/`findById()` в каталожном импорте) остаются анонимными, а не начинают внезапно
+слать чужой OAuth-токен.
+
 **Фаза 3 — OAuth (Authorization Code + PKCE S256).** `OAuth\ShikimoriOAuthClient` расширяет
 контрактный `AbstractOAuthClient` (plugin-contracts v0.11.0): эндпоинты авторизации/обмена
 токена захардкожены на `shikimori.io` (никогда не берутся из `api_endpoint` — иначе плановый
@@ -73,7 +114,8 @@ HTTP-вызовы плагинов, поэтому клиент (`Http\GraphQlCl
   файл из корня плагина, не из `config/`.
 
 `features.filler: true` в манифесте включает функциональность филлера (поиск
-активен вместе с ней — отдельного `search`-флага нет).
+активен вместе с ней — отдельного `search`-флага нет). `features.sync: true`
+(с фазы 4) — синхронизацию watch-листа (`push()`/`pull()`).
 
 ## Разработка
 

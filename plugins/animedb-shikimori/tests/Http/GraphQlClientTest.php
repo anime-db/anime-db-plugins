@@ -32,6 +32,7 @@ use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlRequestException;
 use AnimeDb\Plugins\AnimedbShikimori\Http\RateLimiter;
+use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -215,6 +216,82 @@ final class GraphQlClientTest extends TestCase
 
         $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter(), $this->stubOwnManifest());
         $client->query('query {}');
+    }
+
+    public function test401ResponseThrowsUnauthorizedHttpException(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(401, []));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(UnauthorizedHttpException::class);
+        $client->query('query {}', [], null, 'a-bearer-token');
+    }
+
+    public function testBearerIsSentAsAuthorizationHeaderWhenGiven(): void
+    {
+        $headers = [];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(
+            function (string $name, string $value) use (&$headers, $request): RequestInterface {
+                $headers[$name] = $value;
+
+                return $request;
+            },
+        );
+        $request->method('withBody')->willReturnSelf();
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturn($this->createMock(StreamInterface::class));
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
+
+        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter(), $this->stubOwnManifest());
+        $client->query('query {}', [], null, 'the-bearer-token');
+
+        self::assertSame('Bearer the-bearer-token', $headers['Authorization'] ?? null);
+    }
+
+    public function testNoAuthorizationHeaderIsSentWhenBearerIsOmittedAnonymousPluginCallsStayAnonymous(): void
+    {
+        $headers = [];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(
+            function (string $name, string $value) use (&$headers, $request): RequestInterface {
+                $headers[$name] = $value;
+
+                return $request;
+            },
+        );
+        $request->method('withBody')->willReturnSelf();
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturn($this->createMock(StreamInterface::class));
+
+        // Settings carrying a would-be token must never leak into an anonymous call: this
+        // client never reads a token from settings itself, only from the explicit $bearer
+        // argument, so a catalog-import find()/findById() call never authenticates.
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn(['oauth_access_token' => 'should-never-be-sent']);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
+
+        $client = new GraphQlClient($httpClient, $requestFactory, $streamFactory, $settings, $this->noSleepRateLimiter(), $this->stubOwnManifest());
+        $client->query('query {}');
+
+        self::assertArrayNotHasKey('Authorization', $headers);
     }
 
     /**

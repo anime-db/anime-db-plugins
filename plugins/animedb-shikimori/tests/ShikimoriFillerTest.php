@@ -33,8 +33,13 @@ use AnimeDb\PluginContracts\Model\Demographic;
 use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
+use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncStatus;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
+use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
+use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller;
+use AnimeDb\Plugins\AnimedbShikimori\Sync\ShikimoriAuthRetrier;
 use PHPUnit\Framework\TestCase;
 
 final class ShikimoriFillerTest extends TestCase
@@ -51,7 +56,7 @@ final class ShikimoriFillerTest extends TestCase
             ],
         ]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
         $candidates = $filler->find('naruto');
 
         self::assertEquals([
@@ -65,7 +70,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => []]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertSame([], $filler->find('does not exist'));
     }
@@ -75,7 +80,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => []]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertNull($filler->findById('999999999'));
     }
@@ -85,7 +90,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [self::narutoFixture()]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
         $data = $filler->findById('20');
 
         self::assertNotNull($data);
@@ -118,7 +123,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
         $data = $filler->findById('20');
 
         self::assertSame(['NARUTO -ナルト-'], $data->alternativeNames);
@@ -132,7 +137,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertSame(AnimeType::Special, $filler->findById('20')->type);
     }
@@ -145,7 +150,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertNull($filler->findById('20')->type);
     }
@@ -161,7 +166,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertSame(Demographic::Seinen, $filler->findById('20')->demographic);
     }
@@ -175,7 +180,7 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
         $data = $filler->findById('20');
 
         self::assertNull($data->datePremiere);
@@ -190,14 +195,14 @@ final class ShikimoriFillerTest extends TestCase
         $client = $this->createMock(GraphQlClient::class);
         $client->method('query')->willReturn(['animes' => [$fixture]]);
 
-        $filler = new ShikimoriFiller($client, $this->stubOwnManifest());
+        $filler = $this->buildFiller($client);
 
         self::assertNull($filler->findById('20')->episodesCount);
     }
 
     public function testGetFillableFieldsExcludesCountriesAndImages(): void
     {
-        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class), $this->stubOwnManifest());
+        $filler = $this->buildFiller($this->createMock(GraphQlClient::class));
 
         $fields = $filler->getFillableFields();
 
@@ -210,11 +215,131 @@ final class ShikimoriFillerTest extends TestCase
 
     public function testResolveExternalIdMatchesShikimoriDomainsAndPaths(): void
     {
-        $filler = new ShikimoriFiller($this->createMock(GraphQlClient::class), $this->stubOwnManifest());
+        $filler = $this->buildFiller($this->createMock(GraphQlClient::class));
 
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.one/animes/z20-naruto']));
         self::assertNull($filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+    }
+
+    public function testPushUpdatesExistingUserRateWhenAlreadyOnTheList(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findUserRateId')->with('the-token', '7', '20')->willReturn('42');
+        $restClient->expects(self::once())->method('updateUserRate')->with('the-token', '42', 'watching');
+        $restClient->expects(self::never())->method('createUserRate');
+
+        $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
+
+        $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto'));
+    }
+
+    public function testPushCreatesUserRateWhenNotYetOnTheList(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findUserRateId')->willReturn(null);
+        $restClient->expects(self::once())->method('createUserRate')->with('the-token', '7', '20', 'completed');
+        $restClient->expects(self::never())->method('updateUserRate');
+
+        $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
+
+        $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto'));
+    }
+
+    public function testPullMapsUserRatesToSyncItemsIncludingRewatching(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn([
+            'userRates' => [
+                ['anime' => ['id' => '20', 'name' => 'Naruto'], 'status' => 'watching'],
+                ['anime' => ['id' => '21', 'name' => 'Bleach'], 'status' => 'rewatching'],
+                ['anime' => ['id' => '22', 'name' => 'One Piece'], 'status' => 'dropped'],
+            ],
+        ]);
+
+        $filler = $this->buildFiller($client, null, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertEquals([
+            new SyncItem('20', SyncStatus::Watching, 'Naruto'),
+            new SyncItem('21', SyncStatus::Watching, 'Bleach'),
+            new SyncItem('22', SyncStatus::Dropped, 'One Piece'),
+        ], $items);
+    }
+
+    public function testPullPaginatesUntilAShortPage(): void
+    {
+        $fullPage = array_fill(0, 50, ['anime' => ['id' => '1', 'name' => 'Filler'], 'status' => 'planned']);
+        $shortPage = [['anime' => ['id' => '2', 'name' => 'Last'], 'status' => 'completed']];
+
+        $calls = 0;
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturnCallback(
+            function () use (&$calls, $fullPage, $shortPage): array {
+                ++$calls;
+
+                return ['userRates' => $calls === 1 ? $fullPage : $shortPage];
+            },
+        );
+
+        $filler = $this->buildFiller($client, null, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertCount(51, $items);
+        self::assertSame(2, $calls);
+    }
+
+    public function testPullIsLazyAndOnlyFetchesPagesAsTheyAreConsumed(): void
+    {
+        $fullPage = array_fill(0, 50, ['anime' => ['id' => '1', 'name' => 'Filler'], 'status' => 'planned']);
+
+        $calls = 0;
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturnCallback(
+            function () use (&$calls, $fullPage): array {
+                ++$calls;
+
+                return ['userRates' => $fullPage];
+            },
+        );
+
+        $filler = $this->buildFiller($client, null, $this->realAuthRetrier('the-token'));
+
+        $generator = $filler->pull();
+        self::assertSame(0, $calls, 'pull() must not issue any request before the caller starts iterating');
+
+        $generator->current();
+        self::assertSame(1, $calls, 'the first page is fetched once the caller asks for the first item');
+    }
+
+    private function realAuthRetrier(string $bearer): ShikimoriAuthRetrier
+    {
+        $oauth = $this->createMock(ShikimoriOAuthClient::class);
+        $oauth->method('accessToken')->willReturn($bearer);
+        $oauth->expects(self::never())->method('refreshAccessToken');
+
+        return new ShikimoriAuthRetrier($oauth);
+    }
+
+    private function buildFiller(
+        GraphQlClient $client,
+        ?ShikimoriRestClient $restClient = null,
+        ?ShikimoriAuthRetrier $authRetrier = null,
+    ): ShikimoriFiller {
+        return new ShikimoriFiller(
+            $client,
+            $restClient ?? $this->createMock(ShikimoriRestClient::class),
+            $authRetrier ?? $this->createMock(ShikimoriAuthRetrier::class),
+            $this->stubOwnManifest(),
+        );
     }
 
     private function stubOwnManifest(): OwnManifestInterface
