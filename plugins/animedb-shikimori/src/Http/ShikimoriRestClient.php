@@ -128,7 +128,7 @@ class ShikimoriRestClient
      */
     public function updateUserRate(string $bearer, string $rateId, string $status): void
     {
-        $this->request('PATCH', self::USER_RATES_PATH.'/'.$rateId, [
+        $this->request('PATCH', self::USER_RATES_PATH.'/'.rawurlencode($rateId), [
             'user_rate' => ['status' => $status],
         ], $bearer);
     }
