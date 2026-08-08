@@ -27,30 +27,40 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori;
 
-use AnimeDb\PluginContracts\Filler\FillerInterface;
 use AnimeDb\PluginContracts\Filler\PluginAnimeData;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
+use AnimeDb\PluginContracts\Sync\SyncInterface;
+use AnimeDb\PluginContracts\Sync\SyncItem;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
+use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlRequestException;
+use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use AnimeDb\Plugins\AnimedbShikimori\Mapping\AnimeTypeMapper;
 use AnimeDb\Plugins\AnimedbShikimori\Mapping\DescriptionCleaner;
 use AnimeDb\Plugins\AnimedbShikimori\Mapping\GenreMapper;
+use AnimeDb\Plugins\AnimedbShikimori\Mapping\SyncStatusMapper;
+use AnimeDb\Plugins\AnimedbShikimori\Sync\ShikimoriAuthRetrier;
 
 /**
- * Источник Shikimori — поиск и заполнение карточек аниме через анонимные чтения GraphQL API
- * Shikimori (без OAuth: `find()`/`findById()` не читают и не пишут пользовательские данные).
+ * Источник Shikimori: поиск/заполнение карточек аниме через анонимные чтения GraphQL API
+ * (`find()`/`findById()`, не читают и не пишут пользовательские данные), плюс — с фазы 4 —
+ * синхронизация watch-листа пользователя (`push()`/`pull()`), использующая OAuth-токен фазы 3.
  *
- * Фаза 1 плагина: {@see self::resolveExternalId()} и поиск/заполнение полностью
- * реализованы. Вне рамок этой фазы — OAuth, страница настроек (endpoint читается из
- * {@see \AnimeDb\PluginContracts\Settings\SettingsStoreInterface} уже сейчас, но форму для его
- * редактирования даёт следующая фаза), sync, виджеты.
+ * Единственный filler-совместимый сервис плагина (`SyncInterface extends FillerInterface`):
+ * второй filler-класс на тот же id плагина дал бы коллизию тегов `app.filler`/`app.sync` на
+ * хосте, поэтому push()/pull() добавлены сюда же, а не в отдельный класс.
+ *
+ * Тяжёлый HTTP вынесен в helper-сервисы: {@see GraphQlClient} (анонимные reads фазы 1 и
+ * authed pull) и {@see ShikimoriRestClient} (push, REST v2). Общая для обоих транспортов
+ * 401→refresh→retry-политика — в {@see ShikimoriAuthRetrier}.
  *
  * Маппинг словарей жанров/тем/демографии не полагается на `genres[].kind` Shikimori — см. класс
- * {@see GenreMapper}.
+ * {@see GenreMapper}. Маппинг статусов синка — {@see SyncStatusMapper}.
  */
-final class ShikimoriFiller implements FillerInterface
+final class ShikimoriFiller implements SyncInterface
 {
     private const SEARCH_LIMIT = 15;
+    private const USER_RATES_PAGE_LIMIT = 50;
 
     private const SEARCH_QUERY = <<<'GRAPHQL'
         query($search: String, $limit: Int) {
@@ -88,8 +98,39 @@ final class ShikimoriFiller implements FillerInterface
         }
         GRAPHQL;
 
+    /**
+     * `userId` deliberately omitted: Shikimori defaults it to the Bearer-authenticated user
+     * (confirmed via live GraphQL introspection against `shikimori.io` on 2026-08-08 — the
+     * argument's own schema description reads "ID of current user is used by default").
+     */
+    private const USER_RATES_QUERY = <<<'GRAPHQL'
+        query($page: PositiveInt, $limit: PositiveInt) {
+            userRates(page: $page, limit: $limit) {
+                anime { id name }
+                status
+            }
+        }
+        GRAPHQL;
+
+    /**
+     * Unlike {@see self::USER_RATES_QUERY}, Shikimori's REST v2 `user_rates` `create` action
+     * does require `user_id` in the body (confirmed via its live, unauthenticated API doc JSON
+     * at `/api/doc/2.0/user_rates` on 2026-08-08 — `user_rate[user_id]` is listed
+     * `"required": true`, unlike every other field there). {@see self::resolveUserId()}
+     * resolves it once per {@see ShikimoriFiller} instance via this query.
+     */
+    private const CURRENT_USER_QUERY = <<<'GRAPHQL'
+        query {
+            currentUser { id }
+        }
+        GRAPHQL;
+
+    private ?string $cachedUserId = null;
+
     public function __construct(
         private readonly GraphQlClient $client,
+        private readonly ShikimoriRestClient $restClient,
+        private readonly ShikimoriAuthRetrier $authRetrier,
         private readonly OwnManifestInterface $ownManifest,
     ) {
     }
@@ -201,6 +242,128 @@ final class ShikimoriFiller implements FillerInterface
             'episodesCount',
             'cover',
         ];
+    }
+
+    /**
+     * Sets $item's status on Shikimori via REST v2 find-or-create: `POST /api/v2/user_rates` is
+     * create-only, so an existing `user_rate` for the target must be found first and updated
+     * with `PATCH` instead. This also makes the call idempotent — a repeated push of the same
+     * status resolves to the existing rate and `PATCH`es it to the same value, a no-op — which
+     * is what makes it safe for the host's push message handler to retry.
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function push(SyncItem $item): void
+    {
+        $status = SyncStatusMapper::toShikimori($item->status);
+
+        $existingId = $this->authRetrier->call(
+            fn (string $bearer): ?string => $this->restClient->findUserRateId($bearer, $this->resolveUserId($bearer), $item->externalId),
+        );
+
+        if ($existingId !== null) {
+            $this->authRetrier->call(function (string $bearer) use ($existingId, $status): void {
+                $this->restClient->updateUserRate($bearer, $existingId, $status);
+            });
+
+            return;
+        }
+
+        $this->authRetrier->call(function (string $bearer) use ($item, $status): void {
+            $this->restClient->createUserRate($bearer, $this->resolveUserId($bearer), $item->externalId, $status);
+        });
+    }
+
+    /**
+     * Pulls the current user's watch list from Shikimori's GraphQL `userRates`, page by page.
+     *
+     * `SyncInterface::pull()` takes no heartbeat callback, so this method's own laziness is
+     * what stands in for one: implemented as a generator, it yields control back to the caller
+     * after every item (and issues its one HTTP request per page only when the caller asks for
+     * the next one), rather than fetching the whole list up front.
+     *
+     * @return iterable<SyncItem>
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function pull(): iterable
+    {
+        $page = 1;
+
+        while (true) {
+            $variables = ['page' => $page, 'limit' => self::USER_RATES_PAGE_LIMIT];
+            $data = $this->authRetrier->call(
+                fn (string $bearer): array => $this->client->query(self::USER_RATES_QUERY, $variables, null, $bearer),
+            );
+            $userRates = \is_array($data['userRates'] ?? null) ? $data['userRates'] : [];
+
+            foreach ($userRates as $userRate) {
+                $item = self::buildSyncItem($userRate);
+                if ($item !== null) {
+                    yield $item;
+                }
+            }
+
+            if (\count($userRates) < self::USER_RATES_PAGE_LIMIT) {
+                return;
+            }
+
+            ++$page;
+        }
+    }
+
+    /**
+     * Resolves the current user's numeric Shikimori id, needed by the REST v2 `create` action
+     * (see {@see self::CURRENT_USER_QUERY}'s doc). Cached for the lifetime of this instance: the
+     * id itself does not change across a token refresh, so it is fetched at most once even
+     * across many {@see self::push()} calls in the same sync run.
+     */
+    private function resolveUserId(string $bearer): string
+    {
+        if ($this->cachedUserId !== null) {
+            return $this->cachedUserId;
+        }
+
+        $data = $this->client->query(self::CURRENT_USER_QUERY, [], null, $bearer);
+        $id = $data['currentUser']['id'] ?? null;
+
+        if (!\is_string($id) && !\is_int($id)) {
+            throw new GraphQlRequestException('Shikimori GraphQL API did not return the current user id.');
+        }
+
+        return $this->cachedUserId = (string) $id;
+    }
+
+    /**
+     * @param mixed $userRate a single `UserRate` element of {@see self::USER_RATES_QUERY}'s result
+     */
+    private static function buildSyncItem(mixed $userRate): ?SyncItem
+    {
+        if (!\is_array($userRate)) {
+            return null;
+        }
+
+        $anime = \is_array($userRate['anime'] ?? null) ? $userRate['anime'] : null;
+        $externalId = $anime['id'] ?? null;
+        $title = $anime['name'] ?? null;
+        $shikimoriStatus = $userRate['status'] ?? null;
+
+        if (
+            (!\is_string($externalId) && !\is_int($externalId))
+            || !\is_string($title) || $title === ''
+            || !\is_string($shikimoriStatus)
+        ) {
+            return null;
+        }
+
+        $status = SyncStatusMapper::fromShikimori($shikimoriStatus);
+        if ($status === null) {
+            return null;
+        }
+
+        return new SyncItem((string) $externalId, $status, $title);
     }
 
     /**
