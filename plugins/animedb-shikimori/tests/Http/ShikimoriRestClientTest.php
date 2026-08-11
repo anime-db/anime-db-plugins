@@ -252,6 +252,66 @@ final class ShikimoriRestClientTest extends TestCase
         $client->findUserRateId('a-token', '1', '20');
     }
 
+    public function testGetSimilarAnimesReturnsDecodedList(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [
+            ['id' => 205, 'name' => 'Samurai Champloo', 'russian' => 'Самурай Чамплу'],
+        ]));
+
+        $client = $this->buildClient($httpClient);
+
+        self::assertSame(
+            [['id' => 205, 'name' => 'Samurai Champloo', 'russian' => 'Самурай Чамплу']],
+            $client->getSimilarAnimes('1'),
+        );
+    }
+
+    public function testGetSimilarAnimesSendsNoAuthorizationHeader(): void
+    {
+        $headers = [];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(
+            function (string $name, string $value) use (&$headers, $request): RequestInterface {
+                $headers[$name] = $value;
+
+                return $request;
+            },
+        );
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('GET', 'https://shikimori.io/api/animes/1/similar')
+            ->willReturn($request);
+
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturn($this->createMock(StreamInterface::class));
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, []));
+
+        $client = new ShikimoriRestClient(
+            $httpClient,
+            $requestFactory,
+            $streamFactory,
+            $settings,
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+
+        $client->getSimilarAnimes('1');
+
+        self::assertArrayNotHasKey('Authorization', $headers);
+        self::assertSame(
+            \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', self::STUB_MANIFEST_ID, self::STUB_MANIFEST_VERSION),
+            $headers['User-Agent'] ?? null,
+        );
+    }
+
     public function testTransportFailureThrowsRestRequestException(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);

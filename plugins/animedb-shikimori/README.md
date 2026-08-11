@@ -5,6 +5,48 @@
 
 ## Статус
 
+**Фаза 5 — виджеты (related/similar/new).** `require.plugin-contracts` поднят до
+`^0.13` (виджетам нужен `Widget\WidgetMetadata` + `static metadata()`, добавленные в
+plugin-contracts v0.13.0). Версия самого плагина этим релизом **не бампается**
+(релиз пачкой, см. issue #44). Три отдельных класса в `src/Widget/`, все выключены
+по умолчанию (`features.related/similar/new: false` — юзер включает вручную):
+
+| Виджет    | Интерфейс                 | Источник данных                                           | Отображение                        |
+|-----------|----------------------------|-------------------------------------------------------------|-------------------------------------|
+| `related` | `Widget\EntryWidgetInterface`   | GraphQL `Anime.related` (манга-связи дропаются, сортировка по `airedOn`) | CSS-only карусель, все совпадения    |
+| `similar` | `Widget\EntryWidgetInterface`   | REST `GET /api/animes/:id/similar` (в GraphQL нет)           | CSS-only карусель, все совпадения    |
+| `new`     | `Widget\CatalogWidgetInterface` | GraphQL `animes(order: aired_on, limit: 20)`                 | список, лимит 20                     |
+
+`related`/`similar` резолвят Shikimori-id записи через `Catalog\CatalogReaderInterface`
+(`AnimeView::$externalId`, уже резолвнутый хостом для этого плагина) — анонимно, без
+Bearer. `new` — OAuth-aware: при наличии токена шлёт `mylist` (значение —
+`!planned,!watching,!rewatching,!completed,!on_hold,!dropped`, синтаксис подтверждён
+живой GraphQL-интроспекцией `MylistString`), Shikimori сам исключает уже добавленные в
+список тайтлы; без токена — анонимные новинки; токен есть, но отклонён (401/протух) —
+graceful fallback на анонимный запрос без попытки `refreshAccessToken()` (refresh — задача
+sync-пути, `Sync\ShikimoriAuthRetrier`, виджет её не переиспользует).
+
+Общий для трёх виджетов парсинг Shikimori-ссылок вынесен в
+`ExternalId\ShikimoriIdResolver` (было приватным методом `ShikimoriFiller::resolveExternalId()`,
+теперь общий статик-хелпер, чтобы regex не дублировался в четырёх местах).
+`Http\ShikimoriRestClient::getSimilarAnimes()` — новый анонимный вызов REST v1
+`/api/animes/:id/similar`; приватный `request()` клиента получил опциональный `$bearer`
+(было обязательным строковым параметром) специально для этого публичного эндпоинта.
+
+Рендер — через host-`Twig\Environment` (как и `Settings\ShikimoriSettingsPage`),
+шаблоны в `templates/widget/`: `related.html.twig`/`similar.html.twig` оборачивают
+host-хелпер `plugin/_widget_list.html.twig` в CSS-only горизонтальный скролл
+(`templates/widget/_carousel.html.twig`, инлайновый `<style>` — плагин не везёт
+отдельных ассетов), `new.html.twig` использует хелпер напрямую (обычный список, не
+карусель).
+
+Побочный эффект бампа `plugin-contracts` до v0.13.0: `Sync\SyncInterface::push()`
+сменил сигнатуру `void` → `SyncItem` (breaking, не связано с виджетами — контракт
+подрос в той же версии из-за `SyncItem::$updatedAt`/`$watchedEpisodes`).
+`ShikimoriFiller::push()` теперь возвращает то, что реально отправил (`updatedAt: null`) —
+REST v2 create/update ответы не парсятся на предмет подтверждённого таймстампа, это
+предусмотренный контрактом fallback-путь, а не urgent-доработка.
+
 **Фаза 4 — Sync (push REST v2 find-or-create, pull GraphQL `userRates`).**
 `ShikimoriFiller` реализует `Sync\SyncInterface` (plugin-contracts v0.12.0) вместо
 `FillerInterface` напрямую — единственный filler-совместимый сервис плагина (второй
@@ -115,7 +157,9 @@ HTTP-вызовы плагинов, поэтому клиент (`Http\GraphQlCl
 
 `features.filler: true` в манифесте включает функциональность филлера (поиск
 активен вместе с ней — отдельного `search`-флага нет). `features.sync: true`
-(с фазы 4) — синхронизацию watch-листа (`push()`/`pull()`).
+(с фазы 4) — синхронизацию watch-листа (`push()`/`pull()`). `features.related`/
+`features.similar`/`features.new` (с фазы 5) — по одному виджету каждый, все `false`
+по умолчанию: юзер включает нужные вручную на странице настроек виджетов хоста.
 
 ## Разработка
 
