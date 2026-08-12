@@ -1,0 +1,37 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
+settings:
+    api_endpoint:
+        label: Эндпоинт API Shikimori
+        hint: Оставьте пустым, чтобы использовать значение по умолчанию — https://shikimori.io. Укажите свой адрес, чтобы обращаться к альтернативному хосту.
+    save_button: Сохранить
+    saved_message: Сохранено.
+    account:
+        heading: Аккаунт Shikimori
+        status_authorized: Авторизован
+        status_not_authorized: Не авторизован
+        reauthorize_link: Переавторизоваться
+        disconnect_button: Отключить
+        authorize_link: Авторизоваться
+    error:
+        invalid_form: Некорректная отправка формы, обновите страницу и попробуйте снова.
+        invalid_csrf: Недействительный CSRF-токен, обновите страницу и попробуйте снова.
+        invalid_endpoint: Укажите корректный https:// адрес (например, https://shikimori.io).
+        concurrent_write: Настройки сейчас сохраняются в другом месте, попробуйте ещё раз.
+        save_failed: Не удалось сохранить настройки, попробуйте ещё раз.
+
+oauth_result:
+    page_title: Авторизация Shikimori
+    heading:
+        success: Готово
+        failure: Авторизация не завершена
+    message:
+        cancelled: Авторизация была отменена или не завершилась. Можно закрыть эту вкладку и попробовать снова из приложения.
+        failed: Не удалось завершить авторизацию в Shikimori. Попробуйте снова из приложения.
+        success: Авторизация завершена. Можно закрыть эту вкладку и вернуться в приложение.
+    warning:
+        probe_failed: Токен сохранён, но проверочный запрос к Shikimori не выполнился. Синхронизация повторит попытку позже.

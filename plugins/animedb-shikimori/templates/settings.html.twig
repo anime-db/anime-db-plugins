@@ -23,32 +23,32 @@
     <form hx-post="{{ path('animedb_shikimori_settings_save') }}" hx-target="#animedb-shikimori-settings" hx-swap="outerHTML">
         <input type="hidden" name="_token" value="{{ csrf_token('animedb_shikimori_settings_save') }}">
 
-        <label for="animedb-shikimori-api-endpoint">Shikimori API endpoint</label>
+        <label for="animedb-shikimori-api-endpoint">{{ 'settings.api_endpoint.label'|trans({}, 'animedb-shikimori') }}</label>
         <input type="text" id="animedb-shikimori-api-endpoint" name="api_endpoint" value="{{ apiEndpoint }}" placeholder="https://shikimori.io">
-        <p class="hint">Leave empty to use the default, https://shikimori.io. Use this to point at a mirror if the default is blocked.</p>
+        <p class="hint">{{ 'settings.api_endpoint.hint'|trans({}, 'animedb-shikimori') }}</p>
 
-        <button type="submit">Save</button>
+        <button type="submit">{{ 'settings.save_button'|trans({}, 'animedb-shikimori') }}</button>
     </form>
 
     {% if saved %}
-        <p class="success">Saved.</p>
+        <p class="success">{{ 'settings.saved_message'|trans({}, 'animedb-shikimori') }}</p>
     {% endif %}
     {% if error %}
-        <p class="error">{{ error }}</p>
+        <p class="error">{{ error|trans({}, 'animedb-shikimori') }}</p>
     {% endif %}
 
     <div class="oauth">
-        <h3>Shikimori account</h3>
+        <h3>{{ 'settings.account.heading'|trans({}, 'animedb-shikimori') }}</h3>
         {% if authorized %}
-            <p class="status status-authorized">Authorized</p>
-            <a href="{{ path('animedb_shikimori_oauth_start') }}">Re-authorize</a>
+            <p class="status status-authorized">{{ 'settings.account.status_authorized'|trans({}, 'animedb-shikimori') }}</p>
+            <a href="{{ path('animedb_shikimori_oauth_start') }}">{{ 'settings.account.reauthorize_link'|trans({}, 'animedb-shikimori') }}</a>
             <form hx-post="{{ path('animedb_shikimori_oauth_disconnect') }}" hx-target="#animedb-shikimori-settings" hx-swap="outerHTML">
                 <input type="hidden" name="_token" value="{{ csrf_token('animedb_shikimori_oauth_disconnect') }}">
-                <button type="submit">Disconnect</button>
+                <button type="submit">{{ 'settings.account.disconnect_button'|trans({}, 'animedb-shikimori') }}</button>
             </form>
         {% else %}
-            <p class="status status-not-authorized">Not authorized</p>
-            <a href="{{ path('animedb_shikimori_oauth_start') }}">Authorize</a>
+            <p class="status status-not-authorized">{{ 'settings.account.status_not_authorized'|trans({}, 'animedb-shikimori') }}</p>
+            <a href="{{ path('animedb_shikimori_oauth_start') }}">{{ 'settings.account.authorize_link'|trans({}, 'animedb-shikimori') }}</a>
         {% endif %}
     </div>
 </div>

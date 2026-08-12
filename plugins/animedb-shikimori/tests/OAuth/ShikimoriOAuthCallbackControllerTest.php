@@ -52,7 +52,7 @@ final class ShikimoriOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/shikimori', 'GET', ['error' => 'access_denied', 'state' => 'abc']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('cancelled', (string) $response->getContent());
+        self::assertStringContainsString('close this tab and try again', (string) $response->getContent());
     }
 
     public function testMissingCodeIsShownAsAFriendlyPageWithoutTouchingTheOAuthSession(): void
@@ -66,7 +66,7 @@ final class ShikimoriOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/shikimori', 'GET', ['state' => 'abc']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('cancelled', (string) $response->getContent());
+        self::assertStringContainsString('close this tab and try again', (string) $response->getContent());
     }
 
     public function testSuccessfulCallbackWithAWorkingProbeRendersDoneWithoutWarning(): void

@@ -24,17 +24,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Shikimori authorization</title>
+    <title>{{ 'oauth_result.page_title'|trans({}, 'animedb-shikimori') }}</title>
 </head>
 <body>
     {% if success %}
-        <h1>Done</h1>
+        <h1>{{ 'oauth_result.heading.success'|trans({}, 'animedb-shikimori') }}</h1>
     {% else %}
-        <h1>Authorization not completed</h1>
+        <h1>{{ 'oauth_result.heading.failure'|trans({}, 'animedb-shikimori') }}</h1>
     {% endif %}
-    <p>{{ message }}</p>
+    <p>{{ message|trans({}, 'animedb-shikimori') }}</p>
     {% if warning %}
-        <p class="warning">{{ warning }}</p>
+        <p class="warning">{{ warning|trans({}, 'animedb-shikimori') }}</p>
     {% endif %}
 </body>
 </html>

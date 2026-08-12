@@ -79,15 +79,15 @@ final class ShikimoriSettingsController
             $submittedToken = $request->request->getString('_token');
             $endpoint = trim($request->request->getString(SettingsFields::API_ENDPOINT));
         } catch (\Throwable) {
-            return $this->renderFragment(null, saved: false, error: 'Invalid form submission, please reload the page and try again.');
+            return $this->renderFragment(null, saved: false, error: 'settings.error.invalid_form');
         }
 
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SettingsFields::CSRF_TOKEN_ID, $submittedToken))) {
-            return $this->renderFragment(null, saved: false, error: 'Invalid CSRF token, please reload the page and try again.');
+            return $this->renderFragment(null, saved: false, error: 'settings.error.invalid_csrf');
         }
 
         if ($endpoint !== '' && !self::isPlausibleHttpsUrl($endpoint)) {
-            return $this->renderFragment($endpoint, saved: false, error: 'Enter a valid https:// URL (e.g. https://shikimori.io).');
+            return $this->renderFragment($endpoint, saved: false, error: 'settings.error.invalid_endpoint');
         }
 
         try {
@@ -101,14 +101,18 @@ final class ShikimoriSettingsController
                 return $settings;
             });
         } catch (ConcurrentWriteException) {
-            return $this->renderFragment($endpoint, saved: false, error: 'Settings are busy being saved elsewhere, please try again.');
+            return $this->renderFragment($endpoint, saved: false, error: 'settings.error.concurrent_write');
         } catch (\Throwable) {
-            return $this->renderFragment($endpoint, saved: false, error: 'Could not save settings, please try again.');
+            return $this->renderFragment($endpoint, saved: false, error: 'settings.error.save_failed');
         }
 
         return $this->renderFragment($endpoint === '' ? null : $endpoint, saved: true, error: null);
     }
 
+    /**
+     * @param ?string $error a `settings.error.*` translation key, resolved by the `trans`
+     *                       filter in `settings.html.twig`, not display text
+     */
     private function renderFragment(?string $apiEndpoint, bool $saved, ?string $error): Response
     {
         try {

@@ -34,8 +34,8 @@ use Twig\Environment;
 
 /**
  * Phase 2's settings page: a single `api_endpoint` field. Shikimori's domain has migrated before
- * (`.org` -> `.one` -> `.io`) and gets blocked by ISPs, so a user needs a way to point the plugin
- * at a mirror or proxy; {@see \AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient} already reads
+ * (`.org` -> `.one` -> `.io`), so a user may need to point the plugin at an alternative host;
+ * {@see \AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient} already reads
  * this key and falls back to the default host when it is absent.
  *
  * Phase 3 adds the OAuth status: {@see ShikimoriOAuthClient::accessToken()} `!== null` is
