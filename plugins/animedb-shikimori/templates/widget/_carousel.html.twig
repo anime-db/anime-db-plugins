@@ -1,0 +1,42 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://gnu.org GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://gnu.org>.
+ #}
+{#
+ # Shared by related.html.twig/similar.html.twig: wraps the host's `plugin/_widget_list.html.twig`
+ # helper into a CSS-only horizontal-scroll "carousel" (no JS, no separate asset file — the plugin
+ # ships no assets, so the rule lives inline here).
+ #
+ # Expects `items`, same shape as `plugin/_widget_list.html.twig` expects.
+ #}
+<div class="animedb-shikimori-carousel">
+    <style>
+        .animedb-shikimori-carousel .plugin-widget__list {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 0.75rem;
+            padding-bottom: 0.25rem;
+        }
+        .animedb-shikimori-carousel .plugin-widget__list > li {
+            flex: 0 0 auto;
+        }
+    </style>
+    {% include 'plugin/_widget_list.html.twig' with {'items': items} only %}
+</div>

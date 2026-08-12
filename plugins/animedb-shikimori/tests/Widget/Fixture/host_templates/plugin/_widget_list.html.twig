@@ -1,0 +1,21 @@
+{#
+ # Minimal stand-in for the host's real `templates/plugin/_widget_list.html.twig` (see
+ # anime-db-desktop), just enough to assert a widget's render() output against the
+ # {thumbnail, title, subtitle, url} contract that partial documents. Not a copy of the host's
+ # markup/CSS classes — this plugin does not depend on the host repository.
+ #}
+<ul class="plugin-widget__list">
+    {% for item in items %}
+        <li>
+            <a href="{{ item.url }}">
+                {% if item.thumbnail %}
+                    <img src="{{ item.thumbnail }}" alt="{{ item.title }}">
+                {% endif %}
+                <p class="title">{{ item.title }}</p>
+                {% if item.subtitle %}
+                    <p class="subtitle">{{ item.subtitle }}</p>
+                {% endif %}
+            </a>
+        </li>
+    {% endfor %}
+</ul>

@@ -36,16 +36,20 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
 /**
- * Thin client for Shikimori's `user_rates` REST v2 endpoints
- * ({@link https://shikimori.io/api/doc/2.0/user_rates}), used by {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::push()}.
+ * Thin client for Shikimori's REST API, used by
+ * {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::push()} (write endpoints, REST v2
+ * `user_rates`) and by {@see \AnimeDb\Plugins\AnimedbShikimori\Widget\SimilarWidget} (read-only,
+ * anonymous `similar` endpoint — REST v1, not covered by the GraphQL schema at all).
  * `POST /api/v2/user_rates` is create-only (Shikimori has no REST "upsert"), so a create call
  * against an already-tracked title fails; the caller is responsible for the find-or-create
  * sequence ({@see self::findUserRateId()} then {@see self::createUserRate()} or
  * {@see self::updateUserRate()}).
  *
- * Every call requires a Bearer token (Shikimori's REST v2 `user_rates` write endpoints require
- * the `user_rates` OAuth scope) — unlike {@see GraphQlClient}, this client has no anonymous
- * mode, so `$bearer` is a required parameter throughout rather than optional.
+ * The `user_rates` write endpoints require a Bearer token (the `user_rates` OAuth scope); unlike
+ * {@see GraphQlClient}, those methods therefore take `$bearer` as a required parameter rather
+ * than optional. {@see self::getSimilarAnimes()} is the one exception — Shikimori's `similar`
+ * endpoint is public, so it calls the private {@see self::request()} helper with a null bearer
+ * and no `Authorization` header is sent.
  *
  * Shares the *same* {@see RateLimiter} instance as {@see GraphQlClient} (constructor-injected,
  * not constructed here): Shikimori's 5rps/90rpm budget is enforced per IP across REST and
@@ -60,6 +64,7 @@ class ShikimoriRestClient
 {
     private const DEFAULT_ENDPOINT = 'https://shikimori.io';
     private const USER_RATES_PATH = '/api/v2/user_rates';
+    private const SIMILAR_PATH_FORMAT = '/api/animes/%s/similar';
     private const TARGET_TYPE_ANIME = 'Anime';
     private const HTTP_UNAUTHORIZED = 401;
     private const HTTP_SUCCESS_STATUS_MIN = 200;
@@ -134,17 +139,39 @@ class ShikimoriRestClient
     }
 
     /**
-     * @param array<string, mixed>|null $body
+     * Lists anime similar to $externalId, per Shikimori's public (unauthenticated)
+     * `/api/animes/:id/similar` endpoint — this data is not exposed by the GraphQL schema.
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws RestRequestException transport failure, a non-2xx status, or an unparseable
+     *                              response body
      */
-    private function request(string $method, string $path, ?array $body, string $bearer): mixed
+    public function getSimilarAnimes(string $externalId): array
+    {
+        $data = $this->request('GET', \sprintf(self::SIMILAR_PATH_FORMAT, rawurlencode($externalId)), null, null);
+
+        return \is_array($data) ? $data : [];
+    }
+
+    /**
+     * @param array<string, mixed>|null $body
+     * @param string|null               $bearer sent as `Authorization: Bearer <token>` when
+     *                                          given, omitted entirely for a public endpoint
+     *                                          (see {@see self::getSimilarAnimes()})
+     */
+    private function request(string $method, string $path, ?array $body, ?string $bearer): mixed
     {
         $this->rateLimiter->acquire();
 
         $endpoint = rtrim($this->resolveEndpoint(), '/').$path;
         $request = $this->requestFactory->createRequest($method, $endpoint)
             ->withHeader('User-Agent', $this->userAgent())
-            ->withHeader('Authorization', 'Bearer '.$bearer)
             ->withHeader('Accept', 'application/json');
+
+        if ($bearer !== null) {
+            $request = $request->withHeader('Authorization', 'Bearer '.$bearer);
+        }
 
         if ($body !== null) {
             $request = $request

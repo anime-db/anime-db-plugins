@@ -234,7 +234,9 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto'));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
+
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
     }
 
     public function testPushCreatesUserRateWhenNotYetOnTheList(): void
@@ -249,7 +251,9 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto'));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
+
+        self::assertEquals(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13), $result);
     }
 
     public function testPullMapsUserRatesToSyncItemsIncludingRewatching(): void

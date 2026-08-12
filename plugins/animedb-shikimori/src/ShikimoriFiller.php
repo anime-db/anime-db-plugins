@@ -32,6 +32,7 @@ use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncInterface;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\Plugins\AnimedbShikimori\ExternalId\ShikimoriIdResolver;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlRequestException;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
@@ -138,30 +139,11 @@ final class ShikimoriFiller implements SyncInterface
     /**
      * Распознаёт id аниме на Shikimori по уже прикреплённым к записи ссылкам.
      *
-     * Матчит домены Shikimori (`shikimori.io`/`.one`/`.org`, в т.ч. поддомены) и
-     * путь вида `/animes/<id>` или `/animes/z<id>-<slug>`, возвращает числовой id.
-     *
      * @param string[] $urls
      */
     public function resolveExternalId(array $urls): ?string
     {
-        foreach ($urls as $url) {
-            if (!is_string($url)) {
-                continue;
-            }
-
-            $host = parse_url($url, \PHP_URL_HOST);
-            if (!is_string($host) || preg_match('/(^|\.)shikimori\.(io|one|org)$/i', $host) !== 1) {
-                continue;
-            }
-
-            $path = parse_url($url, \PHP_URL_PATH);
-            if (is_string($path) && preg_match('#/animes/z?(\d+)#', $path, $matches) === 1) {
-                return $matches[1];
-            }
-        }
-
-        return null;
+        return ShikimoriIdResolver::resolve($urls);
     }
 
     /**
@@ -254,7 +236,7 @@ final class ShikimoriFiller implements SyncInterface
      * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
      *                                                                session is confirmed dead
      */
-    public function push(SyncItem $item): void
+    public function push(SyncItem $item): SyncItem
     {
         $status = SyncStatusMapper::toShikimori($item->status);
 
@@ -266,13 +248,15 @@ final class ShikimoriFiller implements SyncInterface
             $this->authRetrier->call(function (string $bearer) use ($existingId, $status): void {
                 $this->restClient->updateUserRate($bearer, $existingId, $status);
             });
-
-            return;
+        } else {
+            $this->authRetrier->call(function (string $bearer) use ($item, $status): void {
+                $this->restClient->createUserRate($bearer, $this->resolveUserId($bearer), $item->externalId, $status);
+            });
         }
 
-        $this->authRetrier->call(function (string $bearer) use ($item, $status): void {
-            $this->restClient->createUserRate($bearer, $this->resolveUserId($bearer), $item->externalId, $status);
-        });
+        // REST v2's create/update responses are not parsed for a confirmed timestamp (see
+        // SyncInterface::push()'s doc on this fallback): echo back what was actually sent.
+        return new SyncItem($item->externalId, $item->status, $item->title, null, $item->watchedEpisodes);
     }
 
     /**
