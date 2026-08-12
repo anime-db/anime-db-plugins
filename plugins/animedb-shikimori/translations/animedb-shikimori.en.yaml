@@ -1,3 +1,9 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://gnu.org GPL-3.0-or-later
+
 settings:
     api_endpoint:
         label: Shikimori API endpoint
