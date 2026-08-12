@@ -7,7 +7,7 @@
 settings:
     api_endpoint:
         label: Shikimori API endpoint
-        hint: Leave empty to use the default, https://shikimori.io. Use this to point at a mirror if the default is blocked.
+        hint: Leave empty to use the default, https://shikimori.io. Set a custom endpoint to use an alternative host.
     save_button: Save
     saved_message: Saved.
     account:

@@ -52,7 +52,7 @@ final class StubTwigFactory
      */
     private const CATALOG = [
         'settings.api_endpoint.label' => 'Shikimori API endpoint',
-        'settings.api_endpoint.hint' => 'Leave empty to use the default, https://shikimori.io. Use this to point at a mirror if the default is blocked.',
+        'settings.api_endpoint.hint' => 'Leave empty to use the default, https://shikimori.io. Set a custom endpoint to use an alternative host.',
         'settings.save_button' => 'Save',
         'settings.saved_message' => 'Saved.',
         'settings.account.heading' => 'Shikimori account',
