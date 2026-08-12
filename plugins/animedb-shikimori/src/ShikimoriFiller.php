@@ -109,6 +109,8 @@ final class ShikimoriFiller implements SyncInterface
             userRates(page: $page, limit: $limit) {
                 anime { id name }
                 status
+                episodes
+                updatedAt
             }
         }
         GRAPHQL;
@@ -227,11 +229,12 @@ final class ShikimoriFiller implements SyncInterface
     }
 
     /**
-     * Sets $item's status on Shikimori via REST v2 find-or-create: `POST /api/v2/user_rates` is
-     * create-only, so an existing `user_rate` for the target must be found first and updated
-     * with `PATCH` instead. This also makes the call idempotent — a repeated push of the same
-     * status resolves to the existing rate and `PATCH`es it to the same value, a no-op — which
-     * is what makes it safe for the host's push message handler to retry.
+     * Sets $item's status and watched episode count on Shikimori via REST v2 find-or-create:
+     * `POST /api/v2/user_rates` is create-only, so an existing `user_rate` for the target must be
+     * found first and updated with `PATCH` instead. This also makes the call idempotent — a
+     * repeated push of the same (status, watchedEpisodes) resolves to the existing rate and
+     * `PATCH`es it to the same values, a no-op — which is what makes it safe for the host's push
+     * message handler to retry.
      *
      * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
      *                                                                session is confirmed dead
@@ -245,18 +248,22 @@ final class ShikimoriFiller implements SyncInterface
         );
 
         if ($existingId !== null) {
-            $this->authRetrier->call(function (string $bearer) use ($existingId, $status): void {
-                $this->restClient->updateUserRate($bearer, $existingId, $status);
-            });
+            $response = $this->authRetrier->call(
+                fn (string $bearer): array => $this->restClient->updateUserRate($bearer, $existingId, $status, $item->watchedEpisodes),
+            );
         } else {
-            $this->authRetrier->call(function (string $bearer) use ($item, $status): void {
-                $this->restClient->createUserRate($bearer, $this->resolveUserId($bearer), $item->externalId, $status);
-            });
+            $response = $this->authRetrier->call(
+                fn (string $bearer): array => $this->restClient->createUserRate($bearer, $this->resolveUserId($bearer), $item->externalId, $status, $item->watchedEpisodes),
+            );
         }
 
-        // REST v2's create/update responses are not parsed for a confirmed timestamp (see
-        // SyncInterface::push()'s doc on this fallback): echo back what was actually sent.
-        return new SyncItem($item->externalId, $item->status, $item->title, null, $item->watchedEpisodes);
+        // Prefer the source-confirmed `updated_at`/`episodes` from the REST v2 response (see
+        // SyncInterface::push()'s doc); fall back to what was actually sent when the response
+        // does not carry them.
+        $updatedAt = self::parseDateTime($response['updated_at'] ?? null);
+        $watchedEpisodes = \is_int($response['episodes'] ?? null) ? $response['episodes'] : $item->watchedEpisodes;
+
+        return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
     }
 
     /**
@@ -347,7 +354,9 @@ final class ShikimoriFiller implements SyncInterface
             return null;
         }
 
-        return new SyncItem((string) $externalId, $status, $title);
+        $watchedEpisodes = \is_int($userRate['episodes'] ?? null) ? $userRate['episodes'] : null;
+
+        return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($userRate['updatedAt'] ?? null), $watchedEpisodes);
     }
 
     /**
@@ -420,5 +429,24 @@ final class ShikimoriFiller implements SyncInterface
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $raw);
 
         return $date !== false && $date->format('Y-m-d') === $raw ? $date : null;
+    }
+
+    /**
+     * Parses a full ISO 8601 timestamp, as returned by both GraphQL's `userRates.updatedAt`
+     * and REST v2's `updated_at`. Unlike {@see self::parseDate()}, the exact format is not
+     * re-validated by round-tripping — Shikimori's own timestamp formatting is trusted, so any
+     * string {@see \DateTimeImmutable} can parse is accepted.
+     */
+    private static function parseDateTime(mixed $raw): ?\DateTimeImmutable
+    {
+        if (!\is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($raw);
+        } catch (\Exception) {
+            return null;
+        }
     }
 }
