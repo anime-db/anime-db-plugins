@@ -230,16 +230,17 @@ final class ShikimoriFillerTest extends TestCase
         $restClient = $this->createMock(ShikimoriRestClient::class);
         $restClient->method('findUserRateId')->with('the-token', '7', '20')->willReturn('42');
         $restClient->expects(self::once())->method('updateUserRate')
-            ->with('the-token', '42', 'watching', 42)
-            ->willReturn(['id' => 42, 'status' => 'watching', 'episodes' => 42, 'updated_at' => '2026-08-10T12:00:00.000+03:00']);
+            ->with('the-token', '42', 'watching', 999)
+            ->willReturn(['id' => 42, 'status' => 'watching', 'episodes' => 220, 'updated_at' => '2026-08-10T12:00:00.000+03:00']);
         $restClient->expects(self::never())->method('createUserRate');
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
+        // Shikimori clamps `episodes` to the title's actual episode count: we send 999, it comes back 220.
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 999));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 42),
+            new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 220),
             $result,
         );
     }
