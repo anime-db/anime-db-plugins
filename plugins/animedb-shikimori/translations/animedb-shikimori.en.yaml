@@ -1,0 +1,31 @@
+settings:
+    api_endpoint:
+        label: Shikimori API endpoint
+        hint: Leave empty to use the default, https://shikimori.io. Use this to point at a mirror if the default is blocked.
+    save_button: Save
+    saved_message: Saved.
+    account:
+        heading: Shikimori account
+        status_authorized: Authorized
+        status_not_authorized: Not authorized
+        reauthorize_link: Re-authorize
+        disconnect_button: Disconnect
+        authorize_link: Authorize
+    error:
+        invalid_form: Invalid form submission, please reload the page and try again.
+        invalid_csrf: Invalid CSRF token, please reload the page and try again.
+        invalid_endpoint: Enter a valid https:// URL (e.g. https://shikimori.io).
+        concurrent_write: Settings are busy being saved elsewhere, please try again.
+        save_failed: Could not save settings, please try again.
+
+oauth_result:
+    page_title: Shikimori authorization
+    heading:
+        success: Done
+        failure: Authorization not completed
+    message:
+        cancelled: Authorization was cancelled or did not complete. You can close this tab and try again from the app.
+        failed: Could not complete Shikimori authorization. Please try again from the app.
+        success: Authorization complete. You can close this tab and return to the app.
+    warning:
+        probe_failed: The token was saved, but a verification request to Shikimori did not succeed. Syncing will retry it later.

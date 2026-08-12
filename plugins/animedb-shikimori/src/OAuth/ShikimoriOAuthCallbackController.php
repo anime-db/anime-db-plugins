@@ -58,10 +58,10 @@ use Twig\Environment;
 #[AsController]
 final class ShikimoriOAuthCallbackController
 {
-    private const CANCELLED_MESSAGE = 'Authorization was cancelled or did not complete. You can close this tab and try again from the app.';
-    private const FAILED_MESSAGE = 'Could not complete Shikimori authorization. Please try again from the app.';
-    private const SUCCESS_MESSAGE = 'Authorization complete. You can close this tab and return to the app.';
-    private const PROBE_WARNING_MESSAGE = 'The token was saved, but a verification request to Shikimori did not succeed. Syncing will retry it later.';
+    private const CANCELLED_MESSAGE = 'oauth_result.message.cancelled';
+    private const FAILED_MESSAGE = 'oauth_result.message.failed';
+    private const SUCCESS_MESSAGE = 'oauth_result.message.success';
+    private const PROBE_WARNING_MESSAGE = 'oauth_result.warning.probe_failed';
 
     public function __construct(
         private readonly ShikimoriOAuthClient $oauth,
@@ -99,6 +99,11 @@ final class ShikimoriOAuthCallbackController
         );
     }
 
+    /**
+     * @param string  $message a `oauth_result.message.*` translation key, resolved by
+     *                         the `trans` filter in `oauth_result.html.twig`, not display text
+     * @param ?string $warning a `oauth_result.warning.*` translation key, same as $message
+     */
     private function renderResult(bool $success, string $message, ?string $warning = null): Response
     {
         try {
@@ -108,7 +113,7 @@ final class ShikimoriOAuthCallbackController
                 'warning' => $warning,
             ]);
         } catch (\Throwable) {
-            return new Response($message);
+            return new Response('Could not display the authorization result.');
         }
 
         return new Response($html);
