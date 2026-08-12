@@ -106,36 +106,59 @@ class ShikimoriRestClient
 
     /**
      * Creates a new `user_rate` for an anime target. `user_id` is required by Shikimori's REST
-     * v2 `create` action (unlike `update`, it is not inferred from the Bearer token).
+     * v2 `create` action (unlike `update`, it is not inferred from the Bearer token). `$episodes`
+     * (watched episode count) is omitted from the body entirely when null, rather than sent as
+     * `0` — the caller is responsible for that distinction (see
+     * {@see \AnimeDb\PluginContracts\Sync\SyncItem::$watchedEpisodes}).
+     *
+     * @return array<string, mixed> the decoded response body (the created `user_rate`), used by
+     *                               the caller to read back Shikimori's confirmed `updated_at`
+     *                               and `episodes`
      *
      * @throws UnauthorizedHttpException the request got HTTP 401 back
      * @throws RestRequestException      transport failure, another non-2xx status, or an
      *                                   unparseable response body
      */
-    public function createUserRate(string $bearer, string $userId, string $targetId, string $status): void
+    public function createUserRate(string $bearer, string $userId, string $targetId, string $status, ?int $episodes = null): array
     {
-        $this->request('POST', self::USER_RATES_PATH, [
-            'user_rate' => [
-                'user_id' => $userId,
-                'target_id' => $targetId,
-                'target_type' => self::TARGET_TYPE_ANIME,
-                'status' => $status,
-            ],
-        ], $bearer);
+        $userRate = [
+            'user_id' => $userId,
+            'target_id' => $targetId,
+            'target_type' => self::TARGET_TYPE_ANIME,
+            'status' => $status,
+        ];
+
+        if ($episodes !== null) {
+            $userRate['episodes'] = $episodes;
+        }
+
+        $data = $this->request('POST', self::USER_RATES_PATH, ['user_rate' => $userRate], $bearer);
+
+        return \is_array($data) ? $data : [];
     }
 
     /**
-     * Updates the status of an existing `user_rate`.
+     * Updates the status (and, when given, the watched episode count) of an existing `user_rate`.
+     *
+     * @return array<string, mixed> the decoded response body (the updated `user_rate`), used by
+     *                               the caller to read back Shikimori's confirmed `updated_at`
+     *                               and `episodes`
      *
      * @throws UnauthorizedHttpException the request got HTTP 401 back
      * @throws RestRequestException      transport failure, another non-2xx status, or an
      *                                   unparseable response body
      */
-    public function updateUserRate(string $bearer, string $rateId, string $status): void
+    public function updateUserRate(string $bearer, string $rateId, string $status, ?int $episodes = null): array
     {
-        $this->request('PATCH', self::USER_RATES_PATH.'/'.rawurlencode($rateId), [
-            'user_rate' => ['status' => $status],
-        ], $bearer);
+        $userRate = ['status' => $status];
+
+        if ($episodes !== null) {
+            $userRate['episodes'] = $episodes;
+        }
+
+        $data = $this->request('PATCH', self::USER_RATES_PATH.'/'.rawurlencode($rateId), ['user_rate' => $userRate], $bearer);
+
+        return \is_array($data) ? $data : [];
     }
 
     /**

@@ -114,6 +114,54 @@ final class ShikimoriRestClientTest extends TestCase
         );
     }
 
+    public function testCreateUserRateSendsEpisodesWhenGiven(): void
+    {
+        $body = null;
+
+        $request = $this->fluentRequest();
+        $request->method('withBody')->willReturnCallback(function (StreamInterface $stream) use ($request, &$body): RequestInterface {
+            $body = (string) $stream;
+
+            return $request;
+        });
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturnCallback(
+            fn (string $content) => $this->stringStream($content),
+        );
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn(
+            $this->jsonResponse(201, ['id' => 1, 'status' => 'watching', 'episodes' => 13, 'updated_at' => '2026-08-10T12:00:00.000+03:00']),
+        );
+
+        $client = new ShikimoriRestClient(
+            $httpClient,
+            $requestFactory,
+            $streamFactory,
+            $settings,
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+
+        $response = $client->createUserRate('a-token', '7', '20', 'watching', 13);
+
+        self::assertSame(
+            ['user_rate' => ['user_id' => '7', 'target_id' => '20', 'target_type' => 'Anime', 'status' => 'watching', 'episodes' => 13]],
+            json_decode((string) $body, true, 512, \JSON_THROW_ON_ERROR),
+        );
+        self::assertSame(
+            ['id' => 1, 'status' => 'watching', 'episodes' => 13, 'updated_at' => '2026-08-10T12:00:00.000+03:00'],
+            $response,
+        );
+    }
+
     public function testUpdateUserRateSendsPatchWithOnlyStatus(): void
     {
         $body = null;
@@ -156,6 +204,54 @@ final class ShikimoriRestClientTest extends TestCase
         self::assertSame(
             ['user_rate' => ['status' => 'completed']],
             json_decode((string) $body, true, 512, \JSON_THROW_ON_ERROR),
+        );
+    }
+
+    public function testUpdateUserRateSendsEpisodesWhenGiven(): void
+    {
+        $body = null;
+
+        $request = $this->fluentRequest();
+        $request->method('withBody')->willReturnCallback(function (StreamInterface $stream) use ($request, &$body): RequestInterface {
+            $body = (string) $stream;
+
+            return $request;
+        });
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturnCallback(
+            fn (string $content) => $this->stringStream($content),
+        );
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn(
+            $this->jsonResponse(200, ['id' => 42, 'status' => 'completed', 'episodes' => 220, 'updated_at' => '2026-08-10T12:10:00.000+03:00']),
+        );
+
+        $client = new ShikimoriRestClient(
+            $httpClient,
+            $requestFactory,
+            $streamFactory,
+            $settings,
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+
+        $response = $client->updateUserRate('a-token', '42', 'completed', 220);
+
+        self::assertSame(
+            ['user_rate' => ['status' => 'completed', 'episodes' => 220]],
+            json_decode((string) $body, true, 512, \JSON_THROW_ON_ERROR),
+        );
+        self::assertSame(
+            ['id' => 42, 'status' => 'completed', 'episodes' => 220, 'updated_at' => '2026-08-10T12:10:00.000+03:00'],
+            $response,
         );
     }
 

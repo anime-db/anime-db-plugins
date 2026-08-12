@@ -229,14 +229,19 @@ final class ShikimoriFillerTest extends TestCase
 
         $restClient = $this->createMock(ShikimoriRestClient::class);
         $restClient->method('findUserRateId')->with('the-token', '7', '20')->willReturn('42');
-        $restClient->expects(self::once())->method('updateUserRate')->with('the-token', '42', 'watching');
+        $restClient->expects(self::once())->method('updateUserRate')
+            ->with('the-token', '42', 'watching', 42)
+            ->willReturn(['id' => 42, 'status' => 'watching', 'episodes' => 42, 'updated_at' => '2026-08-10T12:00:00.000+03:00']);
         $restClient->expects(self::never())->method('createUserRate');
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
         $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
+        self::assertEquals(
+            new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 42),
+            $result,
+        );
     }
 
     public function testPushCreatesUserRateWhenNotYetOnTheList(): void
@@ -246,14 +251,35 @@ final class ShikimoriFillerTest extends TestCase
 
         $restClient = $this->createMock(ShikimoriRestClient::class);
         $restClient->method('findUserRateId')->willReturn(null);
-        $restClient->expects(self::once())->method('createUserRate')->with('the-token', '7', '20', 'completed');
+        $restClient->expects(self::once())->method('createUserRate')
+            ->with('the-token', '7', '20', 'completed', 13)
+            ->willReturn(['id' => 1, 'status' => 'completed', 'episodes' => 13, 'updated_at' => '2026-08-10T12:05:00.000+03:00']);
         $restClient->expects(self::never())->method('updateUserRate');
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
         $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13), $result);
+        self::assertEquals(
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', new \DateTimeImmutable('2026-08-10T12:05:00.000+03:00'), 13),
+            $result,
+        );
+    }
+
+    public function testPushFallsBackToSentValuesWhenRestResponseOmitsConfirmation(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findUserRateId')->willReturn('42');
+        $restClient->method('updateUserRate')->willReturn(['id' => 42, 'status' => 'watching']);
+
+        $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
+
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
+
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
     }
 
     public function testPullMapsUserRatesToSyncItemsIncludingRewatching(): void
@@ -276,6 +302,30 @@ final class ShikimoriFillerTest extends TestCase
             new SyncItem('21', SyncStatus::Watching, 'Bleach'),
             new SyncItem('22', SyncStatus::Dropped, 'One Piece'),
         ], $items);
+    }
+
+    public function testPullMapsUpdatedAtAndWatchedEpisodes(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn([
+            'userRates' => [
+                [
+                    'anime' => ['id' => '20', 'name' => 'Naruto'],
+                    'status' => 'watching',
+                    'episodes' => 55,
+                    'updatedAt' => '2026-08-10T09:30:00.000+03:00',
+                ],
+            ],
+        ]);
+
+        $filler = $this->buildFiller($client, null, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertEquals(
+            [new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T09:30:00.000+03:00'), 55)],
+            $items,
+        );
     }
 
     public function testPullPaginatesUntilAShortPage(): void
