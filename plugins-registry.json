@@ -1,5 +1,5 @@
 {
-    "sequence": 10,
+    "sequence": 11,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -16,12 +16,15 @@
                 "author": "AnimeDB",
                 "features": {
                     "filler": true,
-                    "sync": true
+                    "sync": true,
+                    "related": false,
+                    "similar": false,
+                    "new": false
                 },
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.1",
-                    "plugin-contracts": "^0.12"
+                    "plugin-contracts": "^0.13"
                 }
             },
             "versions": [
