@@ -37,13 +37,13 @@ use PHPUnit\Framework\TestCase;
 
 final class RelatedWidgetTest extends TestCase
 {
-    public function testMetadataReturnsExpectedNameTitleAndDescription(): void
+    public function testMetadataReturnsExpectedNameTitleKeyAndDescriptionKey(): void
     {
         $metadata = RelatedWidget::metadata();
 
         self::assertSame('related', $metadata->name);
-        self::assertNotSame('', $metadata->title);
-        self::assertNotSame('', $metadata->description);
+        self::assertSame('widget.related.title', $metadata->titleKey);
+        self::assertSame('widget.related.description', $metadata->descriptionKey);
     }
 
     public function testResolveExternalIdRecognizesShikimoriUrls(): void

@@ -83,8 +83,8 @@ final class NewWidget implements CatalogWidgetInterface
     {
         return new WidgetMetadata(
             'new',
-            'Новинки Shikimori',
-            'Показывает недавно вышедшие аниме; при подключённом аккаунте Shikimori скрывает тайтлы, уже добавленные в список.',
+            'widget.new.title',
+            'widget.new.description',
         );
     }
 

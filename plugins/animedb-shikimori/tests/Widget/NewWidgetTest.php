@@ -36,13 +36,13 @@ use PHPUnit\Framework\TestCase;
 
 final class NewWidgetTest extends TestCase
 {
-    public function testMetadataReturnsExpectedNameTitleAndDescription(): void
+    public function testMetadataReturnsExpectedNameTitleKeyAndDescriptionKey(): void
     {
         $metadata = NewWidget::metadata();
 
         self::assertSame('new', $metadata->name);
-        self::assertNotSame('', $metadata->title);
-        self::assertNotSame('', $metadata->description);
+        self::assertSame('widget.new.title', $metadata->titleKey);
+        self::assertSame('widget.new.description', $metadata->descriptionKey);
     }
 
     public function testRenderSendsAnonymousQueryWithoutMylistWhenNoTokenIsStored(): void

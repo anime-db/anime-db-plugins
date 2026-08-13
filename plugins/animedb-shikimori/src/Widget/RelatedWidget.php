@@ -82,8 +82,8 @@ final class RelatedWidget implements EntryWidgetInterface
     {
         return new WidgetMetadata(
             'related',
-            'Связанные аниме',
-            'Показывает сиквелы, приквелы, адаптации и другие связанные тайтлы по данным Shikimori.',
+            'widget.related.title',
+            'widget.related.description',
         );
     }
 

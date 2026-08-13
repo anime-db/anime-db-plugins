@@ -24,6 +24,17 @@ settings:
         concurrent_write: Settings are busy being saved elsewhere, please try again.
         save_failed: Could not save settings, please try again.
 
+widget:
+    related:
+        title: Related anime
+        description: Shows sequels, prequels, adaptations, and other titles related by Shikimori's data.
+    similar:
+        title: Similar anime
+        description: Shows similar titles picked by Shikimori.
+    new:
+        title: Shikimori new releases
+        description: Shows recently aired anime; when a Shikimori account is connected, titles already on the list are hidden.
+
 oauth_result:
     page_title: Shikimori authorization
     heading:
