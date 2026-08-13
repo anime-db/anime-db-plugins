@@ -5,7 +5,7 @@
  *
  * @author    Peter Gribanov <info@peter-gribanov.ru>
  * @copyright Copyright (c) 2026, Peter Gribanov
- * @license   https://gnu.org GPL-3.0-or-later
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
  */
 
 /*
@@ -20,7 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://gnu.org>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 declare(strict_types=1);
@@ -83,9 +83,18 @@ final class PluginZipBuilder
     private const FIXED_UNIX_MODE = 0o100644;
 
     /**
-     * Builds the archive and returns its sha256 hex digest.
+     * Archive-root name for the injected monorepo LICENSE (GPL-3.0 full text). A plugin does
+     * not ship its own copy, so the same repository-root LICENSE is added to every archive.
      */
-    public function build(string $pluginDir, string $outZip): string
+    private const LICENSE_ENTRY_NAME = 'LICENSE';
+
+    /**
+     * Builds the archive and returns its sha256 hex digest.
+     *
+     * When $licenseFile is given it is added to the archive root as `LICENSE`, so the
+     * distributed plugin ships the full GPL-3.0 text its file headers reference (GPLv3 §4).
+     */
+    public function build(string $pluginDir, string $outZip, ?string $licenseFile = null): string
     {
         $pluginDir = rtrim($pluginDir, '/');
 
@@ -93,9 +102,25 @@ final class PluginZipBuilder
             throw new \RuntimeException(\sprintf('Plugin directory "%s" does not exist.', $pluginDir));
         }
 
+        if ($licenseFile !== null && !is_file($licenseFile)) {
+            throw new \RuntimeException(\sprintf('License file "%s" does not exist.', $licenseFile));
+        }
+
         if (is_file($outZip)) {
             unlink($outZip);
         }
+
+        // archive-entry name => absolute source path. The injected LICENSE is merged into the
+        // same map and the whole thing is re-sorted, so the archive entry order — and thus the
+        // sha256 — stays deterministic regardless of where "LICENSE" falls alphabetically.
+        $entries = [];
+        foreach (self::collectFiles($pluginDir) as $relativePath) {
+            $entries[$relativePath] = $pluginDir.'/'.$relativePath;
+        }
+        if ($licenseFile !== null) {
+            $entries[self::LICENSE_ENTRY_NAME] = $licenseFile;
+        }
+        ksort($entries, SORT_STRING);
 
         // libzip converts the Unix timestamp passed to setMtimeName() into the entry's DOS
         // date/time field via localtime(), so the resulting bytes (and thus the sha256) would
@@ -109,13 +134,13 @@ final class PluginZipBuilder
                 throw new \RuntimeException(\sprintf('Failed to create zip archive "%s".', $outZip));
             }
 
-            foreach (self::collectFiles($pluginDir) as $relativePath) {
-                if (!$zip->addFile($pluginDir.'/'.$relativePath, $relativePath)) {
-                    throw new \RuntimeException(\sprintf('Failed to add file "%s" to zip archive.', $relativePath));
+            foreach ($entries as $archiveName => $sourcePath) {
+                if (!$zip->addFile($sourcePath, $archiveName)) {
+                    throw new \RuntimeException(\sprintf('Failed to add file "%s" to zip archive.', $archiveName));
                 }
-                $zip->setMtimeName($relativePath, self::FIXED_TIMESTAMP);
+                $zip->setMtimeName($archiveName, self::FIXED_TIMESTAMP);
                 $zip->setExternalAttributesName(
-                    $relativePath,
+                    $archiveName,
                     \ZipArchive::OPSYS_UNIX,
                     self::FIXED_UNIX_MODE << 16,
                 );

@@ -6,7 +6,7 @@
  *
  * @author    Peter Gribanov <info@peter-gribanov.ru>
  * @copyright Copyright (c) 2026, Peter Gribanov
- * @license   https://gnu.org GPL-3.0-or-later
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
  */
 
 /*
@@ -21,7 +21,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://gnu.org>.
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 declare(strict_types=1);
@@ -29,8 +29,10 @@ declare(strict_types=1);
 /*
  * Builds a deterministic distributable ZIP of a single plugin directory: manifest.json at the
  * archive root plus src/, README.md, etc., excluding vendor/, composer.lock, tests/, .git* and
- * .php-cs-fixer.*. Prints the archive's sha256 to stdout and writes it next to the archive as
- * a "sha256" file (the same asset name published alongside plugin.zip on a GitHub Release).
+ * .php-cs-fixer.*. The monorepo-root LICENSE (GPL-3.0) is added at the archive root so the
+ * distributed plugin ships the full licence text its file headers reference. Prints the
+ * archive's sha256 to stdout and writes it next to the archive as a "sha256" file (the same
+ * asset name published alongside plugin.zip on a GitHub Release).
  *
  * Usage: php tools/build-plugin-zip.php <plugin-dir> <out.zip>
  * Exit code: 0 on success, 1 otherwise. Problems are printed to stderr.
@@ -61,8 +63,10 @@ if ($pluginDir === null || $pluginDir === '' || $outZip === null || $outZip === 
     exit(1);
 }
 
+$licenseFile = \dirname(__DIR__).'/LICENSE';
+
 try {
-    $sha256 = (new PluginZipBuilder())->build($pluginDir, $outZip);
+    $sha256 = (new PluginZipBuilder())->build($pluginDir, $outZip, is_file($licenseFile) ? $licenseFile : null);
 } catch (RuntimeException $exception) {
     fwrite(\STDERR, $exception->getMessage()."\n");
     exit(1);
