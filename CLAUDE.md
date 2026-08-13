@@ -32,6 +32,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
 - Do not require or validate a plugin's `composer.json` as a runtime class-loading
   mechanism — the host does not read it. See
   [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
+- Do not put translation keys in a plugin's `manifest.json` (`name`/`description`) — the
+  manifest is self-sufficient and read catalog-free (registry/install/validator).
+  Localizable strings use the plugin's `translations/` catalog (settings labels, widget
+  `titleKey`/`descriptionKey`). See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
 
 ## Workflow
 
