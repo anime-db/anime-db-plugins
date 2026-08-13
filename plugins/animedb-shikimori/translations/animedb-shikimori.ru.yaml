@@ -24,6 +24,17 @@ settings:
         concurrent_write: Настройки сейчас сохраняются в другом месте, попробуйте ещё раз.
         save_failed: Не удалось сохранить настройки, попробуйте ещё раз.
 
+widget:
+    related:
+        title: Связанные аниме
+        description: Показывает сиквелы, приквелы, адаптации и другие связанные тайтлы по данным Shikimori.
+    similar:
+        title: Похожие аниме
+        description: Показывает похожие тайтлы, подобранные Shikimori.
+    new:
+        title: Новинки Shikimori
+        description: Показывает недавно вышедшие аниме; при подключённом аккаунте Shikimori скрывает тайтлы, уже добавленные в список.
+
 oauth_result:
     page_title: Авторизация Shikimori
     heading:

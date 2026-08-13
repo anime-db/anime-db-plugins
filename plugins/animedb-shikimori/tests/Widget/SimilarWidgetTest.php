@@ -37,13 +37,13 @@ use PHPUnit\Framework\TestCase;
 
 final class SimilarWidgetTest extends TestCase
 {
-    public function testMetadataReturnsExpectedNameTitleAndDescription(): void
+    public function testMetadataReturnsExpectedNameTitleKeyAndDescriptionKey(): void
     {
         $metadata = SimilarWidget::metadata();
 
         self::assertSame('similar', $metadata->name);
-        self::assertNotSame('', $metadata->title);
-        self::assertNotSame('', $metadata->description);
+        self::assertSame('widget.similar.title', $metadata->titleKey);
+        self::assertSame('widget.similar.description', $metadata->descriptionKey);
     }
 
     public function testRenderReturnsEmptyListWhenRecordHasNoShikimoriExternalId(): void

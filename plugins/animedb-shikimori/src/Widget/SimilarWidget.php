@@ -64,8 +64,8 @@ final class SimilarWidget implements EntryWidgetInterface
     {
         return new WidgetMetadata(
             'similar',
-            'Похожие аниме',
-            'Показывает похожие тайтлы, подобранные Shikimori.',
+            'widget.similar.title',
+            'widget.similar.description',
         );
     }
 
