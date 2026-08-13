@@ -65,3 +65,22 @@ every other tool here). This was a boundary of the task that implemented the abo
 automated PR forbidden from touching `.github/workflows/`), not a design decision — a
 future change wiring these up should read this file's tools before writing new CI logic,
 not reimplement the resolution/verification logic inline in YAML.
+
+## Manifest `name`/`description` are literals, not translation keys
+
+A plugin's `manifest.json` `name` and `description` are self-sufficient literal strings in
+the plugin's own default language — **never** translation keys. The manifest is a standalone
+descriptor read catalog-free: the market registry build (`tools/build-registry.php` embeds
+`name`/`description` into `plugins-registry.json` with no translator or locale), the host's
+pre-activation install UI, and the manifest validator all consume it without any translation
+catalog loaded. A `plugin.description` key would land in the registry and UI verbatim.
+
+Localizable strings belong to the *UI* class instead, resolved by the host in the plugin's
+`translations/` catalog (domain = plugin id): settings/OAuth template labels, and widget
+`WidgetMetadata::$titleKey`/`$descriptionKey`. Do not try to unify the two — the split is the
+manifest-self-sufficiency invariant, not an oversight (same reasoning as "the contract does
+not know about the host").
+
+If a multilingual manifest `description` is ever needed, the only compatible design is inline
+localized variants inside the manifest itself (top-level literal = default/fallback), not
+external keys.
