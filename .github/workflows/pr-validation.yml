@@ -99,15 +99,25 @@ jobs:
       # (phpunit.xml.dist тянет bootstrap) и код тестов, поэтому стоит ПОСЛЕ
       # плагин-гейта, а не до него.
       #
-      # `!cancelled()` на последующих шагах: красный PHPUnit не должен скрывать
-      # замечания PHPStan и cs-check — по одному прогону видно всё сразу.
+      # Условие на PHPStan/cs-check: красный PHPUnit не должен скрывать их замечания —
+      # по одному прогону видно всё сразу. Но одного `!cancelled()` тут НЕДОСТАТОЧНО:
+      # он отменяет неявный success(), поэтому шаги отработали бы и после ПАДЕНИЯ гейта,
+      # то есть недоверенный конфиг со смешанного PR всё-таки был бы исполнен — ровно то,
+      # что гейт предотвращает.
+      #
+      # Поэтому ориентируемся на outcome шага Tests. У него самого условия нет, значит
+      # действует неявный success(): он запускается только когда всё до него (установка
+      # зависимостей, гейт, валидация плагина) прошло. Его `skipped` — признак того, что
+      # что-то раньше упало, и тогда PHPStan/cs-check тоже не должны стартовать.
+      # Единственный случай, который мы намеренно терпим, — Tests со статусом failure.
       - name: Tests (tooling)
+        id: tests
         run: composer test
 
       - name: PHPStan (tooling)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         run: composer phpstan
 
       - name: Code style (tooling)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         run: composer cs-check
