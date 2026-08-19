@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
+use AnimeDb\PluginContracts\Manifest\PluginType;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -39,8 +40,10 @@ use Symfony\Component\Yaml\Yaml;
  * the plugin's directory name, that a `src/` directory exists, that every class declared
  * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, that every
  * `*.php` file in the plugin is syntactically valid (`php -l`), and that, if a
- * `translations/` directory is present, every `<plugin-id>.<locale>.yaml` catalog it
- * contains defines the same set of keys as its siblings.
+ * `translations/` directory is present, every catalog it contains uses the domain the
+ * manifest `type` expects (`<plugin-id>.<locale>.yaml` for `integration`/`local`,
+ * `messages.<locale>.yaml` for `translation`, since the application resolves the core UI
+ * under a single `messages` domain) and defines the same set of keys as its siblings.
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -87,40 +90,41 @@ final class PluginValidator
 
         $errors = [];
 
-        [$manifestErrors, $manifestId] = $this->validateManifest($pluginDir);
+        [$manifestErrors, $manifestId, $pluginType] = $this->validateManifest($pluginDir);
         $errors = [...$errors, ...$manifestErrors];
 
         $pluginId = $manifestId ?? basename($pluginDir);
         $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
         $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
-        $errors = [...$errors, ...$this->validateTranslations($pluginDir, $pluginId)];
+        $errors = [...$errors, ...$this->validateTranslations($pluginDir, $pluginId, $pluginType)];
 
         return $errors;
     }
 
     /**
-     * @return array{0: list<string>, 1: ?string} error list and the manifest `id` (if readable)
+     * @return array{0: list<string>, 1: ?string, 2: ?PluginType} error list, the manifest `id`
+     *                                                            and `type` (if readable)
      */
     private function validateManifest(string $pluginDir): array
     {
         $manifestPath = $pluginDir.'/manifest.json';
         if (!is_file($manifestPath)) {
-            return [['manifest.json is missing in the plugin root.'], null];
+            return [['manifest.json is missing in the plugin root.'], null, null];
         }
 
         $json = file_get_contents($manifestPath);
         if ($json === false) {
-            return [[\sprintf('Failed to read "%s".', $manifestPath)], null];
+            return [[\sprintf('Failed to read "%s".', $manifestPath)], null, null];
         }
 
         try {
             $data = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
         } catch (\JsonException $exception) {
-            return [[\sprintf('manifest.json is not valid JSON: %s', $exception->getMessage())], null];
+            return [[\sprintf('manifest.json is not valid JSON: %s', $exception->getMessage())], null, null];
         }
 
         if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
-            return [['manifest.json must contain a JSON object at the top level.'], null];
+            return [['manifest.json must contain a JSON object at the top level.'], null, null];
         }
 
         $errors = array_map(
@@ -148,7 +152,9 @@ final class PluginValidator
             );
         }
 
-        return [$errors, $manifestId];
+        $manifestType = \is_string($data['type'] ?? null) ? PluginType::tryFrom($data['type']) : null;
+
+        return [$errors, $manifestId, $manifestType];
     }
 
     /**
@@ -275,37 +281,104 @@ final class PluginValidator
     }
 
     /**
+     * The application resolves the core UI's own catalogs under a single "messages" domain
+     * (Symfony derives a catalog's domain from its file name: "<domain>.<locale>.<format>").
+     * A "translation" plugin is a pure language pack that extends that core UI, so its
+     * catalogs must use that same domain, or the application never loads them. An
+     * "integration"/"local" plugin instead carries its own strings (settings, OAuth, widgets)
+     * under a domain derived from its own id, and must not reach into the core's "messages"
+     * domain.
+     */
+    private const CORE_TRANSLATION_DOMAIN = 'messages';
+
+    /**
      * @return list<string>
      */
-    private function validateTranslations(string $pluginDir, string $pluginId): array
+    private function validateTranslations(string $pluginDir, string $pluginId, ?PluginType $type): array
     {
         $translationsDir = $pluginDir.'/translations';
 
-        // Same reasoning as the "src/" checks above: a symlinked "translations/" must not be
-        // followed, and is_dir() alone would follow it.
-        if (!is_dir($translationsDir) || is_link($translationsDir)) {
+        // A plugin without a "translations/" directory is valid; the check is inapplicable.
+        if (!is_dir($translationsDir)) {
             return [];
         }
+
+        // Same reasoning as the "src/" checks above: a symlinked "translations/" must not be
+        // followed, and is_dir() alone would follow it.
+        if (is_link($translationsDir)) {
+            return ['Plugin "translations/" must not be a symlink.'];
+        }
+
+        $expectedDomain = match ($type) {
+            PluginType::Translation => self::CORE_TRANSLATION_DOMAIN,
+            PluginType::Integration, PluginType::Local => $pluginId,
+            null => null,
+        };
 
         $errors = [];
         $catalogs = [];
 
-        foreach (self::findYamlFiles($translationsDir) as $file) {
-            $fileName = basename($file);
-            $locale = self::matchTranslationLocale($fileName, $pluginId);
+        foreach (scandir($translationsDir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
 
-            if ($locale === null) {
+            $file = $translationsDir.'/'.$entry;
+
+            // Same reasoning as the "src/" checks above: a symlinked catalog must not be
+            // followed.
+            if (is_link($file)) {
+                $errors[] = \sprintf('Translation catalog "translations/%s" must not be a symlink.', $entry);
+                continue;
+            }
+
+            if (!is_file($file)) {
+                continue;
+            }
+
+            if (!str_ends_with($entry, '.yaml')) {
                 $errors[] = \sprintf(
-                    'Translation file "translations/%s" does not match the "%s.<locale>.yaml" naming pattern.',
-                    $fileName,
-                    $pluginId,
+                    'Translation catalog "translations/%s" has an unsupported format; only ".yaml" catalogs are supported.',
+                    $entry,
                 );
+                continue;
+            }
+
+            $parsed = self::parseTranslationFileName($entry);
+            if ($parsed === null) {
+                $errors[] = \sprintf(
+                    'Translation file "translations/%s" does not match the "<domain>.<locale>.yaml" naming pattern.',
+                    $entry,
+                );
+                continue;
+            }
+
+            [$domain, $locale] = $parsed;
+
+            if ($expectedDomain !== null && $type !== null && $domain !== $expectedDomain) {
+                $errors[] = $type === PluginType::Translation
+                    ? \sprintf(
+                        'Translation file "translations/%s" uses domain "%s" instead of "%s"; a "translation" plugin catalog must be named "%s.<locale>.yaml", or the application never resolves it and none of its strings get translated.',
+                        $entry,
+                        $domain,
+                        self::CORE_TRANSLATION_DOMAIN,
+                        self::CORE_TRANSLATION_DOMAIN,
+                    )
+                    : \sprintf(
+                        'Translation file "translations/%s" uses domain "%s" instead of "%s"; a "%s" plugin catalog must be named "%s.<locale>.yaml" — the "%s" domain belongs to the core application, not to a plugin.',
+                        $entry,
+                        $domain,
+                        $expectedDomain,
+                        $type->value,
+                        $expectedDomain,
+                        self::CORE_TRANSLATION_DOMAIN,
+                    );
                 continue;
             }
 
             $content = file_get_contents($file);
             if ($content === false) {
-                $errors[] = \sprintf('Failed to read "translations/%s".', $fileName);
+                $errors[] = \sprintf('Failed to read "translations/%s".', $entry);
                 continue;
             }
 
@@ -314,7 +387,7 @@ final class PluginValidator
             } catch (ParseException $exception) {
                 $errors[] = \sprintf(
                     'Translation file "translations/%s" is not valid YAML: %s',
-                    $fileName,
+                    $entry,
                     $exception->getMessage(),
                 );
                 continue;
@@ -323,7 +396,7 @@ final class PluginValidator
             if (!\is_array($data)) {
                 $errors[] = \sprintf(
                     'Translation file "translations/%s" must contain a mapping at the top level.',
-                    $fileName,
+                    $entry,
                 );
                 continue;
             }
@@ -337,36 +410,26 @@ final class PluginValidator
     }
 
     /**
-     * @return list<string>
+     * @return ?array{0: string, 1: string} [domain, locale], or null when $fileName doesn't
+     *                                      match the "<domain>.<locale>.yaml" pattern
      */
-    private static function findYamlFiles(string $dir): array
+    private static function parseTranslationFileName(string $fileName): ?array
     {
-        $files = [];
-
-        foreach (scandir($dir) ?: [] as $entry) {
-            $file = $dir.'/'.$entry;
-            if (is_file($file) && !is_link($file) && str_ends_with($entry, '.yaml')) {
-                $files[] = $file;
-            }
-        }
-
-        sort($files);
-
-        return $files;
-    }
-
-    private static function matchTranslationLocale(string $fileName, string $pluginId): ?string
-    {
-        $prefix = $pluginId.'.';
         $suffix = '.yaml';
-
-        if (!str_starts_with($fileName, $prefix) || !str_ends_with($fileName, $suffix)) {
+        if (!str_ends_with($fileName, $suffix)) {
             return null;
         }
 
-        $locale = substr($fileName, \strlen($prefix), -\strlen($suffix));
+        $withoutSuffix = substr($fileName, 0, -\strlen($suffix));
+        $firstDot = strpos($withoutSuffix, '.');
+        if ($firstDot === false || $firstDot === 0) {
+            return null;
+        }
 
-        return $locale === '' || str_contains($locale, '.') ? null : $locale;
+        $domain = substr($withoutSuffix, 0, $firstDot);
+        $locale = substr($withoutSuffix, $firstDot + 1);
+
+        return $locale === '' || str_contains($locale, '.') ? null : [$domain, $locale];
     }
 
     /**
