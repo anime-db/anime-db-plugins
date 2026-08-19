@@ -28,6 +28,8 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
+use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Validates a single plugin directory of this monorepo/market registry.
@@ -35,8 +37,10 @@ use AnimeDb\PluginContracts\Manifest\ManifestValidator;
  * Checks, in order: `manifest.json` presence and JSON syntax, its content via the shared
  * {@see ManifestValidator} from `anime-db/plugin-contracts`, that the manifest `id` matches
  * the plugin's directory name, that a `src/` directory exists, that every class declared
- * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, and finally
- * that every `*.php` file in the plugin is syntactically valid (`php -l`).
+ * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, that every
+ * `*.php` file in the plugin is syntactically valid (`php -l`), and that, if a
+ * `translations/` directory is present, every `<plugin-id>.<locale>.yaml` catalog it
+ * contains defines the same set of keys as its siblings.
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -89,6 +93,7 @@ final class PluginValidator
         $pluginId = $manifestId ?? basename($pluginDir);
         $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
         $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
+        $errors = [...$errors, ...$this->validateTranslations($pluginDir, $pluginId)];
 
         return $errors;
     }
@@ -267,6 +272,166 @@ final class PluginValidator
         }
 
         return $namespace;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function validateTranslations(string $pluginDir, string $pluginId): array
+    {
+        $translationsDir = $pluginDir.'/translations';
+
+        // Same reasoning as the "src/" checks above: a symlinked "translations/" must not be
+        // followed, and is_dir() alone would follow it.
+        if (!is_dir($translationsDir) || is_link($translationsDir)) {
+            return [];
+        }
+
+        $errors = [];
+        $catalogs = [];
+
+        foreach (self::findYamlFiles($translationsDir) as $file) {
+            $fileName = basename($file);
+            $locale = self::matchTranslationLocale($fileName, $pluginId);
+
+            if ($locale === null) {
+                $errors[] = \sprintf(
+                    'Translation file "translations/%s" does not match the "%s.<locale>.yaml" naming pattern.',
+                    $fileName,
+                    $pluginId,
+                );
+                continue;
+            }
+
+            $content = file_get_contents($file);
+            if ($content === false) {
+                $errors[] = \sprintf('Failed to read "translations/%s".', $fileName);
+                continue;
+            }
+
+            try {
+                $data = Yaml::parse($content);
+            } catch (ParseException $exception) {
+                $errors[] = \sprintf(
+                    'Translation file "translations/%s" is not valid YAML: %s',
+                    $fileName,
+                    $exception->getMessage(),
+                );
+                continue;
+            }
+
+            if (!\is_array($data)) {
+                $errors[] = \sprintf(
+                    'Translation file "translations/%s" must contain a mapping at the top level.',
+                    $fileName,
+                );
+                continue;
+            }
+
+            $keys = self::flattenTranslationKeys($data);
+            sort($keys);
+            $catalogs[$locale] = $keys;
+        }
+
+        return [...$errors, ...self::compareTranslationCatalogs($catalogs)];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function findYamlFiles(string $dir): array
+    {
+        $files = [];
+
+        foreach (scandir($dir) ?: [] as $entry) {
+            $file = $dir.'/'.$entry;
+            if (is_file($file) && !is_link($file) && str_ends_with($entry, '.yaml')) {
+                $files[] = $file;
+            }
+        }
+
+        sort($files);
+
+        return $files;
+    }
+
+    private static function matchTranslationLocale(string $fileName, string $pluginId): ?string
+    {
+        $prefix = $pluginId.'.';
+        $suffix = '.yaml';
+
+        if (!str_starts_with($fileName, $prefix) || !str_ends_with($fileName, $suffix)) {
+            return null;
+        }
+
+        $locale = substr($fileName, \strlen($prefix), -\strlen($suffix));
+
+        return $locale === '' || str_contains($locale, '.') ? null : $locale;
+    }
+
+    /**
+     * Flattens a nested translation catalog into dot-notation leaf key paths.
+     *
+     * @param array<int|string, mixed> $data
+     *
+     * @return list<string>
+     */
+    private static function flattenTranslationKeys(array $data, string $prefix = ''): array
+    {
+        $keys = [];
+
+        foreach ($data as $key => $value) {
+            $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
+
+            if (\is_array($value)) {
+                $keys = [...$keys, ...self::flattenTranslationKeys($value, $path)];
+            } else {
+                $keys[] = $path;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * @param array<string, list<string>> $catalogs keys are locales, values are sorted flat key lists
+     *
+     * @return list<string>
+     */
+    private static function compareTranslationCatalogs(array $catalogs): array
+    {
+        $locales = array_keys($catalogs);
+        sort($locales);
+
+        $errors = [];
+
+        foreach ($locales as $i => $localeA) {
+            foreach (\array_slice($locales, $i + 1) as $localeB) {
+                $onlyInA = array_values(array_diff($catalogs[$localeA], $catalogs[$localeB]));
+                $onlyInB = array_values(array_diff($catalogs[$localeB], $catalogs[$localeA]));
+
+                if ($onlyInA === [] && $onlyInB === []) {
+                    continue;
+                }
+
+                $details = [];
+                if ($onlyInA !== []) {
+                    $details[] = \sprintf('only in "%s": %s', $localeA, implode(', ', $onlyInA));
+                }
+                if ($onlyInB !== []) {
+                    $details[] = \sprintf('only in "%s": %s', $localeB, implode(', ', $onlyInB));
+                }
+
+                $errors[] = \sprintf(
+                    'Translation key mismatch between "%s" and "%s" locales: %s.',
+                    $localeA,
+                    $localeB,
+                    implode('; ', $details),
+                );
+            }
+        }
+
+        return $errors;
     }
 
     private static function expectedRootNamespace(string $pluginId): string

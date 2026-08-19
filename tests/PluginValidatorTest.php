@@ -247,6 +247,72 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, '"src/" must not be a symlink'));
     }
 
+    public function testMatchingTranslationKeysHaveNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\nfarewell: Bye\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\nfarewell: Пока\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testTranslationKeyOnlyInOneLocaleIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\nfarewell: Bye\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'farewell'));
+    }
+
+    public function testNestedTranslationKeysAreComparedCorrectly(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "widget:\n    title: Hello\n    hint: Hint\n");
+        $this->writeTranslation($pluginDir, 'ru', "widget:\n    title: Привет\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'widget.hint'));
+    }
+
+    public function testMissingTranslationsDirectoryHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testSingleLocaleTranslationHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testTranslationFileWithWrongDomainIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/translations');
+        file_put_contents($pluginDir.'/translations/other-domain.en.yaml', "greeting: Hello\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'does not match the "vendor-name.<locale>.yaml" naming pattern',
+        ));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -288,6 +354,16 @@ final class PluginValidatorTest extends TestCase
         }
 
         return $dir;
+    }
+
+    private function writeTranslation(string $pluginDir, string $locale, string $yaml): void
+    {
+        $translationsDir = $pluginDir.'/translations';
+        if (!is_dir($translationsDir)) {
+            mkdir($translationsDir);
+        }
+
+        file_put_contents($translationsDir.'/'.basename($pluginDir).'.'.$locale.'.yaml', $yaml);
     }
 
     /**
