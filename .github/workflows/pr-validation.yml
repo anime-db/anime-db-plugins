@@ -91,11 +91,23 @@ jobs:
         if: steps.diff.outputs.touches_plugins == 'true'
         run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"
 
-      # PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
+      # Тесты, PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
       # Гоняются на КАЖДОМ PR: на плагинных (после гейта — конфиги тогда доверенные,
       # = базовые) и на инфраструктурных (плагин-гейт пропущен).
+      #
+      # Порядок тот же, что у гейта: PHPUnit тоже исполняет конфиг репозитория
+      # (phpunit.xml.dist тянет bootstrap) и код тестов, поэтому стоит ПОСЛЕ
+      # плагин-гейта, а не до него.
+      #
+      # `!cancelled()` на последующих шагах: красный PHPUnit не должен скрывать
+      # замечания PHPStan и cs-check — по одному прогону видно всё сразу.
+      - name: Tests (tooling)
+        run: composer test
+
       - name: PHPStan (tooling)
+        if: ${{ !cancelled() }}
         run: composer phpstan
 
       - name: Code style (tooling)
+        if: ${{ !cancelled() }}
         run: composer cs-check
