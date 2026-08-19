@@ -28,15 +28,30 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
+use AnimeDb\PluginContracts\Manifest\PluginType;
 
 /**
  * Validates a single plugin directory of this monorepo/market registry.
  *
  * Checks, in order: `manifest.json` presence and JSON syntax, its content via the shared
  * {@see ManifestValidator} from `anime-db/plugin-contracts`, that the manifest `id` matches
- * the plugin's directory name, that a `src/` directory exists, that every class declared
- * under `src/**.php` sits in the namespace PSR-4 derives from the plugin id, and finally
- * that every `*.php` file in the plugin is syntactically valid (`php -l`).
+ * the plugin's directory name, and then a source-shape check that branches on the manifest
+ * `type`:
+ *
+ * - `integration` (a regular code plugin) and `local` (a code plugin that only reacts to
+ *   catalog events, see {@see PluginType}) are both treated as code plugins: a `src/`
+ *   directory is required, every class declared under `src/**.php` must sit in the
+ *   namespace PSR-4 derives from the plugin id, and every `*.php` file in the plugin must
+ *   be syntactically valid (`php -l`). `local` has no `type`-specific contract requirement
+ *   beyond that (it declares neither `features` nor `locales`), so it falls back to the
+ *   same code-plugin checks as `integration`.
+ * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
+ *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
+ *   against), while a `translations/` directory and a non-empty manifest `locales` list are
+ *   required instead.
+ *
+ * An unrecognised/missing `type` (already reported by {@see ManifestValidator} itself) falls
+ * back to the code-plugin checks, matching this validator's behaviour before `type` existed.
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -83,39 +98,48 @@ final class PluginValidator
 
         $errors = [];
 
-        [$manifestErrors, $manifestId] = $this->validateManifest($pluginDir);
+        [$manifestErrors, $manifestId, $manifestData] = $this->validateManifest($pluginDir);
         $errors = [...$errors, ...$manifestErrors];
 
         $pluginId = $manifestId ?? basename($pluginDir);
-        $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
-        $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
+        $pluginType = self::pluginType($manifestData);
+
+        if ($pluginType === PluginType::Translation) {
+            $errors = [...$errors, ...$this->validateTranslationSource($pluginDir, $manifestData)];
+        } else {
+            $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
+            $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
+        }
 
         return $errors;
     }
 
     /**
-     * @return array{0: list<string>, 1: ?string} error list and the manifest `id` (if readable)
+     * @return array{0: list<string>, 1: ?string, 2: array<string, mixed>} error list, the manifest
+     *                                                                     `id` (if readable) and the
+     *                                                                     decoded manifest data
+     *                                                                     (empty when unreadable)
      */
     private function validateManifest(string $pluginDir): array
     {
         $manifestPath = $pluginDir.'/manifest.json';
         if (!is_file($manifestPath)) {
-            return [['manifest.json is missing in the plugin root.'], null];
+            return [['manifest.json is missing in the plugin root.'], null, []];
         }
 
         $json = file_get_contents($manifestPath);
         if ($json === false) {
-            return [[\sprintf('Failed to read "%s".', $manifestPath)], null];
+            return [[\sprintf('Failed to read "%s".', $manifestPath)], null, []];
         }
 
         try {
             $data = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
         } catch (\JsonException $exception) {
-            return [[\sprintf('manifest.json is not valid JSON: %s', $exception->getMessage())], null];
+            return [[\sprintf('manifest.json is not valid JSON: %s', $exception->getMessage())], null, []];
         }
 
         if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
-            return [['manifest.json must contain a JSON object at the top level.'], null];
+            return [['manifest.json must contain a JSON object at the top level.'], null, []];
         }
 
         $errors = array_map(
@@ -143,10 +167,49 @@ final class PluginValidator
             );
         }
 
-        return [$errors, $manifestId];
+        return [$errors, $manifestId, $data];
     }
 
     /**
+     * @param array<string, mixed> $manifestData
+     */
+    private static function pluginType(array $manifestData): ?PluginType
+    {
+        $type = $manifestData['type'] ?? null;
+
+        return \is_string($type) ? PluginType::tryFrom($type) : null;
+    }
+
+    /**
+     * @param array<string, mixed> $manifestData
+     *
+     * @return list<string>
+     */
+    private function validateTranslationSource(string $pluginDir, array $manifestData): array
+    {
+        $errors = [];
+
+        $srcDir = $pluginDir.'/src';
+        if (file_exists($srcDir) || is_link($srcDir)) {
+            $errors[] = 'Plugin of type "translation" must not contain a "src/" directory: it is a declarative resource with no code.';
+        }
+
+        $translationsDir = $pluginDir.'/translations';
+        if (!is_dir($translationsDir)) {
+            $errors[] = 'Plugin of type "translation" is missing a "translations/" directory.';
+        }
+
+        $locales = $manifestData['locales'] ?? null;
+        if (!\is_array($locales) || $locales === []) {
+            $errors[] = 'Plugin of type "translation" must declare a non-empty "locales" list in manifest.json.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Source-shape check for code plugins (`integration` and `local`, see the class docblock).
+     *
      * @return list<string>
      */
     private function validateSource(string $pluginDir, string $pluginId): array

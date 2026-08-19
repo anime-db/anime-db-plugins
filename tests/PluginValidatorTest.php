@@ -134,6 +134,63 @@ final class PluginValidatorTest extends TestCase
         self::assertContains('Plugin is missing a "src/" directory.', $errors);
     }
 
+    public function testTranslationPluginWithoutSrcButWithTranslationsAndLocalesIsValid(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['en', 'ru']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        mkdir($pluginDir.'/translations', 0o777, true);
+        file_put_contents($pluginDir.'/translations/en.json', '{}');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testTranslationPluginWithSrcDirectoryIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['en']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        mkdir($pluginDir.'/translations', 0o777, true);
+        mkdir($pluginDir.'/src', 0o777, true);
+        file_put_contents($pluginDir.'/src/Widget.php', "<?php\n\nfinal class Widget\n{\n}\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'must not contain a "src/" directory'));
+    }
+
+    public function testTranslationPluginWithoutTranslationsDirectoryIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['en']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'missing a "translations/" directory'));
+    }
+
+    public function testTranslationPluginWithEmptyLocalesIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', []);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        mkdir($pluginDir.'/translations', 0o777, true);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'non-empty "locales" list'));
+    }
+
+    public function testIntegrationPluginWithoutSrcIsStillReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        mkdir($pluginDir.'/translations', 0o777, true);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertContains('Plugin is missing a "src/" directory.', $errors);
+    }
+
     public function testSyntaxErrorIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
@@ -258,6 +315,26 @@ final class PluginValidatorTest extends TestCase
             'version' => '0.1.0',
             'type' => 'integration',
             'features' => ['filler' => true],
+            'require' => [
+                'core' => '>=0.0.1',
+                'php' => '>=8.1',
+            ],
+        ];
+    }
+
+    /**
+     * @param list<string> $locales
+     *
+     * @return array<string, mixed>
+     */
+    private function validTranslationManifest(string $id, array $locales): array
+    {
+        return [
+            'id' => $id,
+            'name' => 'Test translation plugin',
+            'version' => '0.1.0',
+            'type' => 'translation',
+            'locales' => $locales,
             'require' => [
                 'core' => '>=0.0.1',
                 'php' => '>=8.1',

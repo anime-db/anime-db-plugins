@@ -201,6 +201,33 @@ final class PluginRegistryBuilderTest extends TestCase
         (new PluginRegistryBuilder())->build($pluginsDir, [], 0);
     }
 
+    public function testCodelessTranslationPluginIsBuiltLikeAnyOtherPlugin(): void
+    {
+        $pluginsDir = $this->tempPath('plugins');
+        mkdir($pluginsDir.'/vendor-name', 0o777, true);
+        file_put_contents(
+            $pluginsDir.'/vendor-name/manifest.json',
+            json_encode([
+                'id' => 'vendor-name',
+                'name' => 'Test translation plugin',
+                'version' => '0.1.0',
+                'type' => 'translation',
+                'locales' => ['en'],
+                'require' => [
+                    'core' => '>=0.0.1',
+                    'php' => '>=8.1',
+                ],
+            ], \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR),
+        );
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            ['id' => 'vendor-name', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
+        ], 1);
+
+        self::assertSame(['vendor-name'], array_column($result['plugins'], 'id'));
+        self::assertSame('translation', $result['plugins'][0]['manifest']['type']);
+    }
+
     public function testExplicitAssetMirrorsOverrideTheGithubOnlyDefault(): void
     {
         $pluginsDir = $this->createPluginsFixture([]);
