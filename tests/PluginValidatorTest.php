@@ -136,7 +136,7 @@ final class PluginValidatorTest extends TestCase
 
     public function testTranslationPluginWithoutSrcButWithTranslationsAndLocalesIsValid(): void
     {
-        $manifest = $this->validTranslationManifest('vendor-name', ['en', 'ru']);
+        $manifest = $this->validTranslationManifest('vendor-name', ['en']);
         $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
         mkdir($pluginDir.'/translations', 0o777, true);
         // Домен "messages" и формат YAML — требования к каталогу плагина типа "translation"
@@ -181,6 +181,39 @@ final class PluginValidatorTest extends TestCase
         $errors = (new PluginValidator())->validate($pluginDir);
 
         self::assertTrue(self::hasErrorContaining($errors, 'non-empty "locales" list'));
+    }
+
+    public function testTranslationPluginWithDeclaredLocaleMissingCatalogIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de', 'ja']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'ja'));
+    }
+
+    public function testTranslationPluginWithUndeclaredCatalogLocaleIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeTranslation($pluginDir, 'fr', "greeting: Bonjour\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'fr'));
+    }
+
+    public function testIntegrationPluginWithMultipleLocalesIsNotCheckedForLocaleParity(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
     }
 
     public function testIntegrationPluginWithoutSrcIsStillReported(): void
@@ -372,7 +405,7 @@ final class PluginValidatorTest extends TestCase
 
     public function testTranslationPluginWithMessagesDomainHasNoErrors(): void
     {
-        $manifest = $this->validManifest('vendor-name', 'translation');
+        $manifest = $this->validTranslationManifest('vendor-name', ['de']);
         $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
         $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
 
