@@ -179,6 +179,22 @@ final class PluginZipBuilderTest extends TestCase
         (new PluginZipBuilder())->build($this->tempPath('does-not-exist'), $this->tempPath('out.zip'));
     }
 
+    public function testBuildsArchiveForCodelessTranslationPlugin(): void
+    {
+        $pluginDir = $this->createTranslationPluginFixture();
+        $outZip = $this->tempPath('out.zip');
+
+        (new PluginZipBuilder())->build($pluginDir, $outZip);
+
+        $names = self::listEntries($outZip);
+
+        self::assertContains('manifest.json', $names);
+        self::assertContains('translations/en.json', $names);
+        foreach ($names as $name) {
+            self::assertStringStartsNotWith('src/', $name);
+        }
+    }
+
     /**
      * @return list<string>
      */
@@ -228,6 +244,28 @@ final class PluginZipBuilderTest extends TestCase
         file_put_contents($dir.'/.php-cs-fixer.dist.php', "<?php\n");
         file_put_contents($dir.'/tests/WidgetTest.php', "<?php\n");
         file_put_contents($dir.'/vendor/some-dep/Dep.php', "<?php\n");
+
+        return $dir;
+    }
+
+    private function createTranslationPluginFixture(): string
+    {
+        $dir = $this->tempPath('vendor-name');
+        mkdir($dir.'/translations', 0o777, true);
+
+        file_put_contents($dir.'/manifest.json', json_encode([
+            'id' => 'vendor-name',
+            'name' => 'Test translation plugin',
+            'version' => '0.1.0',
+            'type' => 'translation',
+            'locales' => ['en'],
+            'require' => [
+                'core' => '>=0.0.1',
+                'php' => '>=8.1',
+            ],
+        ], \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
+
+        file_put_contents($dir.'/translations/en.json', '{}');
 
         return $dir;
     }
