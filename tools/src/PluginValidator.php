@@ -79,6 +79,15 @@ use Symfony\Component\Yaml\Yaml;
  * at all (market registry build, the pre-activation install UI, this validator itself), so a key
  * placed there would render literally instead of resolving to anything.
  *
+ * For `translation` plugins specifically, the manifest `locales` list must match the set of
+ * locales actually shipped as `translations/messages.<locale>.yaml` files, in both directions: a
+ * declared locale with no catalog, and a catalog with no declared locale, are both errors. The
+ * application resolves the language switcher and `Accept-Language` negotiation from the manifest
+ * `locales` alone, so a mismatch is invisible to every other check here (key parity, placeholders,
+ * domain) yet silently breaks the language a user picks. A catalog file already rejected by an
+ * earlier check (wrong domain, unsupported format, symlink) is excluded from this comparison, so
+ * one bad file does not also produce a locale-mismatch error alongside its own.
+ *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
  * full list of what to fix in one CI run.
@@ -139,7 +148,7 @@ final class PluginValidator
 
         // Каталоги переводов проверяются у плагина любого типа: у "translation" это его
         // единственное содержимое, у "integration"/"local" — его собственный домен.
-        [$translationErrors, $catalogKeys] = $this->validateTranslations($pluginDir, $pluginId, $pluginType);
+        [$translationErrors, $catalogKeys] = $this->validateTranslations($pluginDir, $pluginId, $pluginType, $manifestData);
         $errors = [...$errors, ...$translationErrors];
         $errors = [...$errors, ...self::validateManifestLiterals($manifestData, $catalogKeys)];
 
@@ -391,13 +400,15 @@ final class PluginValidator
     private const ICU_DOMAIN_SUFFIX = '+intl-icu';
 
     /**
+     * @param array<string, mixed> $manifestData
+     *
      * @return array{0: list<string>, 1: list<string>} errors, and the union of every translation
      *                                                 key found across all locales of this
      *                                                 plugin's own catalog (used by the caller to
      *                                                 flag a manifest "name"/"description" that
      *                                                 duplicates one of them)
      */
-    private function validateTranslations(string $pluginDir, string $pluginId, ?PluginType $type): array
+    private function validateTranslations(string $pluginDir, string $pluginId, ?PluginType $type, array $manifestData): array
     {
         $translationsDir = $pluginDir.'/translations';
 
@@ -557,14 +568,83 @@ final class PluginValidator
 
         $allKeys = array_values(array_unique(array_merge([], ...array_values($catalogs))));
 
+        // Only for "translation" plugins: their manifest "locales" is the single source the
+        // application uses to populate the language switcher (AvailableLocalesProvider), so it
+        // must match the catalogs actually shipped, in both directions — see the class docblock.
+        // $catalogs only contains locales of files that passed every check above (domain, ICU
+        // suffix, naming pattern, YAML syntax, symlink), so a file already rejected for one of
+        // those reasons does not also trigger a locale-mismatch error here.
+        $declaredLocales = $type === PluginType::Translation ? self::declaredLocales($manifestData) : null;
+
         return [
             [
                 ...$errors,
                 ...self::compareTranslationCatalogs($catalogs),
                 ...self::comparePlaceholders($catalogValues),
+                ...($declaredLocales !== null ? self::compareDeclaredLocales($declaredLocales, array_keys($catalogs)) : []),
             ],
             $allKeys,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $manifestData
+     *
+     * @return ?list<string> the declared "locales" as a plain string list, or null when the field
+     *                       is missing or malformed ({@see ManifestValidator} already reports that
+     *                       separately, so {@see self::compareDeclaredLocales()} must not run
+     *                       against it)
+     */
+    private static function declaredLocales(array $manifestData): ?array
+    {
+        $locales = $manifestData['locales'] ?? null;
+        if (!\is_array($locales) || !array_is_list($locales) || $locales === []) {
+            return null;
+        }
+
+        foreach ($locales as $locale) {
+            if (!\is_string($locale) || $locale === '') {
+                return null;
+            }
+        }
+
+        return $locales;
+    }
+
+    /**
+     * @param list<string> $declaredLocales locales from the manifest "locales" field
+     * @param list<string> $catalogLocales  locales of "translations/messages.<locale>.yaml" files
+     *                                      that passed every other check
+     *
+     * @return list<string>
+     */
+    private static function compareDeclaredLocales(array $declaredLocales, array $catalogLocales): array
+    {
+        $onlyDeclared = array_values(array_diff($declaredLocales, $catalogLocales));
+        $onlyCataloged = array_values(array_diff($catalogLocales, $declaredLocales));
+
+        if ($onlyDeclared === [] && $onlyCataloged === []) {
+            return [];
+        }
+
+        sort($onlyDeclared);
+        sort($onlyCataloged);
+
+        $details = [];
+        if ($onlyDeclared !== []) {
+            $details[] = \sprintf(
+                'declared in manifest "locales" but missing a "translations/messages.<locale>.yaml" catalog: %s',
+                implode(', ', $onlyDeclared),
+            );
+        }
+        if ($onlyCataloged !== []) {
+            $details[] = \sprintf(
+                'has a "translations/messages.<locale>.yaml" catalog but is not declared in manifest "locales": %s',
+                implode(', ', $onlyCataloged),
+            );
+        }
+
+        return [\sprintf('Plugin of type "translation" locale mismatch: %s.', implode('; ', $details))];
     }
 
     /**
