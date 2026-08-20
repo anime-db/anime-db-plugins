@@ -27,27 +27,38 @@ a pattern the core has deliberately never used, and nobody notices until it's on
   user sees a blank instead of falling back to another locale. A missing translation is a
   defect to fix, not a valid placeholder state.
 
-- **Shared Russian terminology.** The core has already settled on Russian terms for
-  several UI concepts; a plugin's Russian catalog must reuse them instead of a synonym, or
-  the same concept reads under two different names depending on whether the string came
-  from the core or a plugin:
+- **Shared Russian terminology — recommendation, not a gate.** The core has already
+  settled on Russian terms for several UI concepts; a plugin's Russian catalog should
+  reuse them instead of a synonym, or the same concept reads under two different names
+  depending on whether the string came from the core or a plugin. This glossary matches
+  **concept to term, not word to word** — apply it by what the string means, not by which
+  substring appears in it:
 
-  | Concept | Russian | English | Forbidden |
+  | Concept | Russian | English | Avoid |
   |---|---|---|---|
   | a watchable unit | серия | episode | эпизод |
-  | an anime's title | название | name / title | тайтл |
+  | a work's title (as a name/label) | название | name / title | тайтл (when it means "title") |
   | a user-assigned label | метка | label | тег |
 
-  The stop-list (forbidden stems plus their word forms) lives in
-  `PluginValidator::FORBIDDEN_RU_TERMS`, checked against `.ru.yaml` catalogs only. This is
-  an error, not a warning: the list is short and unambiguous, and a warning nobody reads
-  is not a gate. Extend the constant as the glossary grows.
+  This is deliberately **not** enforced by `PluginValidator`: a word-level stop-list was
+  tried and reverted (issue #60). A word can carry a different concept depending on
+  context — "тайтл" can mean either "an anime" (the work itself) or "a title/heading" (a
+  string) depending on the sentence, and only the second sense maps to "название". A
+  mechanical replacement of every "тайтл" with "название" is wrong for the first sense:
+  e.g. *"Показывает похожие тайтлы, подобранные Shikimori."* (a widget description saying
+  the results are similar *anime*) must become *"Показывает похожие аниме, подобранные
+  Shikimori."*, not *"...похожие названия..."* — "названия" reads as "similar strings",
+  which is not what the widget shows. A regex also cannot reliably tell the two senses
+  apart (and a word-form-aware pattern for "тег" flags unrelated words like "Тегеран"), so
+  a human editorial judgment call is required instead of a mechanical gate.
 
 ## `manifest.json` `name`/`description` must be literals, never translation keys
 
 See the "Manifest `name`/`description` are literals, not translation keys" entry in
 [gotchas.md](gotchas.md) for the full reasoning (manifest is read catalog-free by the
 registry build, the pre-activation install UI, and the validator itself). `PluginValidator`
-now also rejects a `name`/`description` value that *looks* like it was meant to be a key:
-equal to a key already present in the plugin's own `translations/` catalog, or shaped like
-`word.word` with no spaces (source: issue #60).
+now also rejects a `name`/`description` value equal to a key already present in the
+plugin's own `translations/` catalog (source: issue #60). A shape-based heuristic
+(`word.word`-looking values) was tried and reverted: it false-positived on real values
+like a plugin's own domain name (e.g. `MyAnimeList.net`), which is a plain literal, not a
+key.

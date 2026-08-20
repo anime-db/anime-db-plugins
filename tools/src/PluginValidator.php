@@ -70,16 +70,14 @@ use Symfony\Component\Yaml\Yaml;
  * `"label: %count%"`, which stays valid regardless of how many plural forms a locale's grammar
  * has); no catalog file name carrying the `+intl-icu` suffix (the ICU MessageFormat domain, the
  * other half of that same "no pluralization" decision); and no empty value for any key (a
- * missing translation is a defect, not a valid fallback to another locale). For Russian catalogs
- * specifically, none of the {@see self::FORBIDDEN_RU_TERMS} terms the core has already retired
- * in favour of its accepted synonym. All of these are errors, not warnings — see
- * {@see self::FORBIDDEN_RU_TERMS} for why that choice was made for the terminology list.
+ * missing translation is a defect, not a valid fallback to another locale). All of these are
+ * errors, not warnings. Shared Russian terminology is documented in `.claude-docs/conventions.md`
+ * as a recommendation rather than gated here — see that file for why.
  *
- * A manifest `name`/`description` that looks like a translation key (equal to a key present in
- * the plugin's own catalog, or shaped like `word.word`) is also an error: the manifest is a
- * self-sufficient descriptor consumed with no translation catalog loaded at all (market registry
- * build, the pre-activation install UI, this validator itself), so a key placed there would
- * render literally instead of resolving to anything.
+ * A manifest `name`/`description` equal to a key present in the plugin's own catalog is also an
+ * error: the manifest is a self-sufficient descriptor consumed with no translation catalog loaded
+ * at all (market registry build, the pre-activation install UI, this validator itself), so a key
+ * placed there would render literally instead of resolving to anything.
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -393,23 +391,6 @@ final class PluginValidator
     private const ICU_DOMAIN_SUFFIX = '+intl-icu';
 
     /**
-     * Russian terminology the core has already settled on; a plugin's Russian catalog must reuse
-     * it rather than reintroduce a synonym, or the same UI concept reads under two different
-     * names depending on whether the string came from the core or from a plugin. Keys are the
-     * forbidden stem (matched together with any Russian word form built on it), values are the
-     * term to use instead. Deliberately an error, not a warning: the list is short and
-     * unambiguous, and a warning nobody reads is not a gate. Extend as the glossary grows. See
-     * issue #60.
-     *
-     * @var array<string, string>
-     */
-    private const FORBIDDEN_RU_TERMS = [
-        'эпизод' => 'серия',
-        'тайтл' => 'название',
-        'тег' => 'метка',
-    ];
-
-    /**
      * @return array{0: list<string>, 1: list<string>} errors, and the union of every translation
      *                                                 key found across all locales of this
      *                                                 plugin's own catalog (used by the caller to
@@ -565,19 +546,6 @@ final class PluginValidator
                         $key,
                         $entry,
                     );
-                }
-
-                if ($locale === 'ru') {
-                    $forbidden = self::findForbiddenRuTerm($value);
-                    if ($forbidden !== null) {
-                        $errors[] = \sprintf(
-                            'Translation value for key "%s" in "translations/%s" uses the term "%s"; use "%s" instead (core terminology glossary, issue #60).',
-                            $key,
-                            $entry,
-                            $forbidden[0],
-                            $forbidden[1],
-                        );
-                    }
                 }
             }
 
@@ -819,9 +787,9 @@ final class PluginValidator
                 continue;
             }
 
-            if (\in_array($value, $catalogKeys, true) || self::looksLikeTranslationKey($value)) {
+            if (\in_array($value, $catalogKeys, true)) {
                 $errors[] = \sprintf(
-                    'manifest.json "%s" is "%s", which looks like a translation key; the manifest is a self-sufficient descriptor consumed with no translations catalog loaded (market registry build, the pre-activation install UI, this validator), so it must be a literal string, not a key.',
+                    'manifest.json "%s" is "%s", which is also a key in this plugin\'s own translation catalog; the manifest is a self-sufficient descriptor consumed with no translations catalog loaded (market registry build, the pre-activation install UI, this validator), so it must be a literal string, not a key.',
                     $field,
                     $value,
                 );
@@ -829,26 +797,6 @@ final class PluginValidator
         }
 
         return $errors;
-    }
-
-    private static function looksLikeTranslationKey(string $value): bool
-    {
-        return preg_match('/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/', $value) === 1;
-    }
-
-    /**
-     * @return ?array{0: string, 1: string} [the matched forbidden word, its replacement], or null
-     *                                      when $value uses none of {@see self::FORBIDDEN_RU_TERMS}
-     */
-    private static function findForbiddenRuTerm(string $value): ?array
-    {
-        foreach (self::FORBIDDEN_RU_TERMS as $term => $replacement) {
-            if (preg_match('/(?<![а-яё])'.preg_quote($term, '/').'[а-яё]*/iu', $value, $matches) === 1) {
-                return [$matches[0], $replacement];
-            }
-        }
-
-        return null;
     }
 
     private static function expectedRootNamespace(string $pluginId): string

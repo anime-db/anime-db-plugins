@@ -589,17 +589,6 @@ final class PluginValidatorTest extends TestCase
         self::assertSame([], (new PluginValidator())->validate($pluginDir));
     }
 
-    public function testManifestDescriptionLookingLikeTranslationKeyIsReported(): void
-    {
-        $manifest = $this->validManifest('vendor-name');
-        $manifest['description'] = 'plugin.description';
-        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
-
-        $errors = (new PluginValidator())->validate($pluginDir);
-
-        self::assertTrue(self::hasErrorContaining($errors, 'looks like a translation key'));
-    }
-
     public function testManifestNameMatchingCatalogKeyIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
@@ -609,26 +598,14 @@ final class PluginValidatorTest extends TestCase
 
         $errors = (new PluginValidator())->validate($pluginDir);
 
-        self::assertTrue(self::hasErrorContaining($errors, 'looks like a translation key'));
+        self::assertTrue(self::hasErrorContaining($errors, 'own translation catalog'));
     }
 
-    public function testForbiddenRuTermIsReported(): void
+    public function testManifestNameShapedLikeAKeyButNotACatalogKeyIsValid(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['name'] = 'MyAnimeList.net';
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
-        $this->writeTranslation($pluginDir, 'ru', "count: 'Просмотрено эпизодов: %count%'\n");
-
-        $errors = (new PluginValidator())->validate($pluginDir);
-
-        self::assertTrue(self::hasErrorContaining($errors, 'эпизодов'));
-        self::assertTrue(self::hasErrorContaining($errors, '"серия"'));
-    }
-
-    public function testAcceptedRuTermHasNoErrors(): void
-    {
-        $manifest = $this->validManifest('vendor-name');
-        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
-        $this->writeTranslation($pluginDir, 'ru', "count: 'Просмотрено серий: %count%'\n");
 
         self::assertSame([], (new PluginValidator())->validate($pluginDir));
     }
