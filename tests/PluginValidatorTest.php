@@ -535,6 +535,81 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'unsupported format'));
     }
 
+    public function testCountPlaceholderWithoutPipeIsValid(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'ru', "sync_review_badge: 'Требует внимания: %count%'\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testPipeCharacterInValueIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "notice: '{0} none|{1} one|]1,Inf[ many'\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "notice"'));
+        self::assertTrue(self::hasErrorContaining($errors, '"|"'));
+    }
+
+    public function testIcuDomainSuffixFileNameIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/translations');
+        file_put_contents($pluginDir.'/translations/vendor-name+intl-icu.en.yaml', "greeting: Hello\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'ICU domain suffix'));
+    }
+
+    public function testEmptyTranslationValueIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: ''\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "greeting"'));
+        self::assertTrue(self::hasErrorContaining($errors, 'is empty'));
+    }
+
+    public function testManifestDescriptionWithSpacesIsValid(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['description'] = 'A regular sentence describing the plugin.';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testManifestNameMatchingCatalogKeyIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['name'] = 'greeting';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'own translation catalog'));
+    }
+
+    public function testManifestNameShapedLikeAKeyButNotACatalogKeyIsValid(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['name'] = 'MyAnimeList.net';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
     /**
      * @return array<string, mixed>
      */
