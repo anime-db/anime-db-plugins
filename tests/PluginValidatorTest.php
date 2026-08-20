@@ -391,6 +391,78 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'Translation catalog "translations/vendor-name.en.yaml" must not be a symlink'));
     }
 
+    public function testMatchingPlaceholdersHaveNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: 'Hello, %name%!'\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: 'Привет, %name%!'\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testMissingPlaceholderIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "error: 'Failed: %detail%'\n");
+        $this->writeTranslation($pluginDir, 'ru', "error: 'Ошибка'\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "error"'));
+        self::assertTrue(self::hasErrorContaining($errors, 'detail'));
+    }
+
+    public function testRenamedPlaceholderIsReportedInBothDirections(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "error: 'Failed: %detail%'\n");
+        $this->writeTranslation($pluginDir, 'ru', "error: 'Ошибка: %reason%'\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        $error = self::findErrorContaining($errors, 'key "error"');
+        self::assertNotNull($error);
+        self::assertStringContainsString('only in "en": detail', $error);
+        self::assertStringContainsString('only in "ru": reason', $error);
+    }
+
+    public function testDifferentPlaceholderOrderWithSameSetHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: '%greeting%, %name%!'\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: '%name%, %greeting%!'\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testDuplicatedPlaceholderCountMismatchIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: '%name%, %name%!'\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: '%name%!'\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "greeting"'));
+    }
+
+    public function testCurlyBraceValueIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: 'Hello, {name}!'\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "greeting"'));
+        self::assertTrue(self::hasErrorContaining($errors, '"{" or "}"'));
+    }
+
     public function testUnsupportedTranslationFileFormatIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
@@ -465,13 +537,21 @@ final class PluginValidatorTest extends TestCase
      */
     private static function hasErrorContaining(array $errors, string $needle): bool
     {
+        return self::findErrorContaining($errors, $needle) !== null;
+    }
+
+    /**
+     * @param list<string> $errors
+     */
+    private static function findErrorContaining(array $errors, string $needle): ?string
+    {
         foreach ($errors as $error) {
             if (str_contains($error, $needle)) {
-                return true;
+                return $error;
             }
         }
 
-        return false;
+        return null;
     }
 
     private static function removeDirectory(string $dir): void

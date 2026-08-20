@@ -43,7 +43,9 @@ use Symfony\Component\Yaml\Yaml;
  * `translations/` directory is present, every catalog it contains uses the domain the
  * manifest `type` expects (`<plugin-id>.<locale>.yaml` for `integration`/`local`,
  * `messages.<locale>.yaml` for `translation`, since the application resolves the core UI
- * under a single `messages` domain) and defines the same set of keys as its siblings.
+ * under a single `messages` domain), defines the same set of keys as its siblings, does not
+ * use curly-brace `{name}` syntax in any value, and, for every key shared by more than one
+ * locale, uses the same set of `%name%` placeholders across all of them.
  *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
@@ -317,6 +319,7 @@ final class PluginValidator
 
         $errors = [];
         $catalogs = [];
+        $catalogValues = [];
 
         foreach (scandir($translationsDir) ?: [] as $entry) {
             if ($entry === '.' || $entry === '..') {
@@ -401,12 +404,29 @@ final class PluginValidator
                 continue;
             }
 
-            $keys = self::flattenTranslationKeys($data);
+            $flat = self::flattenTranslationKeyValues($data);
+
+            foreach ($flat as $key => $value) {
+                if (\is_string($value) && (str_contains($value, '{') || str_contains($value, '}'))) {
+                    $errors[] = \sprintf(
+                        'Translation value for key "%s" in "translations/%s" contains "{" or "}"; this project uses the "%%name%%" placeholder syntax, not curly-brace "{name}" syntax.',
+                        $key,
+                        $entry,
+                    );
+                }
+            }
+
+            $keys = array_keys($flat);
             sort($keys);
             $catalogs[$locale] = $keys;
+            $catalogValues[$locale] = $flat;
         }
 
-        return [...$errors, ...self::compareTranslationCatalogs($catalogs)];
+        return [
+            ...$errors,
+            ...self::compareTranslationCatalogs($catalogs),
+            ...self::comparePlaceholders($pluginId, $catalogValues),
+        ];
     }
 
     /**
@@ -433,27 +453,28 @@ final class PluginValidator
     }
 
     /**
-     * Flattens a nested translation catalog into dot-notation leaf key paths.
+     * Flattens a nested translation catalog into a map of dot-notation leaf key paths to their
+     * (still untranslated-syntax) leaf values.
      *
      * @param array<int|string, mixed> $data
      *
-     * @return list<string>
+     * @return array<string, mixed>
      */
-    private static function flattenTranslationKeys(array $data, string $prefix = ''): array
+    private static function flattenTranslationKeyValues(array $data, string $prefix = ''): array
     {
-        $keys = [];
+        $flat = [];
 
         foreach ($data as $key => $value) {
             $path = $prefix === '' ? (string) $key : $prefix.'.'.$key;
 
             if (\is_array($value)) {
-                $keys = [...$keys, ...self::flattenTranslationKeys($value, $path)];
+                $flat = [...$flat, ...self::flattenTranslationKeyValues($value, $path)];
             } else {
-                $keys[] = $path;
+                $flat[$path] = $value;
             }
         }
 
-        return $keys;
+        return $flat;
     }
 
     /**
@@ -495,6 +516,116 @@ final class PluginValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * Compares the `%name%` placeholder composition of translation values across locales, for
+     * every key present in more than one locale. A key missing from one of the two locales
+     * being compared is silently skipped here — that gap is {@see self::compareTranslationCatalogs()}'s
+     * job, and this check must not duplicate it.
+     *
+     * The comparison is order-independent (the target language's grammar may require a
+     * different placeholder order within the sentence, which is not a defect), but
+     * count-sensitive: a placeholder repeated twice in one locale and once in another is
+     * treated as a mismatch, since losing a duplicate is normally a copy-paste typo rather than
+     * an intentional per-language difference.
+     *
+     * @param array<string, array<string, mixed>> $catalogValues keys are locales, values are
+     *                                                           flat key => translation value maps
+     *
+     * @return list<string>
+     */
+    private static function comparePlaceholders(string $pluginId, array $catalogValues): array
+    {
+        $locales = array_keys($catalogValues);
+        sort($locales);
+
+        $errors = [];
+
+        foreach ($locales as $i => $localeA) {
+            foreach (\array_slice($locales, $i + 1) as $localeB) {
+                $keys = array_values(array_intersect(
+                    array_keys($catalogValues[$localeA]),
+                    array_keys($catalogValues[$localeB]),
+                ));
+                sort($keys);
+
+                foreach ($keys as $key) {
+                    $valueA = $catalogValues[$localeA][$key];
+                    $valueB = $catalogValues[$localeB][$key];
+
+                    if (!\is_string($valueA) || !\is_string($valueB)) {
+                        continue;
+                    }
+
+                    $placeholdersA = self::extractPlaceholders($valueA);
+                    $placeholdersB = self::extractPlaceholders($valueB);
+
+                    $onlyInA = self::multisetDiff($placeholdersA, $placeholdersB);
+                    $onlyInB = self::multisetDiff($placeholdersB, $placeholdersA);
+
+                    if ($onlyInA === [] && $onlyInB === []) {
+                        continue;
+                    }
+
+                    $details = [];
+                    if ($onlyInA !== []) {
+                        $details[] = \sprintf('only in "%s": %s', $localeA, implode(', ', $onlyInA));
+                    }
+                    if ($onlyInB !== []) {
+                        $details[] = \sprintf('only in "%s": %s', $localeB, implode(', ', $onlyInB));
+                    }
+
+                    $errors[] = \sprintf(
+                        'Placeholder mismatch in plugin "%s" for key "%s" between "%s" and "%s" locales: %s.',
+                        $pluginId,
+                        $key,
+                        $localeA,
+                        $localeB,
+                        implode('; ', $details),
+                    );
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @return list<string> placeholder names found in $value, in occurrence order, duplicates kept
+     */
+    private static function extractPlaceholders(string $value): array
+    {
+        preg_match_all('/%([A-Za-z_][A-Za-z0-9_]*)%/', $value, $matches);
+
+        return $matches[1];
+    }
+
+    /**
+     * Multiset difference: the items of $a left over once each of them has been paired off
+     * against a matching (but not yet claimed) item of $b. Unlike {@see array_diff()}, a value
+     * repeated more times in $a than in $b yields that many leftover entries instead of none.
+     *
+     * @param list<string> $a
+     * @param list<string> $b
+     *
+     * @return list<string>
+     */
+    private static function multisetDiff(array $a, array $b): array
+    {
+        $remaining = $b;
+        $diff = [];
+
+        foreach ($a as $item) {
+            $index = array_search($item, $remaining, true);
+            if ($index === false) {
+                $diff[] = $item;
+            } else {
+                unset($remaining[$index]);
+            }
+        }
+
+        return $diff;
     }
 
     private static function expectedRootNamespace(string $pluginId): string
