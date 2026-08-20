@@ -7,6 +7,8 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 
 - [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns, in particular
   how the host actually loads plugin classes
+- [.claude-docs/conventions.md](.claude-docs/conventions.md) — translation catalog
+  conventions shared with the core (pluralization, empty values, Russian terminology)
 
 ## Commands
 
@@ -36,6 +38,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
   manifest is self-sufficient and read catalog-free (registry/install/validator).
   Localizable strings use the plugin's `translations/` catalog (settings labels, widget
   `titleKey`/`descriptionKey`). See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
+- Do not introduce Symfony pluralization (`|` syntax, an ICU `+intl-icu` domain,
+  `transChoice`) or leave a translation key with an empty value, and do not use a Russian
+  term the core has already retired (`эпизод`, `тайтл`, `тег`) in a plugin's `.ru.yaml`
+  catalog. See [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
 ## Workflow
 

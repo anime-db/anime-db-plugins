@@ -63,6 +63,24 @@ use Symfony\Component\Yaml\Yaml;
  * `{name}` syntax in any value, and, for every key shared by more than one locale, must use
  * the same set of `%name%` placeholders across all of them.
  *
+ * The same catalogs are also checked against core-wide translation conventions (issue #60),
+ * since a plugin's catalog and the core's are the same user-facing interface split across two
+ * repositories: no `|` character in any value (this project has no Symfony pluralization
+ * anywhere — a countable string is phrased without grammatical agreement instead, e.g.
+ * `"label: %count%"`, which stays valid regardless of how many plural forms a locale's grammar
+ * has); no catalog file name carrying the `+intl-icu` suffix (the ICU MessageFormat domain, the
+ * other half of that same "no pluralization" decision); and no empty value for any key (a
+ * missing translation is a defect, not a valid fallback to another locale). For Russian catalogs
+ * specifically, none of the {@see self::FORBIDDEN_RU_TERMS} terms the core has already retired
+ * in favour of its accepted synonym. All of these are errors, not warnings — see
+ * {@see self::FORBIDDEN_RU_TERMS} for why that choice was made for the terminology list.
+ *
+ * A manifest `name`/`description` that looks like a translation key (equal to a key present in
+ * the plugin's own catalog, or shaped like `word.word`) is also an error: the manifest is a
+ * self-sufficient descriptor consumed with no translation catalog loaded at all (market registry
+ * build, the pre-activation install UI, this validator itself), so a key placed there would
+ * render literally instead of resolving to anything.
+ *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
  * full list of what to fix in one CI run.
@@ -123,7 +141,9 @@ final class PluginValidator
 
         // Каталоги переводов проверяются у плагина любого типа: у "translation" это его
         // единственное содержимое, у "integration"/"local" — его собственный домен.
-        $errors = [...$errors, ...$this->validateTranslations($pluginDir, $pluginId, $pluginType)];
+        [$translationErrors, $catalogKeys] = $this->validateTranslations($pluginDir, $pluginId, $pluginType);
+        $errors = [...$errors, ...$translationErrors];
+        $errors = [...$errors, ...self::validateManifestLiterals($manifestData, $catalogKeys)];
 
         return $errors;
     }
@@ -361,7 +381,40 @@ final class PluginValidator
     private const CORE_TRANSLATION_DOMAIN = 'messages';
 
     /**
-     * @return list<string>
+     * File-name suffix (before the ".<locale>.yaml" segment) Symfony uses to mark an ICU
+     * MessageFormat catalog. The core has no pluralized strings at all — no ICU domain, no "|"
+     * alternatives, no `transChoice` call — precisely so a countable string like "N of M" stays
+     * "label: %count%" across every locale regardless of how many plural forms that locale's
+     * grammar has (Russian: 3, German: 2, Japanese: 1, Arabic: 6). Introducing pluralization is a
+     * project-wide architectural decision (it also implies switching to curly-brace ICU
+     * placeholder syntax), so a single plugin must not be able to opt into it on its own. See
+     * issue #60.
+     */
+    private const ICU_DOMAIN_SUFFIX = '+intl-icu';
+
+    /**
+     * Russian terminology the core has already settled on; a plugin's Russian catalog must reuse
+     * it rather than reintroduce a synonym, or the same UI concept reads under two different
+     * names depending on whether the string came from the core or from a plugin. Keys are the
+     * forbidden stem (matched together with any Russian word form built on it), values are the
+     * term to use instead. Deliberately an error, not a warning: the list is short and
+     * unambiguous, and a warning nobody reads is not a gate. Extend as the glossary grows. See
+     * issue #60.
+     *
+     * @var array<string, string>
+     */
+    private const FORBIDDEN_RU_TERMS = [
+        'эпизод' => 'серия',
+        'тайтл' => 'название',
+        'тег' => 'метка',
+    ];
+
+    /**
+     * @return array{0: list<string>, 1: list<string>} errors, and the union of every translation
+     *                                                 key found across all locales of this
+     *                                                 plugin's own catalog (used by the caller to
+     *                                                 flag a manifest "name"/"description" that
+     *                                                 duplicates one of them)
      */
     private function validateTranslations(string $pluginDir, string $pluginId, ?PluginType $type): array
     {
@@ -369,13 +422,13 @@ final class PluginValidator
 
         // A plugin without a "translations/" directory is valid; the check is inapplicable.
         if (!is_dir($translationsDir)) {
-            return [];
+            return [[], []];
         }
 
         // Same reasoning as the "src/" checks above: a symlinked "translations/" must not be
         // followed, and is_dir() alone would follow it.
         if (is_link($translationsDir)) {
-            return ['Plugin "translations/" must not be a symlink.'];
+            return [['Plugin "translations/" must not be a symlink.'], []];
         }
 
         $expectedDomain = match ($type) {
@@ -424,6 +477,15 @@ final class PluginValidator
             }
 
             [$domain, $locale] = $parsed;
+
+            if (str_ends_with($domain, self::ICU_DOMAIN_SUFFIX)) {
+                $errors[] = \sprintf(
+                    'Translation file "translations/%s" uses the ICU domain suffix "%s"; this project has no pluralized strings — phrase a countable string without grammatical agreement instead, e.g. "label: %%count%%".',
+                    $entry,
+                    self::ICU_DOMAIN_SUFFIX,
+                );
+                continue;
+            }
 
             if ($expectedDomain !== null && $type !== null && $domain !== $expectedDomain) {
                 $errors[] = $type === PluginType::Translation
@@ -474,6 +536,15 @@ final class PluginValidator
             $flat = self::flattenTranslationKeyValues($data);
 
             foreach ($flat as $key => $value) {
+                if ($value === null || $value === '') {
+                    $errors[] = \sprintf(
+                        'Translation value for key "%s" in "translations/%s" is empty; a missing translation is a defect, not a valid fallback to another locale.',
+                        $key,
+                        $entry,
+                    );
+                    continue;
+                }
+
                 if (!\is_string($value)) {
                     continue;
                 }
@@ -487,6 +558,27 @@ final class PluginValidator
                         implode('", "', $foundBraces),
                     );
                 }
+
+                if (str_contains($value, '|')) {
+                    $errors[] = \sprintf(
+                        'Translation value for key "%s" in "translations/%s" contains "|"; this project has no Symfony pluralization — phrase a countable string without grammatical agreement instead, e.g. "label: %%count%%".',
+                        $key,
+                        $entry,
+                    );
+                }
+
+                if ($locale === 'ru') {
+                    $forbidden = self::findForbiddenRuTerm($value);
+                    if ($forbidden !== null) {
+                        $errors[] = \sprintf(
+                            'Translation value for key "%s" in "translations/%s" uses the term "%s"; use "%s" instead (core terminology glossary, issue #60).',
+                            $key,
+                            $entry,
+                            $forbidden[0],
+                            $forbidden[1],
+                        );
+                    }
+                }
             }
 
             $keys = array_keys($flat);
@@ -495,10 +587,15 @@ final class PluginValidator
             $catalogValues[$locale] = $flat;
         }
 
+        $allKeys = array_values(array_unique(array_merge([], ...array_values($catalogs))));
+
         return [
-            ...$errors,
-            ...self::compareTranslationCatalogs($catalogs),
-            ...self::comparePlaceholders($catalogValues),
+            [
+                ...$errors,
+                ...self::compareTranslationCatalogs($catalogs),
+                ...self::comparePlaceholders($catalogValues),
+            ],
+            $allKeys,
         ];
     }
 
@@ -698,6 +795,60 @@ final class PluginValidator
         }
 
         return $diff;
+    }
+
+    /**
+     * The manifest is a self-sufficient descriptor (see the class docblock and the "Manifest
+     * `name`/`description` are literals, not translation keys" gotcha in this repo's
+     * `.claude-docs/gotchas.md`): it is read in places with no translation catalog loaded at
+     * all, so a translation key placed in "name" or "description" would render literally.
+     *
+     * @param array<string, mixed> $manifestData
+     * @param list<string>         $catalogKeys  every key from the plugin's own "translations/"
+     *                                           catalog, across all locales
+     *
+     * @return list<string>
+     */
+    private static function validateManifestLiterals(array $manifestData, array $catalogKeys): array
+    {
+        $errors = [];
+
+        foreach (['name', 'description'] as $field) {
+            $value = $manifestData[$field] ?? null;
+            if (!\is_string($value)) {
+                continue;
+            }
+
+            if (\in_array($value, $catalogKeys, true) || self::looksLikeTranslationKey($value)) {
+                $errors[] = \sprintf(
+                    'manifest.json "%s" is "%s", which looks like a translation key; the manifest is a self-sufficient descriptor consumed with no translations catalog loaded (market registry build, the pre-activation install UI, this validator), so it must be a literal string, not a key.',
+                    $field,
+                    $value,
+                );
+            }
+        }
+
+        return $errors;
+    }
+
+    private static function looksLikeTranslationKey(string $value): bool
+    {
+        return preg_match('/^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)+$/', $value) === 1;
+    }
+
+    /**
+     * @return ?array{0: string, 1: string} [the matched forbidden word, its replacement], or null
+     *                                      when $value uses none of {@see self::FORBIDDEN_RU_TERMS}
+     */
+    private static function findForbiddenRuTerm(string $value): ?array
+    {
+        foreach (self::FORBIDDEN_RU_TERMS as $term => $replacement) {
+            if (preg_match('/(?<![а-яё])'.preg_quote($term, '/').'[а-яё]*/iu', $value, $matches) === 1) {
+                return [$matches[0], $replacement];
+            }
+        }
+
+        return null;
     }
 
     private static function expectedRootNamespace(string $pluginId): string
