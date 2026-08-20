@@ -91,11 +91,33 @@ jobs:
         if: steps.diff.outputs.touches_plugins == 'true'
         run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"
 
-      # PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
+      # Тесты, PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
       # Гоняются на КАЖДОМ PR: на плагинных (после гейта — конфиги тогда доверенные,
       # = базовые) и на инфраструктурных (плагин-гейт пропущен).
+      #
+      # Порядок тот же, что у гейта: PHPUnit тоже исполняет конфиг репозитория
+      # (phpunit.xml.dist тянет bootstrap) и код тестов, поэтому стоит ПОСЛЕ
+      # плагин-гейта, а не до него.
+      #
+      # Условие на PHPStan/cs-check: красный PHPUnit не должен скрывать их замечания —
+      # по одному прогону видно всё сразу. Но одного `!cancelled()` тут НЕДОСТАТОЧНО:
+      # он отменяет неявный success(), поэтому шаги отработали бы и после ПАДЕНИЯ гейта,
+      # то есть недоверенный конфиг со смешанного PR всё-таки был бы исполнен — ровно то,
+      # что гейт предотвращает.
+      #
+      # Поэтому ориентируемся на outcome шага Tests. У него самого условия нет, значит
+      # действует неявный success(): он запускается только когда всё до него (установка
+      # зависимостей, гейт, валидация плагина) прошло. Его `skipped` — признак того, что
+      # что-то раньше упало, и тогда PHPStan/cs-check тоже не должны стартовать.
+      # Единственный случай, который мы намеренно терпим, — Tests со статусом failure.
+      - name: Tests (tooling)
+        id: tests
+        run: composer test
+
       - name: PHPStan (tooling)
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         run: composer phpstan
 
       - name: Code style (tooling)
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         run: composer cs-check
