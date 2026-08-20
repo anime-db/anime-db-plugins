@@ -520,7 +520,7 @@ final class PluginValidatorTest extends TestCase
         $errors = (new PluginValidator())->validate($pluginDir);
 
         self::assertTrue(self::hasErrorContaining($errors, 'key "greeting"'));
-        self::assertTrue(self::hasErrorContaining($errors, '"{" or "}"'));
+        self::assertTrue(self::hasErrorContaining($errors, '"{", "}"'));
     }
 
     public function testUnsupportedTranslationFileFormatIsReported(): void

@@ -474,11 +474,17 @@ final class PluginValidator
             $flat = self::flattenTranslationKeyValues($data);
 
             foreach ($flat as $key => $value) {
-                if (\is_string($value) && (str_contains($value, '{') || str_contains($value, '}'))) {
+                if (!\is_string($value)) {
+                    continue;
+                }
+
+                $foundBraces = array_filter(['{', '}'], static fn (string $char): bool => str_contains($value, $char));
+                if ($foundBraces !== []) {
                     $errors[] = \sprintf(
-                        'Translation value for key "%s" in "translations/%s" contains "{" or "}"; this project uses the "%%name%%" placeholder syntax, not curly-brace "{name}" syntax.',
+                        'Translation value for key "%s" in "translations/%s" contains "%s"; this project uses the "%%name%%" placeholder syntax, not curly-brace "{name}" syntax.',
                         $key,
                         $entry,
+                        implode('", "', $foundBraces),
                     );
                 }
             }
@@ -492,7 +498,7 @@ final class PluginValidator
         return [
             ...$errors,
             ...self::compareTranslationCatalogs($catalogs),
-            ...self::comparePlaceholders($pluginId, $catalogValues),
+            ...self::comparePlaceholders($catalogValues),
         ];
     }
 
@@ -602,7 +608,7 @@ final class PluginValidator
      *
      * @return list<string>
      */
-    private static function comparePlaceholders(string $pluginId, array $catalogValues): array
+    private static function comparePlaceholders(array $catalogValues): array
     {
         $locales = array_keys($catalogValues);
         sort($locales);
@@ -644,8 +650,7 @@ final class PluginValidator
                     }
 
                     $errors[] = \sprintf(
-                        'Placeholder mismatch in plugin "%s" for key "%s" between "%s" and "%s" locales: %s.',
-                        $pluginId,
+                        'Placeholder mismatch for key "%s" between "%s" and "%s" locales: %s.',
                         $key,
                         $localeA,
                         $localeB,
