@@ -8,8 +8,8 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 - [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns, in particular
   how the host actually loads plugin classes
 - [.claude-docs/conventions.md](.claude-docs/conventions.md) — translation catalog
-  conventions shared with the core (pluralization, empty values, recommended Russian
-  terminology)
+  conventions shared with the core (catalog domain per plugin type, pluralization, empty
+  values, recommended Russian terminology)
 
 ## Commands
 
@@ -43,6 +43,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
   `transChoice`) or leave a translation key with an empty value. See
   [.claude-docs/conventions.md](.claude-docs/conventions.md) (that file also documents
   recommended, but not gated, shared Russian terminology).
+- Do not name a catalog after the wrong domain: `<plugin-id>.<locale>.yaml` for
+  `integration`/`local`, `messages.<locale>.yaml` for `translation`. A catalog in a domain
+  nothing resolves passes every other check and translates nothing. See
+  [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
 ## Workflow
 
