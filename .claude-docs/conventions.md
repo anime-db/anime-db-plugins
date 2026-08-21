@@ -1,5 +1,38 @@
 # Conventions
 
+## A catalog's domain depends on the plugin type
+
+Symfony derives a catalog's translation domain from its file name — `<domain>.<locale>.<format>`
+— so the file name is not cosmetic: it decides which domain the strings land in, and a
+catalog in a domain nobody resolves is dead weight that no check can distinguish from a
+working one.
+
+| Plugin type             | Catalog file name           | Domain      | What it translates                                        |
+|-------------------------|-----------------------------|-------------|-----------------------------------------------------------|
+| `integration` / `local` | `<plugin-id>.<locale>.yaml` | plugin id   | the plugin's **own** strings: settings labels, OAuth pages, widget titles |
+| `translation`           | `messages.<locale>.yaml`    | `messages`  | the **core** interface — the plugin extends the core catalog rather than shipping its own |
+
+The split follows from what each plugin type is for. An `integration`/`local` plugin adds
+strings of its own, so it owns a domain named after itself. A `translation` plugin is a
+language pack: it exists to translate the application's interface, and the core resolves
+that interface from a single `messages` domain (core decision, issue #84 of the
+application repository — `TranslationController` serves
+`getCatalogue($locale)->all('messages')`).
+
+Both directions are wrong and both are rejected by `tools/src/PluginValidator.php`:
+
+- a `translation` plugin naming its catalog `<plugin-id>.<locale>.yaml` creates a domain
+  nothing resolves — the file is in place, every other check passes, and not a single
+  string gets translated;
+- an `integration`/`local` plugin shipping `messages.<locale>.yaml` reaches into the
+  core's own domain, which is not a feature plugin's business.
+
+Note that the guarantee "the core wins a key collision" covers the `messages` domain only.
+A plugin catalog placed in a third party's domain (say `security.<locale>.yaml`, owned by
+`symfony/security-core`) will override that package's strings: vendor catalogs are added
+before plugin paths in the container. Nothing depends on this today, but it is what the
+mechanism does, not a promise it makes.
+
 ## Plugin translation catalogs must follow the core's translation conventions
 
 A plugin's `translations/` catalog and the core application's own catalogs are the same
