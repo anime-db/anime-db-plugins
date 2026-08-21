@@ -102,11 +102,19 @@ final class PluginValidator
 
     /**
      * Plugin ids already using {@see self::RESERVED_VENDOR} that are genuinely official.
-     * Extend this list in the same commit that adds a new official plugin.
+     *
+     * Extend this list in a **separate, plugin-free pull request that lands before** the one
+     * adding the plugin itself — not in the same commit. The `Gate — one plugin / only its code`
+     * step in `.github/workflows/pr-validation.yml` rejects any pull request that touches
+     * `plugins/<id>/` together with a path outside it, and this file is such a path. A pull
+     * request doing both at once cannot pass CI, however correct its contents are.
+     *
+     * Adding an id here before the plugin exists is harmless: the entry only lifts the reserved
+     * vendor restriction for that exact id, it does not assert that the plugin is present.
      *
      * @var list<string>
      */
-    private const OFFICIAL_PLUGIN_IDS = ['animedb-shikimori'];
+    private const OFFICIAL_PLUGIN_IDS = ['animedb-shikimori', 'animedb-language-pack'];
 
     public function __construct(
         private readonly ManifestValidator $manifestValidator = new ManifestValidator(),
