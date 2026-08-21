@@ -158,7 +158,6 @@ settings_plugin_widgets:
     title: Plugin-Widgets — Einstellungen — AnimeDB
     back_link: ← Einstellungen
     heading: Plugin-Widgets
-    hard_limit_error: Das harte Limit von %limit% aktiven Widgets für diese Platzierung ist erreicht.
     busy_retry_error: Die Plugin-Einstellungen werden gerade von einer anderen Aktualisierung belegt. Versuchen Sie es gleich noch einmal.
     plugin_column: Plugin
     widget_column: Widget

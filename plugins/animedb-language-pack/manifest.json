@@ -6,7 +6,8 @@
     "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
     "author": "AnimeDB",
     "locales": [
-        "de"
+        "de",
+        "ja"
     ],
     "require": {
         "core": ">=0.0.1",
