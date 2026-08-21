@@ -1,0 +1,15 @@
+{
+    "id": "animedb-language-pack",
+    "name": "Language Pack",
+    "version": "0.1.0",
+    "type": "translation",
+    "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
+    "author": "AnimeDB",
+    "locales": [
+        "de"
+    ],
+    "require": {
+        "core": ">=0.0.1",
+        "php": ">=8.1"
+    }
+}
