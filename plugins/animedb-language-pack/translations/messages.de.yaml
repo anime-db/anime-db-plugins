@@ -1,0 +1,424 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+genre:
+    action: Action
+    adventure: Abenteuer
+    avant-garde: Avantgarde
+    award-winning: Preisgekrönt
+    boys-love: Boys Love
+    comedy: Komödie
+    drama: Drama
+    fantasy: Fantasy
+    girls-love: Girls Love
+    gourmet: Gourmet
+    horror: Horror
+    mystery: Mystery
+    romance: Romantik
+    sci-fi: Sci-Fi
+    slice-of-life: Slice of Life
+    sports: Sport
+    supernatural: Übernatürlich
+    suspense: Suspense
+
+theme:
+    adult-cast: Erwachsene Charaktere
+    anthropomorphic: Anthropomorph
+    cgdct: CGDCT
+    childcare: Kinderbetreuung
+    combat-sports: Kampfsport
+    crossdressing: Crossdressing
+    delinquents: Rowdys
+    detective: Detektiv
+    educational: Lehrreich
+    gag-humor: Gag-Humor
+    gore: Gore
+    harem: Harem
+    high-stakes-game: Hochrisikospiel
+    historical: Historisch
+    idols-female: Idols (weiblich)
+    idols-male: Idols (männlich)
+    isekai: Isekai
+    iyashikei: Iyashikei
+    love-polygon: Liebesvieleck
+    love-status-quo: Unveränderte Beziehung
+    magical-sex-shift: Magischer Geschlechtertausch
+    mahou-shoujo: Mahou Shoujo
+    martial-arts: Kampfkünste
+    mecha: Mecha
+    medical: Medizin
+    military: Militär
+    music: Musik
+    mythology: Mythologie
+    organized-crime: Organisierte Kriminalität
+    otaku-culture: Otaku-Kultur
+    parody: Parodie
+    performing-arts: Darstellende Kunst
+    pets: Haustiere
+    psychological: Psychologisch
+    racing: Rennsport
+    reincarnation: Reinkarnation
+    reverse-harem: Reverse Harem
+    samurai: Samurai
+    school: Schule
+    showbiz: Showbusiness
+    space: Weltraum
+    strategy-game: Strategiespiel
+    super-power: Superkräfte
+    survival: Survival
+    team-sports: Mannschaftssport
+    time-travel: Zeitreisen
+    urban-fantasy: Urban Fantasy
+    vampire: Vampire
+    video-game: Videospiele
+    villainess: Schurkin
+    visual-arts: Bildende Kunst
+    workplace: Arbeitsplatz
+
+demographic:
+    shounen: Shounen
+    shoujo: Shoujo
+    seinen: Seinen
+    josei: Josei
+    kids: Kinder
+
+anime_type:
+    tv: TV-Serie
+    movie: Film
+    ova: OVA
+    ona: ONA
+    special: Special
+    music: Musikvideo
+
+watch_status:
+    plan: Geplant
+    watching: Am Schauen
+    completed: Gesehen
+    dropped: Abgebrochen
+    on_hold: Pausiert
+
+anime_name_type:
+    original: Original
+    english: Englisch
+    russian: Russisch
+    synonym: Synonym
+
+storage_type:
+    folder: Ordner
+    external: Externer Datenträger
+    external-r: Externer Datenträger (schreibgeschützt)
+    video: Videodatei
+
+plugin_type:
+    integration: Integration
+    translation: Übersetzung
+
+production_status:
+    announced: Angekündigt
+    ongoing: Laufend
+    released: Erschienen
+
+settings:
+    title: Einstellungen — AnimeDB
+    heading: Einstellungen
+    labels_link: Labels
+    market_link: Plugin-Marktplatz
+    plugins_link: Plugins
+    plugin_widgets_link: Plugin-Widgets
+    sync_review_link: Zu prüfen
+    sync_review_badge: 'Zu prüfen: %count%'
+    proxy_link: Proxy-Server
+    language_label: Anzeigesprache
+    locale:
+        ru: Русский
+        en: English
+    search_reindex_heading: Suchindex
+    search_reindex_button: Neu indizieren
+    search_reindex_success: Der Suchindex wurde neu aufgebaut.
+    search_reindex_error: Der Suchindex konnte nicht neu aufgebaut werden. Stellen Sie sicher, dass Meilisearch läuft.
+
+settings_labels:
+    title: Labels — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Labels
+    empty_name_error: Der Label-Name darf nicht leer sein.
+    name_placeholder: Label-Name
+    add_button: Hinzufügen
+    empty: Noch keine Labels vorhanden.
+    name_column: Name
+    actions_column: Aktionen
+    save_button: Speichern
+    delete_confirm: Label „%name%“ löschen?
+    delete_button: Löschen
+
+settings_plugin_widgets:
+    title: Plugin-Widgets — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Plugin-Widgets
+    hard_limit_error: Das harte Limit von %limit% aktiven Widgets für diese Platzierung ist erreicht.
+    busy_retry_error: Die Plugin-Einstellungen werden gerade von einer anderen Aktualisierung belegt. Versuchen Sie es gleich noch einmal.
+    plugin_column: Plugin
+    widget_column: Widget
+    active_column: Aktiv
+    active_count: 'Aktive Widgets: %count% von %limit%.'
+    recommendation_warning: Mehr als %limit% aktive Widgets sind nicht empfohlen — die Oberfläche kann dadurch überladen wirken und langsamer werden.
+    hard_limit_reached: Das harte Limit von %limit% aktiven Widgets für diese Platzierung ist erreicht.
+    entry:
+        heading: Anime-Detailseite
+        empty: Für die Anime-Detailseite sind keine Widgets verfügbar.
+    catalog:
+        heading: Katalog
+        empty: Für den Katalog sind keine Widgets verfügbar.
+
+settings_sync_review:
+    title: Zu prüfen — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Zu prüfen
+    empty: Derzeit ist nichts zu prüfen.
+    kind_potential_duplicate: Mögliches Duplikat
+    kind_deleted_from_source: 'Aus der Liste der Quelle „%source%“ entfernt'
+    kind_deletion_conflict: 'Konflikt: auf „%source%“ entfernt, steht aber noch auf der Liste bei: %others%'
+    kind_needs_correction: 'Sync-Konflikt: unterschiedlicher Sehfortschritt bei den Teilnehmern'
+    participant_local: Lokal
+    candidate_updated_at: 'aktualisiert %date%'
+    auto_applied_winner: automatisch aufgelöst
+    correct_button: Korrigieren
+    resolve_button: Erledigt
+
+settings_plugins:
+    title: Plugins — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Plugins
+    widgets_link: Plugin-Widgets
+    installed_heading: Installierte Plugins
+    installed_empty: Noch keine Plugins installiert.
+    name_column: Name
+    id_column: ID
+    version_column: Version
+    type_column: Typ
+    actions_column: Aktionen
+    settings_link: Einstellungen
+    remove_button: Entfernen
+    remove_success: 'Plugin „%pluginId%“ wurde entfernt. Die von ihm im Katalog gesammelten Daten bleiben erhalten und werden bei einer erneuten Installation wiederverwendet.'
+    install_heading: Aus ZIP installieren
+    install_file_label: ZIP-Archiv des Plugins
+    third_party_warning: Dieses Plugin stammt aus einer fremden Quelle und wurde nicht vom Marktplatz geprüft. Auf eigene Gefahr installieren?
+    confirm_button: Verstanden, installieren
+    install_button: Installieren
+    install_success: 'Plugin „%pluginId%“ wurde installiert.'
+    update_success: 'Plugin „%pluginId%“ wurde aktualisiert. Die Plugin-Einstellungen bleiben erhalten.'
+    install_error_no_file: Wählen Sie ein ZIP-Archiv des Plugins zur Installation aus.
+    install_error_not_zip: Wählen Sie eine Datei mit der Endung .zip aus.
+    install_error_incompatible_core: 'Das Plugin benötigt die Kernversion „%requiredCore%“, installiert ist Version „%currentCore%“.'
+    install_error_syntax: 'Installation abgebrochen: Die PHP-Dateien des Plugins enthalten Syntaxfehler:'
+    install_error_invalid_manifest: Ungültige oder fehlende manifest.json im Archiv.
+    install_error_generic: Das Archiv konnte nicht entpackt oder installiert werden. Stellen Sie sicher, dass es ein gültiges Plugin-ZIP-Archiv ist.
+
+settings_market:
+    title: Plugin-Marktplatz — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Plugin-Marktplatz
+    empty: Der Marktplatz enthält noch keine Plugins.
+    name_column: Name
+    description_column: Beschreibung
+    type_column: Typ
+    version_column: Version
+    actions_column: Aktionen
+    already_installed: Bereits installiert
+    incompatible_core: 'Erfordert eine Kernversion, die mit „%requiredCore%“ kompatibel ist.'
+    install_button: Installieren
+    install_success: 'Plugin „%pluginId%“ wurde installiert.'
+    update_button: Aktualisieren
+    update_success: 'Plugin „%pluginId%“ wurde aktualisiert. Die Plugin-Einstellungen bleiben erhalten.'
+    registry_unavailable: Der Marktplatz-Katalog ist noch nicht bereit. Er erscheint nach der nächsten Aktualisierung im Hintergrund.
+    install_error_registry_unavailable: Der Marktplatz-Katalog ist noch nicht bereit. Versuchen Sie es später erneut.
+    install_error_unknown_plugin: Dieses Plugin ist nicht mehr im Marktplatz-Katalog gelistet.
+    install_error_incompatible_core: 'Das Plugin benötigt die Kernversion „%requiredCore%“, installiert ist Version „%currentCore%“.'
+    install_error_download_failed: Das Plugin-Archiv konnte von keinem Spiegelserver des Marktplatzes heruntergeladen werden.
+    install_error_already_installed: 'Plugin „%pluginId%“ ist bereits installiert.'
+    install_error_invalid_manifest: Ungültige manifest.json im Plugin-Archiv.
+    install_error_generic: Das Plugin-Archiv konnte nicht entpackt oder installiert werden.
+    refresh_button: Auf Updates prüfen
+    refresh_checking: Suche nach Updates…
+    refresh_failed: Der Marktplatz-Katalog konnte nicht aktualisiert werden. Versuchen Sie es später erneut.
+    refresh_timeout: Die Update-Prüfung läuft noch oder wurde abgebrochen. Versuchen Sie es später erneut.
+
+settings_plugin_page:
+    title_suffix: Plugin-Einstellungen — AnimeDB
+    back_link: ← Plugins
+    render_error: Die Einstellungsseite dieses Plugins konnte nicht angezeigt werden. Versuchen Sie es später erneut.
+
+settings_proxy:
+    title: Proxy-Server — Einstellungen — AnimeDB
+    back_link: ← Einstellungen
+    heading: Proxy-Server
+    save_success: Die Proxy-Einstellungen wurden gespeichert.
+    torrent_proxy_error: Die Einstellungen wurden gespeichert, aber der SOCKS5-Proxy konnte nicht auf den Torrent-Client angewendet werden. Die Torrents bleiben pausiert, bis der Proxy bestätigt ist.
+    mode_label: Modus
+    mode:
+        none: Kein Proxy
+        manual: Eigener Proxy
+    protocol_label: Protokoll
+    protocol:
+        http: HTTP
+        socks5: SOCKS5
+    http_protocol_hint: Ein HTTP-Proxy deckt nicht den gesamten ausgehenden Verkehr der Anwendung ab. Für vollständige Abdeckung SOCKS5 verwenden.
+    host_label: Adresse
+    port_label: Port
+    username_label: Benutzername (optional)
+    password_label: Passwort (optional)
+    save_button: Speichern
+    test_heading: Verbindungstest
+    test_note: Geprüft werden die Werte aus dem Formular oben (auch ungespeicherte) über den Netzwerkkanal der Anwendung — nicht der aktive gespeicherte Proxy und nicht der Browser. So lässt sich bestätigen, dass die angegebenen Parameter und Zugangsdaten wirklich funktionieren.
+    test_url_label: URL für den Test
+    test_button: Test
+    test_result:
+        success: 'Erfolgreich, Antwortzeit: %ms% ms.'
+        timeout: Zeitüberschreitung beim Warten auf die Antwort.
+        connection_refused: Verbindung zum Proxy-Server nicht möglich.
+        auth_failed: Authentifizierung am Proxy-Server fehlgeschlagen.
+        unknown_error: Die Prüfung konnte nicht durchgeführt werden.
+    incoming_connections_heading: Eingehende Verbindungen des Torrent-Clients
+    incoming_connections_toggle_label: Eingehende Torrent-Verbindungen zulassen (verbessert die Konnektivität)
+    incoming_connections_save_success: Einstellung gespeichert. Beim Aktivieren fragt Windows nach Administratorrechten, um eine Firewall-Regel hinzuzufügen.
+    incoming_connections_error: Nicht verfügbar, solange ein SOCKS5-Proxy ausgewählt ist.
+    incoming_connections_socks5_hint: Über einen SOCKS5-Proxy funktionieren eingehende Verbindungen unabhängig von den Firewall-Regeln nicht, daher ist das Aktivieren nicht möglich. Eine bereits aktivierte Einstellung lässt sich jederzeit wieder ausschalten.
+
+anime_list:
+    title: Liste — AnimeDB
+    empty: Die Liste ist leer.
+    error: Die Liste konnte nicht geladen werden.
+    no_cover: Kein Cover
+    search_placeholder: Nach Titel suchen…
+
+storage_list:
+    title: Speicherorte — AnimeDB
+    heading: Speicherorte
+    new_button: Speicherort hinzufügen
+    empty: Noch keine Speicherorte vorhanden.
+    name_column: Name
+    type_column: Typ
+    path_column: Pfad
+    last_scan_column: Letzter Scan
+    actions_column: Aktionen
+    edit_button: Bearbeiten
+    delete_button: Löschen
+    delete_confirm: Speicherort „%name%“ löschen?
+    never_scanned: Noch nicht gescannt
+    scan_button: Scan
+    scan_started: Scan gestartet.
+    scan_heading: Scan-Ergebnisse
+    scan_progress_text: '%processed%/%total% (%percent%%)'
+    scan_failed_marker_conflict: 'Scan fehlgeschlagen: Der Speicherort-Marker gehört zu einem anderen Speicherort.'
+    scan_failed_exception: 'Scan fehlgeschlagen: %message%'
+    scan_no_response: Der Scan läuft noch oder es kam keine Antwort.
+    scan_result_empty: Nichts gefunden.
+    group_updated: Aktualisiert
+    group_files_missing: Dateien fehlen
+    group_auto_linked: Automatisch hinzugefügt
+    group_needs_manual_entry: Neuer Eintrag nötig
+    group_needs_confirmation: Bestätigung nötig
+    updated_text: '%title% (%path%)'
+    files_missing_text: '%title% (%path%)'
+    auto_linked_text: 'Automatisch hinzugefügt: %title%'
+    create_entry_link: 'Eintrag erstellen: %title%'
+    confirm_button: Bestätigen
+    confirm_error: Die Auswahl konnte nicht bestätigt werden.
+    confirmed_text: 'Bestätigt: %title%'
+
+anime_detail:
+    title: '%title% — AnimeDB'
+    no_cover: Kein Cover
+    editable_heading: Verwaltung
+    field_summary: Beschreibung
+    reference_heading: Weitere Informationen
+    field_type: Typ
+    field_episodes_count: Anzahl Folgen
+    field_duration_minutes: Dauer
+    field_studios: Studio
+    field_countries: Land
+    field_storage: Speicherort
+    field_storage_path: Dateipfad
+    field_names: Alternative Titel
+    field_genres: Genres
+    field_themes: Themen
+    field_demographic: Zielgruppe
+    field_notes: Notiz
+    field_progress: Sehfortschritt
+    field_watch_status: Sehstatus
+    field_user_rating: Bewertung
+    duration_minutes_suffix: Min.
+    empty_value: —
+    labels_heading: Labels
+    labels_edit_button: Labels bearbeiten
+    labels_input_placeholder: Label-Namen eingeben und Komma oder Enter drücken
+    labels_save_button: Speichern
+    labels_cancel_button: Abbrechen
+    labels_save_error: Die Labels konnten nicht gespeichert werden.
+    open_folder_button: Dateien öffnen
+    path_unavailable_tooltip: Pfad nicht verfügbar
+    sources_heading: Externe Quellen
+    gallery_heading: Galerie
+    save_button: Speichern
+    cancel_button: Abbrechen
+    rating_not_rated: Nicht bewertet
+    increment_episode_button: Nächste Folge als gesehen markieren
+    error_watch_status_invalid: Ungültiger Sehstatus.
+    error_watch_status_not_released: Kann nicht als „Gesehen“ markiert werden, solange der Anime noch nicht erschienen ist.
+    error_user_rating_invalid: Die Bewertung muss zwischen 1 und 5 liegen.
+    error_watched_episodes_invalid: Ungültige Anzahl gesehener Folgen.
+    fill_from_source_button: Aus Quelle übernehmen
+    fill_source_label: Quelle
+    error_fill_not_found: Die Quelle hat keine Übereinstimmung für diesen Anime gefunden.
+
+anime_new:
+    title: Neuer Eintrag — AnimeDB
+    heading: Neuer Eintrag
+    field_title: Titel
+    field_type: Typ
+    field_watch_status: Sehstatus
+    submit_button: Erstellen
+    error_invalid: Geben Sie einen Titel ein und wählen Sie Typ und Sehstatus aus.
+
+storage_new:
+    title: Neuer Speicherort — AnimeDB
+    heading: Neuer Speicherort
+    field_name: Name
+    field_type: Typ
+    field_path: Pfad
+    pick_folder_button: Ordner wählen…
+    submit_button: Erstellen
+    error_invalid: Geben Sie einen gültigen Namen, Pfad und Speicherort-Typ an.
+    skip_link: Überspringen
+
+storage_scan_prompt:
+    title: Scan starten? — AnimeDB
+    heading: 'Speicherort „%name%“ erstellt'
+    description: Jetzt einen Scan starten, um Anime in diesem Speicherort zu finden?
+    scan_button: Scan starten
+    skip_link: Überspringen
+
+onboarding:
+    heading: Willkommen bei AnimeDB
+    description: Der Katalog ist leer. Fügen Sie einen Speicherort mit Ihren Anime-Dateien hinzu oder laden Sie Demodaten, um zu starten.
+    add_storage_button: Speicherort hinzufügen
+    load_demo_button: Demodaten laden
+
+storage_edit:
+    title: Speicherort bearbeiten — AnimeDB
+    heading: Speicherort bearbeiten
+    field_name: Name
+    field_type: Typ
+    submit_button: Speichern
+    error_invalid: Geben Sie einen gültigen Namen und Speicherort-Typ an.
+
+plugin_widget:
+    loading: Wird geladen…
+    error: 'Das Widget der Quelle „%source%“ konnte nicht geladen werden.'
+    retry_button: Wiederholen
+
+app_notification:
+    close_button: Schließen
