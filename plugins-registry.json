@@ -1,10 +1,35 @@
 {
-    "sequence": 15,
+    "sequence": 16,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
     ],
     "plugins": [
+        {
+            "id": "animedb-language-pack",
+            "manifest": {
+                "id": "animedb-language-pack",
+                "name": "Language Pack",
+                "version": "0.1.0",
+                "type": "translation",
+                "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
+                "author": "AnimeDB",
+                "locales": [
+                    "de"
+                ],
+                "require": {
+                    "core": ">=0.0.1",
+                    "php": ">=8.1"
+                }
+            },
+            "versions": [
+                {
+                    "version": "0.1.0",
+                    "core": ">=0.0.1",
+                    "sha256": "fe82ce81ce5e1586be63026a16b300aa86c1a5b095a0bf4866c5dc2429fe741a"
+                }
+            ]
+        },
         {
             "id": "animedb-shikimori",
             "manifest": {
