@@ -1,7 +1,7 @@
 {
     "id": "animedb-language-pack",
     "name": "Language Pack",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "translation",
     "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
     "author": "AnimeDB",
