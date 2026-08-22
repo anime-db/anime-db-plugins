@@ -1,5 +1,46 @@
 # Conventions
 
+## Any change to a published plugin needs a version bump
+
+`manifest.json`'s `version` is not bookkeeping — it is the only thing that decides whether
+a change ever reaches users. Change a plugin's contents without touching it, and the
+change is **silently dropped at release time**.
+
+The mechanism, from `.github/workflows/release.yml` (runs on every push to `master`):
+
+```bash
+version="$(jq -r '.version' "$manifest")"
+tag="$id/$version"
+if gh release view "$tag" >/dev/null 2>&1; then
+  echo "Release $tag already exists — skipping."
+  continue
+fi
+```
+
+The release is keyed on the tag `<plugin-id>/<version>`. If that tag exists, the whole
+publish step for that plugin is skipped: no new ZIP is built, no new `sha256` is computed,
+and `plugins-registry.json` keeps pointing at the previous artifact. The repository holds
+the new content, users keep getting the old one, and nothing anywhere reports a problem —
+the only trace is one `already exists — skipping` line in a CI log nobody reads.
+
+So the rule is mechanical: **the moment a plugin's published contents change, bump
+`version` in the same pull request.** Whether a plugin is published is answered by
+`plugins-registry.json` — an entry under `versions` with a `sha256` means it is.
+
+Which part to bump:
+
+| Change | Bump |
+|---|---|
+| new locale, new feature, new setting | minor — the plugin gained something, nothing broke |
+| fixed translation wording, corrected typo, removed a stale key | patch |
+| dropped a locale, renamed a setting key, anything an installed copy could trip over | major |
+
+A plugin still absent from `plugins-registry.json` has never been published: reusing its
+version number is fine until the first release lands.
+
+There is no per-plugin changelog — the release notes are generated from commits, so the
+commit message is where the "what changed" lives.
+
 ## A catalog's domain depends on the plugin type
 
 Symfony derives a catalog's translation domain from its file name — `<domain>.<locale>.<format>`
