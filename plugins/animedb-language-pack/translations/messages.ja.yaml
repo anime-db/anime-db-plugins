@@ -1,0 +1,423 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+genre:
+    action: アクション
+    adventure: 冒険
+    avant-garde: アヴァンギャルド
+    award-winning: 受賞作品
+    boys-love: ボーイズラブ
+    comedy: コメディ
+    drama: ドラマ
+    fantasy: ファンタジー
+    girls-love: ガールズラブ
+    gourmet: グルメ
+    horror: ホラー
+    mystery: ミステリー
+    romance: 恋愛
+    sci-fi: SF
+    slice-of-life: 日常
+    sports: スポーツ
+    supernatural: 超自然
+    suspense: サスペンス
+
+theme:
+    adult-cast: 大人が主人公
+    anthropomorphic: 擬人化
+    cgdct: かわいい女の子の日常
+    childcare: 育児
+    combat-sports: 格闘技
+    crossdressing: 異性装
+    delinquents: 不良
+    detective: 探偵
+    educational: 教育
+    gag-humor: ギャグ
+    gore: グロテスク
+    harem: ハーレム
+    high-stakes-game: 命がけのゲーム
+    historical: 歴史
+    idols-female: アイドル（女性）
+    idols-male: アイドル（男性）
+    isekai: 異世界
+    iyashikei: 癒し系
+    love-polygon: 恋の多角関係
+    love-status-quo: 進展しない関係
+    magical-sex-shift: 魔法による性転換
+    mahou-shoujo: 魔法少女
+    martial-arts: 武術
+    mecha: メカ
+    medical: 医療
+    military: ミリタリー
+    music: 音楽
+    mythology: 神話
+    organized-crime: 組織犯罪
+    otaku-culture: オタク文化
+    parody: パロディ
+    performing-arts: 舞台芸術
+    pets: ペット
+    psychological: 心理
+    racing: レース
+    reincarnation: 転生
+    reverse-harem: 逆ハーレム
+    samurai: 侍
+    school: 学園
+    showbiz: 芸能界
+    space: 宇宙
+    strategy-game: 戦略ゲーム
+    super-power: 超能力
+    survival: サバイバル
+    team-sports: 団体競技
+    time-travel: タイムトラベル
+    urban-fantasy: 現代ファンタジー
+    vampire: 吸血鬼
+    video-game: ゲーム
+    villainess: 悪役令嬢
+    visual-arts: 美術
+    workplace: 職場
+
+demographic:
+    shounen: 少年向け
+    shoujo: 少女向け
+    seinen: 青年向け
+    josei: 女性向け
+    kids: 児童向け
+
+anime_type:
+    tv: TVシリーズ
+    movie: 劇場版
+    ova: OVA
+    ona: ONA
+    special: スペシャル
+    music: ミュージックビデオ
+
+watch_status:
+    plan: 視聴予定
+    watching: 視聴中
+    completed: 視聴済み
+    dropped: 視聴中止
+    on_hold: 一時中断
+
+anime_name_type:
+    original: 原題
+    english: 英題
+    russian: ロシア語題
+    synonym: 別名
+
+storage_type:
+    folder: フォルダー
+    external: 外部メディア
+    external-r: 外部メディア（読み取り専用）
+    video: 動画ファイル
+
+plugin_type:
+    integration: 連携
+    translation: 翻訳
+
+production_status:
+    announced: 発表済み
+    ongoing: 放送中
+    released: 公開済み
+
+settings:
+    title: 設定 — AnimeDB
+    heading: 設定
+    labels_link: ラベル
+    market_link: プラグインマーケット
+    plugins_link: プラグイン
+    plugin_widgets_link: プラグインウィジェット
+    sync_review_link: 要確認
+    sync_review_badge: '要確認: %count%'
+    proxy_link: プロキシサーバー
+    language_label: 表示言語
+    locale:
+        ru: Русский
+        en: English
+    search_reindex_heading: 検索インデックス
+    search_reindex_button: 再インデックス
+    search_reindex_success: 検索インデックスを再構築しました。
+    search_reindex_error: 検索インデックスを再構築できませんでした。Meilisearch が起動しているか確認してください。
+
+settings_labels:
+    title: ラベル — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: ラベル
+    empty_name_error: ラベル名を空にはできません。
+    name_placeholder: ラベル名
+    add_button: 追加
+    empty: ラベルはまだありません。
+    name_column: 名前
+    actions_column: 操作
+    save_button: 保存
+    delete_confirm: ラベル「%name%」を削除しますか？
+    delete_button: 削除
+
+settings_plugin_widgets:
+    title: プラグインウィジェット — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: プラグインウィジェット
+    busy_retry_error: プラグイン設定は現在ほかの更新処理で使用中です。少し時間をおいてからもう一度お試しください。
+    plugin_column: プラグイン
+    widget_column: ウィジェット
+    active_column: 有効
+    active_count: '有効なウィジェット: %limit%個中%count%個。'
+    recommendation_warning: 有効なウィジェットは %limit% 個までを推奨します。それを超えると画面が煩雑になり、動作が遅くなることがあります。
+    hard_limit_reached: この配置で有効にできるウィジェットの上限 %limit% 個に達しました。
+    entry:
+        heading: 作品詳細ページ
+        empty: 作品詳細ページで利用できるウィジェットはありません。
+    catalog:
+        heading: カタログ
+        empty: カタログで利用できるウィジェットはありません。
+
+settings_sync_review:
+    title: 要確認 — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: 要確認
+    empty: 確認が必要な項目はありません。
+    kind_potential_duplicate: 重複の可能性
+    kind_deleted_from_source: 'ソース「%source%」のリストから削除されました'
+    kind_deletion_conflict: '競合: 「%source%」では削除されましたが、%others% のリストにはまだ残っています'
+    kind_needs_correction: '同期の競合: 参加ソース間で視聴進捗が一致しません'
+    participant_local: ローカル
+    candidate_updated_at: '%date% に更新'
+    auto_applied_winner: 自動で解決済み
+    correct_button: 修正
+    resolve_button: 対応済み
+
+settings_plugins:
+    title: プラグイン — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: プラグイン
+    widgets_link: プラグインウィジェット
+    installed_heading: インストール済みプラグイン
+    installed_empty: プラグインはまだインストールされていません。
+    name_column: 名前
+    id_column: ID
+    version_column: バージョン
+    type_column: 種類
+    actions_column: 操作
+    settings_link: 設定
+    remove_button: 削除
+    remove_success: 'プラグイン「%pluginId%」を削除しました。カタログに蓄積されたデータは保持され、再インストール時に再び使用されます。'
+    install_heading: ZIP からインストール
+    install_file_label: プラグインの ZIP アーカイブ
+    third_party_warning: このプラグインは第三者が提供するもので、マーケットの審査を受けていません。自己責任でインストールしますか？
+    confirm_button: 了解してインストール
+    install_button: インストール
+    install_success: 'プラグイン「%pluginId%」をインストールしました。'
+    update_success: 'プラグイン「%pluginId%」を更新しました。プラグインの設定は保持されています。'
+    install_error_no_file: インストールするプラグインの ZIP アーカイブを選択してください。
+    install_error_not_zip: 拡張子が .zip のファイルを選択してください。
+    install_error_incompatible_core: 'このプラグインはコアバージョン「%requiredCore%」を必要としますが、インストールされているのはバージョン「%currentCore%」です。'
+    install_error_syntax: 'インストールを中止しました: プラグインの PHP ファイルに構文エラーがあります:'
+    install_error_invalid_manifest: アーカイブ内の manifest.json が不正か、見つかりません。
+    install_error_generic: アーカイブを展開またはインストールできませんでした。正しいプラグインの ZIP アーカイブか確認してください。
+
+settings_market:
+    title: プラグインマーケット — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: プラグインマーケット
+    empty: マーケットにはまだプラグインがありません。
+    name_column: 名前
+    description_column: 説明
+    type_column: 種類
+    version_column: バージョン
+    actions_column: 操作
+    already_installed: インストール済み
+    incompatible_core: '「%requiredCore%」と互換性のあるコアバージョンが必要です。'
+    install_button: インストール
+    install_success: 'プラグイン「%pluginId%」をインストールしました。'
+    update_button: 更新
+    update_success: 'プラグイン「%pluginId%」を更新しました。プラグインの設定は保持されています。'
+    registry_unavailable: マーケットのカタログはまだ準備できていません。次回のバックグラウンド更新後に表示されます。
+    install_error_registry_unavailable: マーケットのカタログはまだ準備できていません。しばらくしてからもう一度お試しください。
+    install_error_unknown_plugin: このプラグインはマーケットのカタログに掲載されなくなりました。
+    install_error_incompatible_core: 'このプラグインはコアバージョン「%requiredCore%」を必要としますが、インストールされているのはバージョン「%currentCore%」です。'
+    install_error_download_failed: どのマーケットミラーからもプラグインのアーカイブをダウンロードできませんでした。
+    install_error_already_installed: 'プラグイン「%pluginId%」はすでにインストールされています。'
+    install_error_invalid_manifest: プラグインのアーカイブ内の manifest.json が不正です。
+    install_error_generic: プラグインのアーカイブを展開またはインストールできませんでした。
+    refresh_button: 更新を確認
+    refresh_checking: 更新を確認しています…
+    refresh_failed: マーケットのカタログを更新できませんでした。しばらくしてからもう一度お試しください。
+    refresh_timeout: 更新の確認がまだ実行中か、中断されました。しばらくしてからもう一度お試しください。
+
+settings_plugin_page:
+    title_suffix: プラグイン設定 — AnimeDB
+    back_link: ← プラグイン
+    render_error: このプラグインの設定ページを表示できませんでした。しばらくしてからもう一度お試しください。
+
+settings_proxy:
+    title: プロキシサーバー — 設定 — AnimeDB
+    back_link: ← 設定
+    heading: プロキシサーバー
+    save_success: プロキシの設定を保存しました。
+    torrent_proxy_error: 設定は保存しましたが、SOCKS5 プロキシをトレントクライアントに適用できませんでした。プロキシが確認できるまで、トレントは一時停止のままです。
+    mode_label: モード
+    mode:
+        none: プロキシなし
+        manual: カスタムプロキシ
+    protocol_label: プロトコル
+    protocol:
+        http: HTTP
+        socks5: SOCKS5
+    http_protocol_hint: HTTP プロキシはアプリの送信トラフィックすべてを経由させるわけではありません。すべてを対象にするには SOCKS5 を使用してください。
+    host_label: アドレス
+    port_label: ポート
+    username_label: ユーザー名（任意）
+    password_label: パスワード（任意）
+    save_button: 保存
+    test_heading: 接続テスト
+    test_note: 上のフォームに入力された値（未保存のものを含む）を、アプリ自身の通信経路でテストします。保存済みの有効なプロキシやブラウザーは使用しません。指定したパラメーターと認証情報が実際に使えるかどうかを確認できます。
+    test_url_label: テスト用 URL
+    test_button: テスト
+    test_result:
+        success: '成功しました。応答時間: %ms% ミリ秒。'
+        timeout: 応答の待機時間を超過しました。
+        connection_refused: プロキシサーバーに接続できませんでした。
+        auth_failed: プロキシサーバーの認証に失敗しました。
+        unknown_error: テストを実行できませんでした。
+    incoming_connections_heading: トレントクライアントの受信接続
+    incoming_connections_toggle_label: トレントの受信接続を許可する（接続性が向上します）
+    incoming_connections_save_success: 設定を保存しました。有効にすると、ファイアウォールの規則を追加するために Windows が管理者権限の確認を求めます。
+    incoming_connections_error: SOCKS5 プロキシを選択している間は利用できません。
+    incoming_connections_socks5_hint: SOCKS5 プロキシ経由では、ファイアウォールの規則にかかわらず受信接続は機能しないため、有効にできません。すでに有効になっている設定は、いつでも無効にできます。
+
+anime_list:
+    title: 作品一覧 — AnimeDB
+    empty: 一覧に作品がありません。
+    error: 一覧を読み込めませんでした。
+    no_cover: カバー画像なし
+    search_placeholder: 作品名で検索…
+
+storage_list:
+    title: ストレージ — AnimeDB
+    heading: ストレージ
+    new_button: ストレージを追加
+    empty: ストレージはまだありません。
+    name_column: 名前
+    type_column: 種類
+    path_column: パス
+    last_scan_column: 最終スキャン
+    actions_column: 操作
+    edit_button: 編集
+    delete_button: 削除
+    delete_confirm: ストレージ「%name%」を削除しますか？
+    never_scanned: 未スキャン
+    scan_button: スキャン
+    scan_started: スキャンを開始しました。
+    scan_heading: スキャン結果
+    scan_progress_text: '%processed%/%total% (%percent%%)'
+    scan_failed_marker_conflict: 'スキャンを実行できません: ストレージマーカーが別のストレージに使用されています。'
+    scan_failed_exception: 'スキャンがエラーで終了しました: %message%'
+    scan_no_response: スキャンがまだ実行中か、結果を取得できませんでした。
+    scan_result_empty: 変更は見つかりませんでした。
+    group_updated: 更新済み
+    group_files_missing: ファイルなし
+    group_auto_linked: 自動で追加
+    group_needs_manual_entry: 作品の作成が必要
+    group_needs_confirmation: 確認が必要
+    updated_text: '%title% (%path%)'
+    files_missing_text: '%title% (%path%)'
+    auto_linked_text: '自動で追加: %title%'
+    create_entry_link: '作品を作成: %title%'
+    confirm_button: 確定
+    confirm_error: 選択を確定できませんでした。
+    confirmed_text: '確定済み: %title%'
+
+anime_detail:
+    title: '%title% — AnimeDB'
+    no_cover: カバー画像なし
+    editable_heading: 管理
+    field_summary: あらすじ
+    reference_heading: 参考情報
+    field_type: 種類
+    field_episodes_count: 話数
+    field_duration_minutes: 再生時間
+    field_studios: 制作会社
+    field_countries: 国
+    field_storage: ストレージ
+    field_storage_path: ファイルのパス
+    field_names: 別タイトル
+    field_genres: ジャンル
+    field_themes: テーマ
+    field_demographic: 対象層
+    field_notes: メモ
+    field_progress: 視聴進捗
+    field_watch_status: 視聴状況
+    field_user_rating: 評価
+    duration_minutes_suffix: 分
+    empty_value: —
+    labels_heading: ラベル
+    labels_edit_button: ラベルを編集
+    labels_input_placeholder: ラベル名を入力してカンマまたは Enter を押してください
+    labels_save_button: 保存
+    labels_cancel_button: キャンセル
+    labels_save_error: ラベルを保存できませんでした。
+    open_folder_button: ファイルを開く
+    path_unavailable_tooltip: パスを利用できません
+    sources_heading: 外部ソース
+    gallery_heading: ギャラリー
+    save_button: 保存
+    cancel_button: キャンセル
+    rating_not_rated: 未評価
+    increment_episode_button: 次の話を視聴済みにする
+    error_watch_status_invalid: 視聴状況が正しくありません。
+    error_watch_status_not_released: 作品が公開されるまで「視聴済み」にはできません。
+    error_user_rating_invalid: 評価は 1 から 5 の範囲で指定してください。
+    error_watched_episodes_invalid: 視聴済みの話数が正しくありません。
+    fill_from_source_button: ソースから取得
+    fill_source_label: ソース
+    error_fill_not_found: ソースではこの作品に一致するものが見つかりませんでした。
+
+anime_new:
+    title: 新規作品 — AnimeDB
+    heading: 新規作品
+    field_title: 作品名
+    field_type: 種類
+    field_watch_status: 視聴状況
+    submit_button: 作成
+    error_invalid: 作品名を入力し、種類と視聴状況を選択してください。
+
+storage_new:
+    title: 新規ストレージ — AnimeDB
+    heading: 新規ストレージ
+    field_name: 名前
+    field_type: 種類
+    field_path: パス
+    pick_folder_button: フォルダーを選択…
+    submit_button: 作成
+    error_invalid: 正しい名前、パス、ストレージの種類を指定してください。
+    skip_link: スキップ
+
+storage_scan_prompt:
+    title: スキャンを実行しますか？ — AnimeDB
+    heading: 'ストレージ「%name%」を作成しました'
+    description: このストレージ内の作品を探すために、今すぐスキャンを実行しますか？
+    scan_button: スキャンを実行
+    skip_link: スキップ
+
+onboarding:
+    heading: AnimeDB へようこそ
+    description: カタログは空です。作品ファイルのあるストレージを追加するか、デモデータを読み込んで始めてください。
+    add_storage_button: ストレージを追加
+    load_demo_button: デモデータを読み込む
+
+storage_edit:
+    title: ストレージの編集 — AnimeDB
+    heading: ストレージの編集
+    field_name: 名前
+    field_type: 種類
+    submit_button: 保存
+    error_invalid: 正しい名前とストレージの種類を指定してください。
+
+plugin_widget:
+    loading: 読み込み中…
+    error: 'ソース「%source%」のウィジェットを読み込めませんでした。'
+    retry_button: 再試行
+
+app_notification:
+    close_button: 閉じる
