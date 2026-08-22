@@ -7,9 +7,9 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 
 - [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns, in particular
   how the host actually loads plugin classes
-- [.claude-docs/conventions.md](.claude-docs/conventions.md) — translation catalog
-  conventions shared with the core (catalog domain per plugin type, pluralization, empty
-  values, recommended Russian terminology)
+- [.claude-docs/conventions.md](.claude-docs/conventions.md) — plugin conventions:
+  version bumps for published plugins, catalog domain per plugin type, pluralization,
+  empty values, recommended Russian terminology
 
 ## Commands
 
@@ -26,6 +26,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
 
 ### MUST
 
+- Bump `version` in a plugin's `manifest.json` in the same pull request that changes its
+  published contents. `release.yml` keys the release on the tag `<id>/<version>` and skips
+  the plugin entirely if that tag exists — the change never reaches users and nothing
+  reports it. See [.claude-docs/conventions.md](.claude-docs/conventions.md).
 - Keep `tools/src/PluginValidator.php` in sync with the actual host loading mechanism
   documented in [.claude-docs/gotchas.md](.claude-docs/gotchas.md) before adding new
   validation rules tied to "runtime loading".
