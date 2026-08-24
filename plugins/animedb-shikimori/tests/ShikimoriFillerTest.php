@@ -107,8 +107,37 @@ final class ShikimoriFillerTest extends TestCase
         self::assertSame(23, $data->durationMinutes);
         self::assertSame(220, $data->episodesCount);
         self::assertSame('https://shikimori.io/system/animes/original/20.jpg', $data->cover);
+        self::assertSame([
+            'https://shikimori.io/system/screenshots/original/20/1.jpg',
+            'https://shikimori.io/system/screenshots/original/20/2.jpg',
+        ], $data->images);
         self::assertNull($data->countries);
-        self::assertNull($data->images);
+    }
+
+    public function testFindByIdLeavesImagesNullWhenScreenshotsAreMissing(): void
+    {
+        $fixture = self::narutoFixture();
+        unset($fixture['screenshots']);
+
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$fixture]]);
+
+        $filler = $this->buildFiller($client);
+
+        self::assertNull($filler->findById('20')->images);
+    }
+
+    public function testFindByIdLeavesImagesNullWhenScreenshotsAreEmpty(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['screenshots'] = [];
+
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$fixture]]);
+
+        $filler = $this->buildFiller($client);
+
+        self::assertNull($filler->findById('20')->images);
     }
 
     public function testFindByIdDropsAlternativeNameEqualToTitleAndDeduplicates(): void
@@ -200,14 +229,14 @@ final class ShikimoriFillerTest extends TestCase
         self::assertNull($filler->findById('20')->episodesCount);
     }
 
-    public function testGetFillableFieldsExcludesCountriesAndImages(): void
+    public function testGetFillableFieldsExcludesCountriesButIncludesImages(): void
     {
         $filler = $this->buildFiller($this->createMock(GraphQlClient::class));
 
         $fields = $filler->getFillableFields();
 
         self::assertNotContains('countries', $fields);
-        self::assertNotContains('images', $fields);
+        self::assertContains('images', $fields);
         self::assertContains('title', $fields);
         self::assertContains('genres', $fields);
         self::assertContains('demographic', $fields);
@@ -437,6 +466,10 @@ final class ShikimoriFillerTest extends TestCase
                 ['id' => 4, 'name' => 'Shounen', 'russian' => 'Сёнэн', 'kind' => 'demographic'],
             ],
             'description' => '[character=7407]Девятихвостый лис[/character] напал на деревню.',
+            'screenshots' => [
+                ['originalUrl' => 'https://shikimori.io/system/screenshots/original/20/1.jpg'],
+                ['originalUrl' => 'https://shikimori.io/system/screenshots/original/20/2.jpg'],
+            ],
         ];
     }
 }

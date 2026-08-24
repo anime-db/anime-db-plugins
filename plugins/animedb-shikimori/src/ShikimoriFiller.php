@@ -95,6 +95,7 @@ final class ShikimoriFiller implements SyncInterface
                 studios { id name }
                 genres { id name russian kind }
                 description
+                screenshots { originalUrl }
             }
         }
         GRAPHQL;
@@ -189,6 +190,10 @@ final class ShikimoriFiller implements SyncInterface
         $genres = \is_array($anime['genres'] ?? null) ? $anime['genres'] : [];
         $mappedGenres = GenreMapper::map($genres);
 
+        // `countries` is deliberately left unset: Shikimori's `Anime` type has no field for
+        // production country (its `origin` is the *source material* — manga, novel, game, etc.
+        // — confirmed via live GraphQL/REST introspection against `shikimori.one` on 2026-08-24),
+        // so there is nothing to map it from without hardcoding a guess.
         return new PluginAnimeData(
             title: $title,
             alternativeNames: self::buildAlternativeNames($title, $anime),
@@ -203,6 +208,7 @@ final class ShikimoriFiller implements SyncInterface
             durationMinutes: \is_int($anime['duration'] ?? null) ? $anime['duration'] : null,
             episodesCount: \is_int($anime['episodes'] ?? null) && $anime['episodes'] > 0 ? $anime['episodes'] : null,
             cover: \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
+            images: self::buildImages($anime),
         );
     }
 
@@ -225,6 +231,7 @@ final class ShikimoriFiller implements SyncInterface
             'durationMinutes',
             'episodesCount',
             'cover',
+            'images',
         ];
     }
 
@@ -418,6 +425,26 @@ final class ShikimoriFiller implements SyncInterface
         }
 
         return $names === [] ? null : $names;
+    }
+
+    /**
+     * @param array<string, mixed> $anime
+     *
+     * @return list<string>|null
+     */
+    private static function buildImages(array $anime): ?array
+    {
+        $screenshots = \is_array($anime['screenshots'] ?? null) ? $anime['screenshots'] : [];
+
+        $urls = [];
+        foreach ($screenshots as $screenshot) {
+            $url = \is_array($screenshot) ? $screenshot['originalUrl'] ?? null : null;
+            if (\is_string($url) && $url !== '') {
+                $urls[] = $url;
+            }
+        }
+
+        return $urls === [] ? null : $urls;
     }
 
     private static function parseDate(mixed $raw): ?\DateTimeImmutable
