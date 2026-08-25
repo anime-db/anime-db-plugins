@@ -188,6 +188,24 @@ field too, that is a new decision requiring its own contract release and version
 both repositories — do not assume the current gap is accidental and paper over it by either
 loosening `PluginValidator` or trying to smuggle the field through `ManifestParser`.
 
+## The host no longer reads `settings.locale.*` translation keys — endonyms are resolved via ICU
+
+The locale switcher's option labels used to be translation keys (`settings.locale.ru`,
+`settings.locale.en`, …), but the host (`anime-db-desktop`,
+`App\Service\LocaleEndonymResolver`, issue #453/#461) replaced that with a dynamic
+endonym resolved from the locale code alone via `\Locale::getDisplayName()`, precisely
+because a `translation`-type plugin can introduce a locale core has never heard of and
+neither side can pre-populate a label for every locale that might ever show up. This is
+enforced by a host unit test (`SettingsTemplateRenderingTest`) that asserts the rendered
+settings HTML contains no `settings.locale.` string.
+
+Practical effect for this repo: a `settings.locale.<code>` key in *any* plugin's
+translation catalog (core `messages` domain included) is dead — the host never looks it
+up, and removing it cannot regress the locale switcher for any locale, including ones a
+`translation`-type plugin newly introduces (verified for `animedb-language-pack`'s `de`/
+`ja`, PR #96). Don't reintroduce `settings.locale.*` keys to "support" a new locale in a
+translation plugin — the switcher needs no catalog entry on either side.
+
 ## This repo's CI is stricter than the application's plugin installer
 
 `tools/src/PluginValidator.php` runs only in this monorepo's own CI
