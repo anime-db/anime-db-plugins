@@ -132,9 +132,6 @@ settings:
     sync_review_badge: 'Zu prüfen: %count%'
     proxy_link: Proxy-Server
     language_label: Anzeigesprache
-    locale:
-        ru: Русский
-        en: English
     search_reindex_heading: Suchindex
     search_reindex_button: Neu indizieren
     search_reindex_success: Der Suchindex wurde neu aufgebaut.

@@ -132,9 +132,6 @@ settings:
     sync_review_badge: '要確認: %count%'
     proxy_link: プロキシサーバー
     language_label: 表示言語
-    locale:
-        ru: Русский
-        en: English
     search_reindex_heading: 検索インデックス
     search_reindex_button: 再インデックス
     search_reindex_success: 検索インデックスを再構築しました。
