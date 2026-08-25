@@ -1,7 +1,10 @@
 /vendor/
 **/vendor/
-composer.lock
-**/composer.lock
+# Локи плагинов не версионируются: плагин — библиотека, загружаемая хостом, и
+# build-plugin-zip.php исключает composer.lock из дистрибутива. Корневой лок,
+# наоборот, нужен: composer.json тулинга — "type": "project", то есть приложение,
+# и без лока composer install в CI работает как composer update.
+/plugins/*/composer.lock
 .php-cs-fixer.cache
 .phpunit.result.cache
 .php-cs-fixer.php
