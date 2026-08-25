@@ -117,6 +117,24 @@ dropped keys the pack still carries) — an accepted, documented trade-off; the 
 computed by the application at install time against the catalogs actually installed, not by
 this field.
 
+## Adding a plugin requires a `.github/CODEOWNERS` entry
+
+`manifest.json`'s `author` field is a display string (e.g. `"AnimeDB"`), not a GitHub
+handle — the manifest is self-sufficient and read catalog-free, so it must stay that way.
+Nothing else in the repository maps a plugin id to who owns it, so `.github/CODEOWNERS`
+carries that map instead, one explicit line per plugin directory:
+
+```
+/plugins/animedb-language-pack/ @peter-gribanov
+/plugins/animedb-shikimori/     @peter-gribanov
+```
+
+The PR that adds a new plugin must add its owner's line in the same PR — there is no
+separate id-to-handle list to fall back on, and an omitted entry silently resolves to "no
+owner" rather than failing loudly. There is deliberately no catch-all (`* @handle`) line:
+one would request review on every unrelated PR and would mask a missing per-plugin entry
+by silently resolving it to a default owner instead.
+
 ## Plugin translation catalogs must follow the core's translation conventions
 
 A plugin's `translations/` catalog and the core application's own catalogs are the same
