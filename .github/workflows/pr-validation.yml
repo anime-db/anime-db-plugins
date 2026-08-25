@@ -91,6 +91,31 @@ jobs:
         if: steps.diff.outputs.touches_plugins == 'true'
         run: php tools/validate-plugin.php "plugins/$(cat affected-plugin.txt)"
 
+      # Гейт: правка опубликованного содержимого плагина обязана поднимать version в его
+      # manifest.json (issue #87). Без этого release.yml находит уже опубликованный тег
+      # <id>/<version> и МОЛЧА пропускает плагин: правка не доезжает до пользователей, а
+      # CI при этом зелёный.
+      #
+      # Стоит после плагин-гейта намеренно: check-version-bump.php и его классы из
+      # tools/src/ исполняются из чекаута PR, а гарантию, что tools/ на плагинном PR —
+      # доверенное содержимое базовой ветки, даёт именно гейт «только код плагина».
+      #
+      # После validate-plugin.php: ошибки самого плагина (манифест, каталоги) важнее
+      # отсутствия бампа, и их исправление всё равно меняет содержимое.
+      #
+      # Base — SHA, а не имя ветки: GitManifestVersionSource читает базовый манифест через
+      # `git show <ref>:...`, для чего fetch-depth: 0 выше и нужен. Проверка существования
+      # тега идёт через `git ls-remote` по origin — ни gh, ни токена не требует, репозиторий
+      # публичный.
+      #
+      # Редирект, а не пайп: ненулевой код скрипта не должен маскироваться, ровно как у
+      # check-pr-changes.php выше.
+      - name: Gate — version bump for published plugin content
+        if: steps.diff.outputs.touches_plugins == 'true'
+        run: |
+          set -euo pipefail
+          php tools/check-version-bump.php "${{ github.event.pull_request.base.sha }}" < changed-files.txt
+
       # Тесты, PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
       # Гоняются на КАЖДОМ PR: на плагинных (после гейта — конфиги тогда доверенные,
       # = базовые) и на инфраструктурных (плагин-гейт пропущен).
