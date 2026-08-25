@@ -7,10 +7,12 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 
 - [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns: how the host
   actually loads plugin classes, why `composer.lock` is untracked on purpose, why the
-  `plugin-contracts` constraint is not stale
+  `plugin-contracts` constraint is not stale, why `translation_keys_count` bypasses that
+  contract and why this repo's CI is stricter than the application's installer
 - [.claude-docs/conventions.md](.claude-docs/conventions.md) — plugin conventions:
-  version bumps for published plugins, catalog domain per plugin type, pluralization,
-  empty values, recommended Russian terminology
+  version bumps for published plugins, catalog domain per plugin type, the
+  `translation_keys_count` manifest field, pluralization, empty values, recommended
+  Russian terminology
 
 ## Commands
 
@@ -56,6 +58,9 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
   dependencies are deliberate here: nothing would keep a lock fresh, the drift is what
   prompts tooling maintenance, and no published artifact depends on it. Rejected in PR #83.
   See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
+- Do not add `translation_keys_count` to a plugin of type `integration`/`local`, and do not
+  omit it (or let it drift from the actual catalog) for `type: translation` — both are
+  gated by `PluginValidator`. See [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
 ## Workflow
 

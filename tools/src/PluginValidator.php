@@ -88,6 +88,12 @@ use Symfony\Component\Yaml\Yaml;
  * earlier check (wrong domain, unsupported format, symlink) is excluded from this comparison, so
  * one bad file does not also produce a locale-mismatch error alongside its own.
  *
+ * A `translation` plugin's manifest must also declare `translation_keys_count`, an integer equal
+ * to the number of leaf keys in its own catalog (the same union used for the `name`/`description`
+ * check above); the field is rejected outright for `integration`/`local`, the same way the shared
+ * {@see ManifestValidator} contract itself rejects `locales` for those types. This field has no
+ * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
+ *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
  * full list of what to fix in one CI run.
@@ -159,6 +165,7 @@ final class PluginValidator
         [$translationErrors, $catalogKeys] = $this->validateTranslations($pluginDir, $pluginId, $pluginType, $manifestData);
         $errors = [...$errors, ...$translationErrors];
         $errors = [...$errors, ...self::validateManifestLiterals($manifestData, $catalogKeys)];
+        $errors = [...$errors, ...self::validateTranslationKeysCount($manifestData, $pluginType, $catalogKeys)];
 
         return $errors;
     }
@@ -885,6 +892,62 @@ final class PluginValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * The `translation_keys_count` manifest field has no place in the shared
+     * {@see ManifestValidator} contract from `anime-db/plugin-contracts` — an unknown field
+     * simply passes it through unvalidated — so it is checked only here, the market
+     * registry's own tooling (see the "second manifest definition" gotcha in this repo's
+     * `.claude-docs/gotchas.md`).
+     *
+     * For `type: translation` it is required, must be an integer, and must equal the number
+     * of leaf keys in the plugin's own catalog — the same union {@see self::validateTranslations()}
+     * already computed for {@see self::validateManifestLiterals()}. For `integration`/`local`
+     * it must be absent, the same way the contract itself rejects `locales` for those types.
+     *
+     * @param array<string, mixed> $manifestData
+     * @param list<string>         $catalogKeys  every key from the plugin's own "translations/"
+     *                                           catalog, across all locales
+     *
+     * @return list<string>
+     */
+    private static function validateTranslationKeysCount(array $manifestData, ?PluginType $type, array $catalogKeys): array
+    {
+        $hasField = \array_key_exists('translation_keys_count', $manifestData);
+
+        if ($type === PluginType::Integration || $type === PluginType::Local) {
+            return $hasField
+                ? [\sprintf('Field "translation_keys_count" is not allowed for type "%s".', $type->value)]
+                : [];
+        }
+
+        if ($type !== PluginType::Translation) {
+            return [];
+        }
+
+        if (!$hasField) {
+            return ['Plugin of type "translation" is missing a "translation_keys_count" field in manifest.json.'];
+        }
+
+        $value = $manifestData['translation_keys_count'];
+        if (!\is_int($value)) {
+            return [\sprintf(
+                'manifest.json "translation_keys_count" must be an integer, got %s.',
+                get_debug_type($value),
+            )];
+        }
+
+        $actualCount = \count($catalogKeys);
+        if ($value !== $actualCount) {
+            return [\sprintf(
+                'manifest.json "translation_keys_count" is %d, but the "translations/" catalog actually has %d leaf key(s).',
+                $value,
+                $actualCount,
+            )];
+        }
+
+        return [];
     }
 
     private static function expectedRootNamespace(string $pluginId): string

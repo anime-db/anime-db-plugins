@@ -136,7 +136,7 @@ final class PluginValidatorTest extends TestCase
 
     public function testTranslationPluginWithoutSrcButWithTranslationsAndLocalesIsValid(): void
     {
-        $manifest = $this->validTranslationManifest('vendor-name', ['en']);
+        $manifest = $this->validTranslationManifest('vendor-name', ['en'], translationKeysCount: 1);
         $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
         mkdir($pluginDir.'/translations', 0o777, true);
         // Домен "messages" и формат YAML — требования к каталогу плагина типа "translation"
@@ -405,7 +405,7 @@ final class PluginValidatorTest extends TestCase
 
     public function testTranslationPluginWithMessagesDomainHasNoErrors(): void
     {
-        $manifest = $this->validTranslationManifest('vendor-name', ['de']);
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
         $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
         $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
 
@@ -643,6 +643,66 @@ final class PluginValidatorTest extends TestCase
         self::assertSame([], (new PluginValidator())->validate($pluginDir));
     }
 
+    public function testTranslationPluginMissingKeysCountFieldIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de']);
+        unset($manifest['translation_keys_count']);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'missing a "translation_keys_count" field'));
+    }
+
+    public function testTranslationKeysCountNotIntegerIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $manifest['translation_keys_count'] = '1';
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, '"translation_keys_count" must be an integer'));
+    }
+
+    public function testTranslationKeysCountMismatchIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 5);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            '"translation_keys_count" is 5, but the "translations/" catalog actually has 1 leaf key(s)',
+        ));
+    }
+
+    public function testTranslationKeysCountRejectedForIntegrationType(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['translation_keys_count'] = 1;
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'not allowed for type "integration"'));
+    }
+
+    public function testTranslationKeysCountRejectedForLocalType(): void
+    {
+        $manifest = $this->validManifest('vendor-name', 'local');
+        $manifest['translation_keys_count'] = 1;
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'not allowed for type "local"'));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -669,7 +729,7 @@ final class PluginValidatorTest extends TestCase
      *
      * @return array<string, mixed>
      */
-    private function validTranslationManifest(string $id, array $locales): array
+    private function validTranslationManifest(string $id, array $locales, int $translationKeysCount = 0): array
     {
         return [
             'id' => $id,
@@ -677,6 +737,7 @@ final class PluginValidatorTest extends TestCase
             'version' => '0.1.0',
             'type' => 'translation',
             'locales' => $locales,
+            'translation_keys_count' => $translationKeysCount,
             'require' => [
                 'core' => '>=0.0.1',
                 'php' => '>=8.1',
