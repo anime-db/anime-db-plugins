@@ -140,7 +140,20 @@ definition of what a valid manifest is, shared with the host. Reimplementing man
 validation inside `tools/` would create a second definition that drifts from the host's, and
 the failure mode is a plugin that passes CI and then refuses to install (or the reverse).
 
-Known residual, accepted: the host (`anime-db-desktop/app/composer.json`) pins `^0.14`, so a
-new contract minor moves this repo ahead of the host until the host is bumped too. A stricter
-new minor shows up as a red PR; a *more permissive* one would pass green and accept a manifest
-the host still rejects at install. Revisit the constraint at contract `1.0`.
+**The host pins narrowly (`^0.14`) and that asymmetry is correct — do not harmonise the two.**
+The rule is *implementers pin narrow, readers may float*:
+
+| Consumer                     | Relationship to the contract                                                 | Constraint |
+|------------------------------|-------------------------------------------------------------------------------|------------|
+| `anime-db-desktop` (host)    | **implements** it — 34 contract types in use; e.g. `QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`, `SettingsStore`, `OwnManifest`, plus it consumes `FillerInterface`/`SearchByPluginInterface`/widget interfaces from plugins | `^0.14`    |
+| plugins (`manifest.json`)    | **implement** it — that is what a plugin *is*                                  | `^0.14`    |
+| this repo (tooling)          | **reads** it — `ManifestValidator` + `PluginType`, two classes, nothing implemented | `~0.14`    |
+
+A breaking contract minor forces code changes wherever the contract is implemented, so those
+consumers must bump deliberately and see the break. Here it changes only which manifests are
+considered valid, and following it forward is the desired behaviour.
+
+Known residual, accepted: a new contract minor therefore moves this repo ahead of the host
+until the host is bumped too. A stricter new minor shows up as a red PR; a *more permissive*
+one would pass green and accept a manifest the host still rejects at install. Revisit at
+contract `1.0`, where `^1.0` gives the same "minors flow in" behaviour to everyone safely.
