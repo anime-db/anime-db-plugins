@@ -74,6 +74,49 @@ A plugin catalog placed in a third party's domain (say `security.<locale>.yaml`,
 before plugin paths in the container. Nothing depends on this today, but it is what the
 mechanism does, not a promise it makes.
 
+## A `translation` plugin declares its catalog's leaf key count in the manifest
+
+The application and a `translation` plugin share one key space — the core `messages`
+domain — but live in separate repositories, and the market registry has no way to see
+inside a plugin's ZIP before it is installed (the registry carries the manifest, not the
+catalogs). Without a declared number, a language pack could ship a handful of translated
+keys out of several hundred, pass every other check, and the market's storefront would
+have no way to tell it apart from a complete translation.
+
+`manifest.json` for a `translation` plugin must therefore declare `translation_keys_count`:
+
+```json
+{
+    "id": "animedb-language-pack",
+    "type": "translation",
+    "locales": ["de", "ja"],
+    "translation_keys_count": 358
+}
+```
+
+`tools/src/PluginValidator.php` requires the field for `type: translation`, checks that it
+is an integer, and checks that it equals the number of leaf keys actually present in the
+plugin's own catalog — the same flattened key union already computed for the
+"`name`/`description` must not equal a catalog key" check below. Because the domain-per-type
+check above already forces every locale of a `translation` plugin to carry the same key
+set (a mismatch is its own separate error), that single count applies to every locale, not
+just one — a per-locale map would only be needed if that key-parity guarantee were ever
+relaxed.
+
+The field is **rejected outright** for `integration`/`local`, the same way `locales` already
+is: those plugins' catalogs live in their own id-derived domain, and "coverage of the
+application's interface" is not a meaningful number for them.
+
+A count is deliberately not a key list: 358 keys as compact JSON is several kilobytes,
+against a few kilobytes for the entire current `plugins-registry.json` (parsed whole into
+memory by the client). A single integer is also all the storefront needs — it shows
+"64% translated", not the exact 15 keys still missing. This does allow the count to be
+technically imprecise (equal counts do not guarantee an identical key *set*, and the count
+can end up larger than the application's current key count if the application has since
+dropped keys the pack still carries) — an accepted, documented trade-off; the exact diff is
+computed by the application at install time against the catalogs actually installed, not by
+this field.
+
 ## Plugin translation catalogs must follow the core's translation conventions
 
 A plugin's `translations/` catalog and the core application's own catalogs are the same

@@ -46,6 +46,14 @@ StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\
 и непустой `locales`; домен каталога переводов тоже зависит от типа (см.
 [.claude-docs/conventions.md](.claude-docs/conventions.md)).
 
+Плагин типа `translation` дополнительно обязан объявить в манифесте
+`translation_keys_count` — целое число, равное фактическому числу листовых ключей его
+каталога `translations/messages.<locale>.yaml` (число ключей одной локали, поскольку
+валидатор уже требует их совпадения между локалями плагина). Поле нужно витрине маркета,
+чтобы показать полноту перевода без скачивания ZIP; для `integration`/`local` оно
+запрещено, как и `locales`. Подробности и формула подсчёта — в
+[.claude-docs/conventions.md](.claude-docs/conventions.md).
+
 ## Форма плагина
 
 Плагин с кодом (`integration`, `local`) — это `manifest.json` + `src/*.php`, без

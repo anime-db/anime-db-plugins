@@ -161,3 +161,46 @@ Known residual, accepted: a new contract minor therefore moves this repo ahead o
 until the host is bumped too. A stricter new minor shows up as a red PR; a *more permissive*
 one would pass green and accept a manifest the host still rejects at install. Revisit at
 contract `1.0`, where `^1.0` gives the same "minors flow in" behaviour to everyone safely.
+
+## `translation_keys_count` is a deliberate second manifest definition, not an oversight
+
+The previous section establishes `ManifestValidator` + `PluginType` from
+`anime-db/plugin-contracts` as **the** single definition of a valid manifest, shared with
+the host, precisely so `tools/` never drifts from what the application accepts. The
+`translation_keys_count` field (see `.claude-docs/conventions.md`, "A `translation` plugin
+declares its catalog's leaf key count in the manifest") is an intentional exception to that
+rule, not a violation someone should "fix" by moving it into the contract:
+
+- `ManifestValidator` rejects only specific known-but-inapplicable fields per type
+  (`features`/`locales`), the same mechanism `PluginValidator` reuses to reject
+  `translation_keys_count` for `integration`/`local`. An *unrecognised* field like
+  `translation_keys_count` simply passes through it unvalidated.
+- `ManifestParser::buildManifest()` (also in the contract) assembles a `Manifest` DTO from a
+  fixed set of known fields, so an unrecognised field never reaches the DTO either — nothing
+  downstream that consumes a `Manifest` object would ever see it.
+- The application does not read this field from the manifest at all: it reads a plugin's
+  translation coverage from the registry's version record, populated by this repo's own
+  `tools/build-registry.php`, not from `Manifest`.
+
+So the field is deliberately validated **only** by `tools/src/PluginValidator.php`, entirely
+outside the shared contract. If a future change ever needs the contract to know about this
+field too, that is a new decision requiring its own contract release and version bumps in
+both repositories — do not assume the current gap is accidental and paper over it by either
+loosening `PluginValidator` or trying to smuggle the field through `ManifestParser`.
+
+## This repo's CI is stricter than the application's plugin installer
+
+`tools/src/PluginValidator.php` runs only in this monorepo's own CI
+(`pr-validation.yml`), against the plugin a pull request touches. The application's
+installer, which accepts a plugin ZIP from *anywhere* (not just this repo's market), never
+runs it. Concretely, for `translation_keys_count`: the application would accept a
+`translation` plugin ZIP with `"translation_keys_count": "95"` (a string, not an integer), a
+count three times too large or too small, or the field missing outright — none of that is
+checked at install time. This repo's CI, by contrast, **must** reject all three; that is the
+entire point of the check (see `.claude-docs/conventions.md` for why the storefront needs
+the number to be trustworthy before install).
+
+This asymmetry is harmless today only because the market registry is the sole path
+`plugins-registry.json` is built from, and this validator is the only gate on that path.
+It stops being harmless the moment anyone treats "the installer didn't complain" as
+evidence a manifest is valid — it is not, and was never meant to be.
