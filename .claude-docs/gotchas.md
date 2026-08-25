@@ -204,3 +204,59 @@ This asymmetry is harmless today only because the market registry is the sole pa
 `plugins-registry.json` is built from, and this validator is the only gate on that path.
 It stops being harmless the moment anyone treats "the installer didn't complain" as
 evidence a manifest is valid — it is not, and was never meant to be.
+
+## `tools/check-version-bump.php` (issue #87): the "published content" equivalence is not total
+
+`tools/src/PublishedContentRules.php` is the single definition of which files inside a
+plugin directory are "published content" — the ones `PluginZipBuilder` archives into the
+distributable ZIP. `PluginZipBuilder` and `VersionBumpChecker` (the CI gate requiring a
+`manifest.json` version bump whenever that content changes) both read this one class, so
+the exclusion list itself cannot drift between the two. But "read the same list" is not
+the same as "compute the exact same set of files", for two reasons the list itself cannot
+close:
+
+- **Path-shape mismatch.** `PublishedContentRules::isExcluded()` takes a path relative to
+  the *plugin* directory (`PluginZipBuilder`'s own frame, e.g. `"tests/Foo.php"`); the gate
+  only has repo-relative paths from `git diff` (e.g. `"plugins/<id>/tests/Foo.php"`). The
+  conversion is not implicit — `PublishedContentRules::isExcludedRepoRelative($pluginId,
+  $repoRelativePath)` does it explicitly and is the only method the gate is meant to call.
+  Do not have the gate strip the `plugins/<id>/` prefix inline and call `isExcluded()`
+  directly; that duplicates the one line of logic this method exists to own.
+- **Symlinks are invisible to a path-list check.** `PluginZipBuilder::collectFiles()`
+  additionally drops any path that is a symlink (`!$fileInfo->isLink()`), independent of
+  `PublishedContentRules` — a symlink pointing outside the plugin directory must never be
+  archived, regardless of what its own path looks like. `VersionBumpChecker` only ever sees
+  a list of path strings (from `git diff --name-only`), which carries no filesystem
+  metadata — it cannot know a given path is a symlink versus a regular file. A PR that
+  turns a real file into a symlink to the same relative path changes what
+  `PluginZipBuilder` would put in the archive but leaves `VersionBumpChecker` seeing the
+  "same" path, so it can under-flag.
+
+There is a third gap the shared list does not even attempt to model, because it is not
+about a *plugin's own* files at all: `PluginZipBuilder::build()` injects the
+monorepo-root `LICENSE` into every plugin's archive (see `LICENSE_ENTRY_NAME` and the
+`$licenseFile` parameter). Editing that one root `LICENSE` changes the content of every
+published plugin ZIP, but it is not a path under any `plugins/<id>/`, so `git diff`
+touching only `LICENSE` never engages `VersionBumpChecker` for any plugin at all — no
+version bump is asked for, for any of them. Cost today is zero (the file has never
+changed since plugins started shipping it), but a future edit to the license text would
+need a manual, out-of-band decision about which plugins (all of them) need a release, and
+this gate would not raise that question on its own.
+
+**Accepted cost, not a bug:** `README.md` is published content — `PluginZipBuilder`
+archives it, so `PublishedContentRules` does not exclude it, so fixing a typo in a
+plugin's `README.md` requires bumping its `version` and produces a new release. This
+follows directly from "published content" being a real definition (what actually ships)
+rather than a hand-tuned exception list; narrowing it to spare README-only edits would
+make "published content" mean two different things in two different places again — see
+issue #87 for the reasoning.
+
+**Not wired into `pr-validation.yml`.** `tools/check-version-bump.php` is a complete,
+independently runnable CLI (`git diff --name-only <base>...<head> | php
+tools/check-version-bump.php <base-ref>`, exit 0/1) with its own test coverage of all
+seven edge cases (new plugin, removed plugin, tests-only change, non-`plugins/` change,
+same version, lowered version, already-tagged version). Whether and where to call it from
+`pr-validation.yml` is left to whoever integrates it — same split the README's "Тулинг"
+section already documents for every other tool here ("чистый CLI ... без обвязки CI"),
+and the same boundary already hit once before for the mirror `public_url` tooling (see
+"Issue #26" above in this file).
