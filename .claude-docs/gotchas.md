@@ -143,15 +143,19 @@ the failure mode is a plugin that passes CI and then refuses to install (or the 
 **The host pins narrowly (`^0.14`) and that asymmetry is correct — do not harmonise the two.**
 The rule is *implementers pin narrow, readers may float*:
 
-| Consumer                     | Relationship to the contract                                                 | Constraint |
-|------------------------------|-------------------------------------------------------------------------------|------------|
-| `anime-db-desktop` (host)    | **implements** it — 34 contract types in use; e.g. `QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`, `SettingsStore`, `OwnManifest`, plus it consumes `FillerInterface`/`SearchByPluginInterface`/widget interfaces from plugins | `^0.14`    |
-| plugins (`manifest.json`)    | **implement** it — that is what a plugin *is*                                  | `^0.14`    |
-| this repo (tooling)          | **reads** it — `ManifestValidator` + `PluginType`, two classes, nothing implemented | `~0.14`    |
+| Consumer                  | Relationship to the contract                      | Constraint |
+|---------------------------|---------------------------------------------------|------------|
+| `anime-db-desktop` (host) | **implements** it — 34 contract types in use      | `^0.14`    |
+| plugins (`manifest.json`) | **implement** it — that is what a plugin *is*     | `^0.14`    |
+| this repo (tooling)       | **reads** it — `ManifestValidator` + `PluginType` | `~0.14`    |
 
-A breaking contract minor forces code changes wherever the contract is implemented, so those
-consumers must bump deliberately and see the break. Here it changes only which manifests are
-considered valid, and following it forward is the desired behaviour.
+The host sits on both sides of the contract: it implements the interfaces a plugin calls
+(`QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`,
+`SettingsStore`, `OwnManifest`) and consumes the ones a plugin implements (`FillerInterface`,
+`SearchByPluginInterface`, widget interfaces). A breaking contract minor forces code changes
+wherever the contract is implemented, so those consumers must bump deliberately and see the
+break. Here it changes only which manifests are considered valid, and following it forward is
+the desired behaviour.
 
 Known residual, accepted: a new contract minor therefore moves this repo ahead of the host
 until the host is bumped too. A stricter new minor shows up as a red PR; a *more permissive*
