@@ -115,22 +115,45 @@ related. That is the intended trigger, but it collides with the rule that an inc
 finding gets its own task rather than being folded into an in-flight one. When it happens,
 fix it in a separate PR.
 
-## `anime-db/plugin-contracts: ^0.6` is not stale in any way that matters
+## `anime-db/plugin-contracts` is pinned `~0.14` on purpose — a *wide* range, not a typo
 
-The tooling pins `^0.6` (i.e. `>=0.6.0 <0.7.0`) while the contract is published at `v0.14.0`
-and `plugins/animedb-shikimori/manifest.json` declares `"plugin-contracts": "^0.14"`. This
-looks like an eight-minor lag in the code that validates those very manifests. Measured
-against the tags, it is not: between `v0.6.0` and `v0.14.0` the only changes under
-`src/Manifest/` are the canonical licence header, the position of `declare(strict_types=1)`,
-a new `OwnManifestInterface` (a runtime view the host injects into a plugin), and `Manifest`
-implementing it. `ManifestValidator.php` and `PluginType.php` are functionally byte-identical,
-and those two classes are all the tooling imports.
+`~0.14` means `>=0.14.0 <1.0.0`, so every pre-1.0 minor of the contract flows in
+automatically. That is wider than `^0.14` (`>=0.14.0 <0.15.0`), and it is deliberate. Do not
+"tighten" it to `^0.14` to match the host.
 
-Do not conclude from "it works on `^0.6`" that the dependency is unnecessary. It is
+Why a wide range is right *while the contract is pre-1.0*:
+
+- Contract minors are breaking only because there has been no 1.0 yet. That is the phase, not
+  the policy. The `1.0` release is precisely where breaking changes start deserving a detailed
+  BC review — and where `^1.0` will give this same "minors flow in" behaviour safely.
+- The tooling's contract surface is narrow: `ManifestValidator` and `PluginType`, nothing
+  else. It is manifest validation, not the plugin runtime API that a breaking minor actually
+  churns.
+- Following the contract forward is the point. The constraint sat at `^0.6` for months while
+  the contract reached `v0.14.0`, and nothing ever went red — the same "falls behind while CI
+  stays green" failure that motivated leaving `composer.lock` untracked (see above). A narrow
+  range froze it just as effectively as a lock would have.
+
+Do not conclude from "it worked fine on `^0.6`" that the dependency is unnecessary. It is
 load-bearing for the opposite reason: `ManifestValidator` and `PluginType` are the single
 definition of what a valid manifest is, shared with the host. Reimplementing manifest
 validation inside `tools/` would create a second definition that drifts from the host's, and
 the failure mode is a plugin that passes CI and then refuses to install (or the reverse).
 
-Bumping the constraint to `^0.14` is safe and would stop the dependency graph from claiming
-compatibility with a version nothing else runs — but it is cosmetic, not a fix.
+**The host pins narrowly (`^0.14`) and that asymmetry is correct — do not harmonise the two.**
+The rule is *implementers pin narrow, readers may float*:
+
+| Consumer                     | Relationship to the contract                                                 | Constraint |
+|------------------------------|-------------------------------------------------------------------------------|------------|
+| `anime-db-desktop` (host)    | **implements** it — 34 contract types in use; e.g. `QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`, `SettingsStore`, `OwnManifest`, plus it consumes `FillerInterface`/`SearchByPluginInterface`/widget interfaces from plugins | `^0.14`    |
+| plugins (`manifest.json`)    | **implement** it — that is what a plugin *is*                                  | `^0.14`    |
+| this repo (tooling)          | **reads** it — `ManifestValidator` + `PluginType`, two classes, nothing implemented | `~0.14`    |
+
+A breaking contract minor forces code changes wherever the contract is implemented, so those
+consumers must bump deliberately and see the break. Here it changes only which manifests are
+considered valid, and following it forward is the desired behaviour.
+
+Known residual, accepted: a new contract minor therefore moves this repo ahead of the host
+until the host is bumped too. A stricter new minor shows up as a red PR; a *more permissive*
+one would pass green and accept a manifest the host still rejects at install. Revisit at
+contract `1.0`, where `^1.0` gives the same "minors flow in" behaviour to everyone safely.
