@@ -37,12 +37,13 @@ declare(strict_types=1);
  *
  * The working tree must already be checked out at the PR head (true for the
  * pr-validation.yml gate); the base manifest is read via `git show <base-ref>:...` without
- * needing a second checkout. Tag existence is checked via `gh release view`, which needs
- * `gh` on PATH and authenticated — the standard GH_TOKEN GitHub Actions already injects is
- * enough, since this repository is public.
+ * needing a second checkout. Tag existence is checked via `git ls-remote --exit-code`
+ * against the `origin` remote, which needs no `gh` binary and no token — the repository is
+ * public, so an anonymous fetch is enough.
  *
  * On success (no violations) exits 0 silently. On failure prints one line per violation to
- * stderr and exits 1.
+ * stderr and exits 1 — including when the tag-existence check itself could not be
+ * completed (network failure, etc.): that is reported as a violation too, not skipped.
  */
 
 function locateAutoloader(): string
@@ -60,8 +61,8 @@ function locateAutoloader(): string
 
 require locateAutoloader();
 
-use AnimeDb\Plugins\Tools\GhTagExistenceChecker;
 use AnimeDb\Plugins\Tools\GitManifestVersionSource;
+use AnimeDb\Plugins\Tools\GitTagExistenceChecker;
 use AnimeDb\Plugins\Tools\VersionBumpChecker;
 
 $baseRef = $_SERVER['argv'][1] ?? null;
@@ -78,7 +79,7 @@ $paths = $stdin === false ? [] : (preg_split('/\R/', $stdin) ?: []);
 
 $repoRoot = \dirname(__DIR__);
 $manifests = new GitManifestVersionSource($baseRef, $repoRoot);
-$tags = new GhTagExistenceChecker();
+$tags = new GitTagExistenceChecker();
 
 $result = (new VersionBumpChecker())->check($paths, $manifests, $tags);
 

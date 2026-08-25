@@ -28,19 +28,11 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools;
 
 /**
- * Real {@see TagExistenceChecker}, backed by shelling out to the `gh` CLI — the same tool
- * `release.yml` itself uses to decide whether a tag is already published. The repository is
- * public, so the standard `GH_TOKEN`/`GITHUB_TOKEN` GitHub Actions already injects is enough;
- * no extra secret is needed.
+ * Thrown by {@see TagExistenceChecker::exists()} when it could not determine whether the
+ * tag exists at all — as opposed to determining that it does not. Network failures,
+ * missing tooling, and auth failures all fall in this bucket and must never be reported to
+ * {@see VersionBumpChecker} as "tag not found".
  */
-final class GhTagExistenceChecker implements TagExistenceChecker
+final class TagExistenceCheckFailedException extends \RuntimeException
 {
-    public function exists(string $pluginId, string $version): bool
-    {
-        $tag = $pluginId.'/'.$version;
-
-        exec('gh release view '.escapeshellarg($tag).' >/dev/null 2>&1', $output, $exitCode);
-
-        return $exitCode === 0;
-    }
 }

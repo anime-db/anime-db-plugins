@@ -135,6 +135,21 @@ final class VersionBumpCheckerTest extends TestCase
         self::assertTrue($result->isValid());
     }
 
+    public function testTagExistenceCheckFailureFailsClosedWithAViolation(): void
+    {
+        $result = (new VersionBumpChecker())->check(
+            ['plugins/vendor-name/src/Widget.php'],
+            new FakeManifestVersionSource(base: ['vendor-name' => '0.2.0'], head: ['vendor-name' => '0.3.0']),
+            new FakeTagExistenceChecker(failingChecks: ['vendor-name/0.3.0']),
+        );
+
+        self::assertFalse($result->isValid());
+        self::assertCount(1, $result->violations);
+        self::assertSame('vendor-name', $result->violations[0]->pluginId);
+        self::assertStringContainsString('vendor-name/0.3.0', $result->violations[0]->message);
+        self::assertStringContainsString('simulated check failure', $result->violations[0]->message);
+    }
+
     public function testOnlyExcludedDevArtifactsChangedIsSkippedEvenWithSameVersion(): void
     {
         $result = (new VersionBumpChecker())->check(

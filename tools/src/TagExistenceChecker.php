@@ -35,5 +35,10 @@ namespace AnimeDb\Plugins\Tools;
  */
 interface TagExistenceChecker
 {
+    /**
+     * @throws TagExistenceCheckFailedException when the check itself failed (network,
+     *                                          missing tooling, auth) — never conflate
+     *                                          this with "the tag was not found"
+     */
     public function exists(string $pluginId, string $version): bool;
 }

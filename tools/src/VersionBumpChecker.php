@@ -40,7 +40,10 @@ namespace AnimeDb\Plugins\Tools;
  *     ({@see version_compare()} `>`) — catches both "unchanged" and "rolled back";
  *  2. the tag `<id>/<head version>` must not already exist — catches two PRs bumping to the
  *     same version in parallel, where the first merge claims the tag out from under the
- *     second.
+ *     second. If {@see TagExistenceChecker::exists()} cannot determine this at all (network
+ *     failure, missing tooling, auth failure — {@see TagExistenceCheckFailedException}),
+ *     that failure is itself reported as a violation rather than treated as "tag not
+ *     found": a check that fails open on tool errors would defeat condition 2 silently.
  *
  * A plugin is skipped entirely (no violation, regardless of the two conditions above) when:
  * it does not exist on the base branch (newly added by this PR), it no longer exists on the
@@ -84,7 +87,20 @@ final class VersionBumpChecker
                 continue;
             }
 
-            if ($tags->exists($pluginId, $headVersion)) {
+            try {
+                $tagExists = $tags->exists($pluginId, $headVersion);
+            } catch (TagExistenceCheckFailedException $e) {
+                $violations[] = new VersionBumpViolation($pluginId, \sprintf(
+                    'Could not verify whether tag "%s/%s" already exists (%s). Failing closed rather than '
+                    .'silently accepting the version bump — re-run once the check itself can succeed.',
+                    $pluginId,
+                    $headVersion,
+                    $e->getMessage(),
+                ));
+                continue;
+            }
+
+            if ($tagExists) {
                 $violations[] = new VersionBumpViolation($pluginId, \sprintf(
                     'Tag "%s/%s" already exists — bump plugins/%s/manifest.json to a version that has not been released yet.',
                     $pluginId,

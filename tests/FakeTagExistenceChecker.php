@@ -28,19 +28,30 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools\Tests;
 
 use AnimeDb\Plugins\Tools\TagExistenceChecker;
+use AnimeDb\Plugins\Tools\TagExistenceCheckFailedException;
 
 final class FakeTagExistenceChecker implements TagExistenceChecker
 {
     /**
-     * @param list<string> $existingTags tags shaped "<id>/<version>" that already exist
+     * @param list<string> $existingTags  tags shaped "<id>/<version>" that already exist
+     * @param list<string> $failingChecks tags shaped "<id>/<version>" for which the check
+     *                                    itself fails (simulates a network/tooling error,
+     *                                    as opposed to a definitive "not found")
      */
     public function __construct(
         private readonly array $existingTags = [],
+        private readonly array $failingChecks = [],
     ) {
     }
 
     public function exists(string $pluginId, string $version): bool
     {
-        return \in_array($pluginId.'/'.$version, $this->existingTags, true);
+        $tag = $pluginId.'/'.$version;
+
+        if (\in_array($tag, $this->failingChecks, true)) {
+            throw new TagExistenceCheckFailedException(\sprintf('simulated check failure for "%s"', $tag));
+        }
+
+        return \in_array($tag, $this->existingTags, true);
     }
 }

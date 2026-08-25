@@ -255,7 +255,12 @@ issue #87 for the reasoning.
 independently runnable CLI (`git diff --name-only <base>...<head> | php
 tools/check-version-bump.php <base-ref>`, exit 0/1) with its own test coverage of all
 seven edge cases (new plugin, removed plugin, tests-only change, non-`plugins/` change,
-same version, lowered version, already-tagged version). Whether and where to call it from
+same version, lowered version, already-tagged version) plus the tag-existence-check-itself-
+failed case: `GitTagExistenceChecker` (`git ls-remote --exit-code --tags origin`) tells
+"tag not found" (exit `2`) apart from "could not check" (any other non-zero exit — network,
+missing `git`, etc.) via `TagExistenceCheckFailedException`, and `VersionBumpChecker`
+reports that as a violation rather than treating it as "not found" — fail-closed, not
+fail-open. Whether and where to call it from
 `pr-validation.yml` is left to whoever integrates it — same split the README's "Тулинг"
 section already documents for every other tool here ("чистый CLI ... без обвязки CI"),
 and the same boundary already hit once before for the mirror `public_url` tooling (see

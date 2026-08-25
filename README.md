@@ -290,8 +290,10 @@ git diff --name-only master... | php tools/check-pr-changes.php
 # Для каждого затронутого плагина, у которого изменились файлы из дистрибутива
 # (см. tools/src/PublishedContentRules.php — тот же список, что и у build-plugin-zip),
 # требует version > base-версии И отсутствия уже существующего тега <id>/<version>
-# (проверяется через `gh release view`, нужен `gh` в PATH и авторизация). Новый или
-# полностью удалённый этим PR плагин, а также правки только tests/ — пропускаются.
+# (проверяется через `git ls-remote --exit-code`, авторизация не нужна — репозиторий
+# публичный; сбой самой проверки, например сети, тоже считается нарушением, а не
+# пропуском). Новый или полностью удалённый этим PR плагин, а также правки только
+# tests/ — пропускаются.
 git diff --name-only master... | php tools/check-version-bump.php master
 
 # Собрать детерминированный ZIP плагина (manifest.json в корне, src/, README.md;
