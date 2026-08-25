@@ -5,8 +5,9 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 
 ## Documentation index
 
-- [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns, in particular
-  how the host actually loads plugin classes
+- [.claude-docs/gotchas.md](.claude-docs/gotchas.md) — non-obvious footguns: how the host
+  actually loads plugin classes, why `composer.lock` is untracked on purpose, why the
+  `plugin-contracts` constraint is not stale
 - [.claude-docs/conventions.md](.claude-docs/conventions.md) — plugin conventions:
   version bumps for published plugins, catalog domain per plugin type, pluralization,
   empty values, recommended Russian terminology
@@ -51,6 +52,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
   `integration`/`local`, `messages.<locale>.yaml` for `translation`. A catalog in a domain
   nothing resolves passes every other check and translates nothing. See
   [.claude-docs/conventions.md](.claude-docs/conventions.md).
+- Do not commit `composer.lock`, and do not "fix" `.gitignore` to allow it. Floating
+  dependencies are deliberate here: nothing would keep a lock fresh, the drift is what
+  prompts tooling maintenance, and no published artifact depends on it. Rejected in PR #83.
+  See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
 
 ## Workflow
 

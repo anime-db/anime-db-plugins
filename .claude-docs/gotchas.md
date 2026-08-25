@@ -84,3 +84,53 @@ not know about the host").
 If a multilingual manifest `description` is ever needed, the only compatible design is inline
 localized variants inside the manifest itself (top-level literal = default/fallback), not
 external keys.
+
+## The root `composer.lock` is untracked **on purpose** — do not "fix" it
+
+`.gitignore` excludes `composer.lock` at every level, so every `composer install` in CI runs
+on a clean clone with no lock — effectively a `composer update`. The root `composer.json` is
+`"type": "project"`, so this reads like an oversight against Composer's own guidance. It is
+not. Committing the lock was proposed and rejected (PR #83).
+
+Why floating dependencies are the right call **for this repository specifically**:
+
+- **Nobody would keep the lock fresh.** This is not an application: it is not deployed, and
+  its plugins change far more often than its tooling. There is no event that would prompt
+  anyone to run `composer update` here, so a committed lock would silently pin ancient
+  tooling while CI stayed green. A stale lock is worse than no lock.
+- **The drift *is* the maintenance trigger.** When PHPStan or PHP-CS-Fixer ships new rules,
+  the findings land on the next PR, which is the cue to fix them. With a lock they would
+  wait for an update that never comes.
+- **Nothing published depends on it.** `symfony/yaml` is used only by
+  `tools/src/PluginValidator.php`, which runs only in `pr-validation.yml`. The publishing
+  path — `registry.yml` (`build-registry.php`, `sign-registry.php`,
+  `verify-registry-signature.php`, `push-mirror-registry.php`) and `release.yml`
+  (`build-plugin-zip.php`, `push-mirror-assets.php`, `build-release-notes.php`) — handles
+  JSON, libsodium, ZIP and FTP, and never touches YAML. So dependency drift can only turn a
+  PR red; it cannot alter a signed artifact. Registry integrity rests on the Ed25519
+  signature, not on dependency pinning.
+
+Known cost, accepted: an unrelated tooling bump reddens a PR whose author changed nothing
+related. That is the intended trigger, but it collides with the rule that an incidental
+finding gets its own task rather than being folded into an in-flight one. When it happens,
+fix it in a separate PR.
+
+## `anime-db/plugin-contracts: ^0.6` is not stale in any way that matters
+
+The tooling pins `^0.6` (i.e. `>=0.6.0 <0.7.0`) while the contract is published at `v0.14.0`
+and `plugins/animedb-shikimori/manifest.json` declares `"plugin-contracts": "^0.14"`. This
+looks like an eight-minor lag in the code that validates those very manifests. Measured
+against the tags, it is not: between `v0.6.0` and `v0.14.0` the only changes under
+`src/Manifest/` are the canonical licence header, the position of `declare(strict_types=1)`,
+a new `OwnManifestInterface` (a runtime view the host injects into a plugin), and `Manifest`
+implementing it. `ManifestValidator.php` and `PluginType.php` are functionally byte-identical,
+and those two classes are all the tooling imports.
+
+Do not conclude from "it works on `^0.6`" that the dependency is unnecessary. It is
+load-bearing for the opposite reason: `ManifestValidator` and `PluginType` are the single
+definition of what a valid manifest is, shared with the host. Reimplementing manifest
+validation inside `tools/` would create a second definition that drifts from the host's, and
+the failure mode is a plugin that passes CI and then refuses to install (or the reverse).
+
+Bumping the constraint to `^0.14` is safe and would stop the dependency graph from claiming
+compatibility with a version nothing else runs — but it is cosmetic, not a fix.
