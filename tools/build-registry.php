@@ -127,6 +127,18 @@ foreach ($publishedVersions as $index => $entry) {
             exit(1);
         }
     }
+
+    // Optional: absent entirely for every version published before this field existed
+    // (release assets are immutable), present as an integer when the release asset's
+    // manifest.json carried it.
+    if (\array_key_exists('translation_keys_count', $entry) && !\is_int($entry['translation_keys_count'])) {
+        fwrite(\STDERR, \sprintf(
+            'Entry #%d in "%s" has a "translation_keys_count" field that is not an integer.'."\n",
+            $index,
+            $publishedVersionsPath,
+        ));
+        exit(1);
+    }
 }
 
 $previousRegistryPath = $_SERVER['argv'][3] ?? null;
@@ -194,7 +206,7 @@ if ($activeMirrorsPath !== null && $activeMirrorsPath !== '' && $credsEnvVar !==
     $assetMirrors = $resolved['mirrors'];
 }
 
-/* @var list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions */
+/* @var list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int}> $publishedVersions */
 try {
     $registry = (new PluginRegistryBuilder())->build($pluginsDir, $publishedVersions, $sequence, $assetMirrors);
 } catch (RuntimeException $exception) {
