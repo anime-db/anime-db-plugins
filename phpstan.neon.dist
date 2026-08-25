@@ -4,6 +4,7 @@ parameters:
         - tools/src
         - tools/validate-plugin.php
         - tools/check-pr-changes.php
+        - tools/check-version-bump.php
         - tools/build-registry.php
         - tools/sign-registry.php
         - tools/verify-registry-signature.php

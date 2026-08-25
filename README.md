@@ -285,6 +285,17 @@ php tools/validate-plugin.php plugins/animedb-shikimori
 # id единственного затронутого плагина (код 0) либо причина отказа (код ≠0).
 git diff --name-only master... | php tools/check-pr-changes.php
 
+# Гейт «версия поднята». На вход — список путей PR через stdin, аргументом — база
+# сравнения (ref/sha, из которого читается base-версия манифеста через `git show`).
+# Для каждого затронутого плагина, у которого изменились файлы из дистрибутива
+# (см. tools/src/PublishedContentRules.php — тот же список, что и у build-plugin-zip),
+# требует version > base-версии И отсутствия уже существующего тега <id>/<version>
+# (проверяется через `git ls-remote --exit-code`, авторизация не нужна — репозиторий
+# публичный; сбой самой проверки, например сети, тоже считается нарушением, а не
+# пропуском). Новый или полностью удалённый этим PR плагин, а также правки только
+# tests/ — пропускаются.
+git diff --name-only master... | php tools/check-version-bump.php master
+
 # Собрать детерминированный ZIP плагина (manifest.json в корне, src/, README.md;
 # без vendor/, composer.lock, tests/, .git*, .php-cs-fixer.*) и посчитать sha256.
 # Хеш печатается в stdout и кладётся рядом с архивом в файл "sha256".

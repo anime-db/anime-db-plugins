@@ -33,7 +33,9 @@ namespace AnimeDb\Plugins\Tools;
  * The plugin contract at runtime is `manifest.json` + `src/*.php`; the host provides
  * `anime-db/plugin-contracts` itself, so `vendor/` must not be duplicated into the archive.
  * `composer.lock`, `tests/`, `.git*` and `.php-cs-fixer.*` are dev-only artifacts of this
- * monorepo's local tooling and are excluded the same way.
+ * monorepo's local tooling and are excluded the same way — see {@see PublishedContentRules}
+ * for the exact rules, shared with the CI gate that requires a version bump whenever this
+ * same published content changes.
  *
  * Entries are added in a fixed (sorted) order with a fixed mtime and fixed unix file
  * permissions, so building the same plugin directory twice produces byte-identical ZIPs
@@ -47,28 +49,6 @@ namespace AnimeDb\Plugins\Tools;
  */
 final class PluginZipBuilder
 {
-    /**
-     * Top-level directories entirely excluded from the archive (recursively).
-     *
-     * @var list<string>
-     */
-    private const EXCLUDED_TOP_LEVEL_DIRS = ['vendor', 'tests'];
-
-    /**
-     * File basenames excluded from the archive wherever they appear.
-     *
-     * @var list<string>
-     */
-    private const EXCLUDED_FILES = ['composer.lock'];
-
-    /**
-     * Basename prefixes excluded from the archive wherever they appear (covers `.git`,
-     * `.gitignore`, `.gitattributes`, `.github`, `.php-cs-fixer.dist.php`, `.php-cs-fixer.cache`).
-     *
-     * @var list<string>
-     */
-    private const EXCLUDED_PREFIXES = ['.git', '.php-cs-fixer'];
-
     /**
      * Fixed mtime stamped on every archive entry: 1980-01-01T00:00:00Z, the earliest
      * timestamp the ZIP format itself supports. Using the real filesystem mtime would make
@@ -169,7 +149,7 @@ final class PluginZipBuilder
         // files from outside $pluginDir into the archive, or cause infinite recursion on a cycle.
         $filter = new \RecursiveCallbackFilterIterator(
             new \RecursiveDirectoryIterator($pluginDir, \FilesystemIterator::SKIP_DOTS),
-            static fn (\SplFileInfo $fileInfo, string $key, \RecursiveDirectoryIterator $iterator): bool => !$fileInfo->isLink() && !self::isExcluded($iterator->getSubPathname()),
+            static fn (\SplFileInfo $fileInfo, string $key, \RecursiveDirectoryIterator $iterator): bool => !$fileInfo->isLink() && !PublishedContentRules::isExcluded($iterator->getSubPathname()),
         );
         $iterator = new \RecursiveIteratorIterator($filter);
 
@@ -183,27 +163,5 @@ final class PluginZipBuilder
         sort($files, SORT_STRING);
 
         return $files;
-    }
-
-    private static function isExcluded(string $relativePath): bool
-    {
-        $segments = explode('/', $relativePath);
-        $basename = end($segments);
-
-        if (\in_array($segments[0], self::EXCLUDED_TOP_LEVEL_DIRS, true)) {
-            return true;
-        }
-
-        if (\in_array($basename, self::EXCLUDED_FILES, true)) {
-            return true;
-        }
-
-        foreach (self::EXCLUDED_PREFIXES as $prefix) {
-            if (str_starts_with($basename, $prefix)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
