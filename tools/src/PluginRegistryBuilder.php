@@ -77,11 +77,14 @@ final class PluginRegistryBuilder
      * (`previous.sequence + 1`) so that it strictly increases between generations — this method
      * only rejects non-positive values, it does not itself compare against a previous registry.
      *
-     * @param list<array{id: string, version: string, core: string, sha256: string}> $publishedVersions
-     * @param ?list<string>                                                          $assetMirrors      pre-resolved `asset_mirrors`
-     *                                                                                                  (see {@see AssetMirrorsResolver});
-     *                                                                                                  `null` falls back to
-     *                                                                                                  {@see self::ASSET_MIRRORS} (GitHub only)
+     * @param list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int}> $publishedVersions each entry's optional
+     *                                                                                                                                `translation_keys_count` must come from the
+     *                                                                                                                                downloaded release asset's `manifest.json`
+     *                                                                                                                                (see the "translation_keys_count" note below)
+     * @param ?list<string>                                                                                        $assetMirrors      pre-resolved `asset_mirrors`
+     *                                                                                                                                (see {@see AssetMirrorsResolver});
+     *                                                                                                                                `null` falls back to
+     *                                                                                                                                {@see self::ASSET_MIRRORS} (GitHub only)
      *
      * @return array{
      *     sequence: int,
@@ -89,7 +92,7 @@ final class PluginRegistryBuilder
      *     plugins: list<array{
      *         id: string,
      *         manifest: array<string, mixed>,
-     *         versions: list<array{version: string, core: string, sha256: string}>,
+     *         versions: list<array{version: string, core: string, sha256: string, translation_keys_count?: int}>,
      *     }>,
      * }
      */
@@ -107,11 +110,28 @@ final class PluginRegistryBuilder
 
         $versionsByPluginId = [];
         foreach ($publishedVersions as $entry) {
-            $versionsByPluginId[$entry['id']][] = [
+            $versionRecord = [
                 'version' => $entry['version'],
                 'core' => $entry['core'],
                 'sha256' => $entry['sha256'],
             ];
+
+            // `translation_keys_count`, when present, must be taken from the *release asset's*
+            // manifest.json that the caller already downloaded for `core`/`sha256` (issue #90) —
+            // never from `readManifest()` below, which reads `plugins/<id>/manifest.json` out of
+            // this checkout of `master`. Those are different artifacts: `versions[]` describes
+            // whatever a given tag actually published, while `master`'s manifest describes the
+            // latest, possibly-unreleased, working tree. The app's
+            // `MarketPlugin::resolveCompatibleVersion()` can also install an older version than
+            // the latest, so a count sourced from `master` would misdescribe exactly the artifact
+            // being installed. Omitted (not `0`/`null`) when the source entry does not carry it —
+            // true for every version published before this field existed, since release assets
+            // are immutable and cannot gain it retroactively.
+            if (\array_key_exists('translation_keys_count', $entry)) {
+                $versionRecord['translation_keys_count'] = $entry['translation_keys_count'];
+            }
+
+            $versionsByPluginId[$entry['id']][] = $versionRecord;
         }
 
         $pluginIds = array_keys($versionsByPluginId);

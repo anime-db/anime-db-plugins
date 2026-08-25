@@ -127,6 +127,43 @@ final class BuildRegistryCliTest extends TestCase
         self::assertNotSame(0, $exitCode);
     }
 
+    public function testTranslationKeysCountIsPassedThroughWhenPresentInPublishedVersionEntry(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([
+            ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123', 'translation_keys_count' => 358],
+        ], \JSON_THROW_ON_ERROR));
+
+        [$output, $exitCode] = $this->runCli($repoRoot.'/plugins', $publishedVersionsPath);
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertSame(
+            [['version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123', 'translation_keys_count' => 358]],
+            $registry['plugins'][0]['versions'],
+        );
+    }
+
+    public function testNonIntegerTranslationKeysCountExitsNonZero(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([
+            ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123', 'translation_keys_count' => '358'],
+        ], \JSON_THROW_ON_ERROR));
+
+        [, $exitCode] = $this->runCli($repoRoot.'/plugins', $publishedVersionsPath);
+
+        self::assertNotSame(0, $exitCode);
+    }
+
     public function testSequenceIsPreviousRegistrySequencePlusOne(): void
     {
         $repoRoot = \dirname(__DIR__);

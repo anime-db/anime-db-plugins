@@ -54,6 +54,15 @@ StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\
 запрещено, как и `locales`. Подробности и формула подсчёта — в
 [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
+В `plugins-registry.json` это же число попадает в запись версии (`versions[]`, рядом с
+`core`/`sha256`), а не в блок `manifest`: у `resolveCompatibleVersion()` приложения нет
+гарантии, что установится именно последняя версия, поэтому счётчик должен описывать
+конкретный опубликованный артефакт, а не рабочее дерево `master`. Источник —
+`translation_keys_count` из релизного ассета `manifest.json`, который шаг `Collect
+published versions` в `registry.yml` уже скачивает по тегу ради `require.core`/`sha256`.
+Поле опциональное: у версий, опубликованных до его появления, оно отсутствует и появиться
+не может, так как ассеты релизов иммутабельны.
+
 ## Форма плагина
 
 Плагин с кодом (`integration`, `local`) — это `manifest.json` + `src/*.php`, без

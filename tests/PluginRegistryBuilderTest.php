@@ -228,6 +228,28 @@ final class PluginRegistryBuilderTest extends TestCase
         self::assertSame('translation', $result['plugins'][0]['manifest']['type']);
     }
 
+    public function testTranslationKeysCountIsPreservedWhenPresentAndOmittedWhenAbsent(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-language-pack' => ['version' => '0.2.0', 'name' => 'Language pack'],
+        ]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            // Older version, published before translation_keys_count existed: no such
+            // field in the release asset's manifest.json, so none in the entry either.
+            ['id' => 'vendor-language-pack', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0'],
+            ['id' => 'vendor-language-pack', 'version' => '0.2.0', 'core' => '>=0.1.0', 'sha256' => 'sha-0.2.0', 'translation_keys_count' => 358],
+        ], 1);
+
+        $versions = $result['plugins'][0]['versions'];
+
+        self::assertSame('0.2.0', $versions[0]['version']);
+        self::assertSame(358, $versions[0]['translation_keys_count']);
+
+        self::assertSame('0.1.0', $versions[1]['version']);
+        self::assertArrayNotHasKey('translation_keys_count', $versions[1]);
+    }
+
     public function testExplicitAssetMirrorsOverrideTheGithubOnlyDefault(): void
     {
         $pluginsDir = $this->createPluginsFixture([]);
