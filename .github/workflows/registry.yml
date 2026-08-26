@@ -106,9 +106,28 @@ jobs:
               rm -f "$tmp/manifest.json" "$tmp/sha256"
               continue
             fi
+            # translation_keys_count переносится из СКАЧАННОГО релизного ассета, а не из
+            # plugins/<id>/manifest.json рабочего дерева: versions[] описывает то, что
+            # реально опубликовано под тегом, а master — возможно ещё не выпущенное
+            # состояние. Плюс resolveCompatibleVersion() на стороне приложения может
+            # ставить не последнюю версию, и счётчик из master описывал бы не тот артефакт.
+            #
+            # Через --slurpfile и has(), а не через `// empty` + tonumber: так сохраняется
+            # исходный JSON-тип значения. Строка "356" в манифесте доедет до
+            # build-registry.php строкой и будет там отвергнута, тогда как tonumber молча
+            # привёл бы её к числу и обошёл проверку. Workflow переносит, валидирует тулинг.
+            #
+            # has() (а не значение) — потому что отсутствие поля должно оставаться
+            # отсутствием ключа, а не null: у версий, выпущенных до появления поля, ассеты
+            # иммутабельны и получить его уже не могут, и приложение обязано отличать
+            # «покрытие неизвестно» от «переведено ноль строк».
             jq \
               --arg id "$id" --arg version "$version" --arg core "$core" --arg sha256 "$sha256" \
-              '. += [{id: $id, version: $version, core: $core, sha256: $sha256}]' \
+              --slurpfile manifest "$tmp/manifest.json" \
+              '. += [{id: $id, version: $version, core: $core, sha256: $sha256}
+                     + (if ($manifest[0] | has("translation_keys_count"))
+                        then {translation_keys_count: $manifest[0].translation_keys_count}
+                        else {} end)]' \
               published-versions.json > published-versions.tmp
             mv published-versions.tmp published-versions.json
             rm -f "$tmp/manifest.json" "$tmp/sha256"
