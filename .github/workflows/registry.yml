@@ -106,27 +106,35 @@ jobs:
               rm -f "$tmp/manifest.json" "$tmp/sha256"
               continue
             fi
-            # translation_keys_count переносится из СКАЧАННОГО релизного ассета, а не из
-            # plugins/<id>/manifest.json рабочего дерева: versions[] описывает то, что
+            # translation_keys_count и locales переносятся из СКАЧАННОГО релизного ассета, а
+            # не из plugins/<id>/manifest.json рабочего дерева: versions[] описывает то, что
             # реально опубликовано под тегом, а master — возможно ещё не выпущенное
             # состояние. Плюс resolveCompatibleVersion() на стороне приложения может
-            # ставить не последнюю версию, и счётчик из master описывал бы не тот артефакт.
+            # ставить не последнюю версию, и значения из master описывали бы не тот артефакт.
+            # Для locales это несущее: витрина маркета показывает языки той версии, которая
+            # реально установится, а не последней опубликованной (anime-db-desktop#543).
             #
             # Через --slurpfile и has(), а не через `// empty` + tonumber: так сохраняется
             # исходный JSON-тип значения. Строка "356" в манифесте доедет до
             # build-registry.php строкой и будет там отвергнута, тогда как tonumber молча
-            # привёл бы её к числу и обошёл проверку. Workflow переносит, валидирует тулинг.
+            # привёл бы её к числу и обошёл проверку. То же и для locales: строка вместо
+            # списка или список не-строк доезжает как есть и отвергается валидацией
+            # PluginRegistryBuilder. Workflow переносит, валидирует тулинг.
             #
             # has() (а не значение) — потому что отсутствие поля должно оставаться
             # отсутствием ключа, а не null: у версий, выпущенных до появления поля, ассеты
             # иммутабельны и получить его уже не могут, и приложение обязано отличать
-            # «покрытие неизвестно» от «переведено ноль строк».
+            # «покрытие неизвестно» от «переведено ноль строк», а «языки неизвестны» — от
+            # «плагин не везёт ни одного языка».
             jq \
               --arg id "$id" --arg version "$version" --arg core "$core" --arg sha256 "$sha256" \
               --slurpfile manifest "$tmp/manifest.json" \
               '. += [{id: $id, version: $version, core: $core, sha256: $sha256}
                      + (if ($manifest[0] | has("translation_keys_count"))
                         then {translation_keys_count: $manifest[0].translation_keys_count}
+                        else {} end)
+                     + (if ($manifest[0] | has("locales"))
+                        then {locales: $manifest[0].locales}
                         else {} end)]' \
               published-versions.json > published-versions.tmp
             mv published-versions.tmp published-versions.json
