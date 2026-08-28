@@ -77,14 +77,15 @@ final class PluginRegistryBuilder
      * (`previous.sequence + 1`) so that it strictly increases between generations — this method
      * only rejects non-positive values, it does not itself compare against a previous registry.
      *
-     * @param list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int}> $publishedVersions each entry's optional
-     *                                                                                                                                `translation_keys_count` must come from the
-     *                                                                                                                                downloaded release asset's `manifest.json`
-     *                                                                                                                                (see the "translation_keys_count" note below)
-     * @param ?list<string>                                                                                        $assetMirrors      pre-resolved `asset_mirrors`
-     *                                                                                                                                (see {@see AssetMirrorsResolver});
-     *                                                                                                                                `null` falls back to
-     *                                                                                                                                {@see self::ASSET_MIRRORS} (GitHub only)
+     * @param list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int, locales?: mixed}> $publishedVersions each entry's optional
+     *                                                                                                                                                 `translation_keys_count`/`locales`
+     *                                                                                                                                                 must come from the downloaded
+     *                                                                                                                                                 release asset's `manifest.json`
+     *                                                                                                                                                 (see the notes below)
+     * @param ?list<string>                                                                                                         $assetMirrors      pre-resolved `asset_mirrors`
+     *                                                                                                                                                 (see {@see AssetMirrorsResolver});
+     *                                                                                                                                                 `null` falls back to
+     *                                                                                                                                                 {@see self::ASSET_MIRRORS} (GitHub only)
      *
      * @return array{
      *     sequence: int,
@@ -92,7 +93,7 @@ final class PluginRegistryBuilder
      *     plugins: list<array{
      *         id: string,
      *         manifest: array<string, mixed>,
-     *         versions: list<array{version: string, core: string, sha256: string, translation_keys_count?: int}>,
+     *         versions: list<array{version: string, core: string, sha256: string, translation_keys_count?: int, locales?: list<string>}>,
      *     }>,
      * }
      */
@@ -131,6 +132,19 @@ final class PluginRegistryBuilder
                 $versionRecord['translation_keys_count'] = $entry['translation_keys_count'];
             }
 
+            // `locales`, when present, must be taken from the same release asset's manifest.json
+            // as `translation_keys_count` above — never from `readManifest()`, for the same
+            // reason: `versions[]` describes what a given tag actually published, while
+            // `master`'s manifest describes the latest, possibly-unreleased, working tree.
+            // Omitted (not `null`/`[]`) when the source entry does not carry it — true for every
+            // version published before this field existed, since release assets are immutable and
+            // cannot gain it retroactively. Unlike `translation_keys_count`, an incorrect type is
+            // rejected outright rather than passed through, since a malformed value here would
+            // misdescribe a language a user actually installs.
+            if (\array_key_exists('locales', $entry)) {
+                $versionRecord['locales'] = $this->validateLocales($entry['locales'], $entry['id'], $entry['version']);
+            }
+
             $versionsByPluginId[$entry['id']][] = $versionRecord;
         }
 
@@ -157,6 +171,28 @@ final class PluginRegistryBuilder
             'asset_mirrors' => $assetMirrors ?? self::ASSET_MIRRORS,
             'plugins' => $plugins,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function validateLocales(mixed $locales, string $pluginId, string $version): array
+    {
+        if (\is_array($locales) && array_is_list($locales) && $locales === []) {
+            throw new \RuntimeException(\sprintf('"%s" version "%s": "locales" must be a non-empty list of strings, got an empty list.', $pluginId, $version));
+        }
+
+        if (!\is_array($locales) || !array_is_list($locales)) {
+            throw new \RuntimeException(\sprintf('"%s" version "%s": "locales" must be a non-empty list of strings, got %s.', $pluginId, $version, \get_debug_type($locales)));
+        }
+
+        foreach ($locales as $locale) {
+            if (!\is_string($locale) || $locale === '') {
+                throw new \RuntimeException(\sprintf('"%s" version "%s": "locales" must be a non-empty list of strings, got a %s element.', $pluginId, $version, $locale === '' ? 'empty string' : \get_debug_type($locale)));
+            }
+        }
+
+        return $locales;
     }
 
     /**
