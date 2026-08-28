@@ -250,6 +250,58 @@ final class PluginRegistryBuilderTest extends TestCase
         self::assertArrayNotHasKey('translation_keys_count', $versions[1]);
     }
 
+    public function testLocalesIsPreservedWhenPresentAndOmittedWhenAbsent(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-language-pack' => ['version' => '0.2.0', 'name' => 'Language pack'],
+        ]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            // Older version, published before "locales" was carried into the registry: no such
+            // field in the release asset's manifest.json, so none in the entry either.
+            ['id' => 'vendor-language-pack', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0'],
+            ['id' => 'vendor-language-pack', 'version' => '0.2.0', 'core' => '>=0.1.0', 'sha256' => 'sha-0.2.0', 'locales' => ['de', 'ja']],
+        ], 1);
+
+        $versions = $result['plugins'][0]['versions'];
+
+        self::assertSame('0.2.0', $versions[0]['version']);
+        self::assertSame(['de', 'ja'], $versions[0]['locales']);
+
+        self::assertSame('0.1.0', $versions[1]['version']);
+        self::assertArrayNotHasKey('locales', $versions[1]);
+    }
+
+    /**
+     * @return iterable<string, array{0: mixed}>
+     */
+    public static function provideInvalidLocales(): iterable
+    {
+        yield 'string' => ['en'];
+        yield 'list of non-strings' => [[1, 2]];
+        yield 'empty list' => [[]];
+        yield 'list containing an empty string' => [['en', '']];
+        yield 'non-list array' => [['a' => 'en']];
+        yield 'null' => [null];
+    }
+
+    /**
+     * @dataProvider provideInvalidLocales
+     */
+    public function testInvalidLocalesTypeIsRejectedWithAClearMessage(mixed $invalidLocales): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-language-pack' => ['version' => '0.1.0', 'name' => 'Language pack'],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/"locales" must be a non-empty list of strings/');
+
+        (new PluginRegistryBuilder())->build($pluginsDir, [
+            ['id' => 'vendor-language-pack', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0', 'locales' => $invalidLocales],
+        ], 1);
+    }
+
     public function testExplicitAssetMirrorsOverrideTheGithubOnlyDefault(): void
     {
         $pluginsDir = $this->createPluginsFixture([]);
