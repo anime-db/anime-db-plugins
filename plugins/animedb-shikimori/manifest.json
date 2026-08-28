@@ -1,10 +1,14 @@
 {
     "id": "animedb-shikimori",
     "name": "Shikimori",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "type": "integration",
     "description": "Официальный плагин-источник Shikimori: поиск и заполнение карточек аниме.",
     "author": "AnimeDB",
+    "locales": [
+        "en",
+        "ru"
+    ],
     "features": {
         "filler": true,
         "sync": true,
@@ -15,6 +19,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.1",
-        "plugin-contracts": "^0.14"
+        "plugin-contracts": "^0.15"
     }
 }
