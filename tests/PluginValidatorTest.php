@@ -209,6 +209,7 @@ final class PluginValidatorTest extends TestCase
     public function testIntegrationPluginWithMultipleLocalesIsNotCheckedForLocaleParity(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
         $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
@@ -343,6 +344,7 @@ final class PluginValidatorTest extends TestCase
     public function testMatchingTranslationKeysHaveNoErrors(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'en', "greeting: Hello\nfarewell: Bye\n");
         $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\nfarewell: Пока\n");
@@ -385,6 +387,7 @@ final class PluginValidatorTest extends TestCase
     public function testSingleLocaleTranslationHasNoErrors(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
 
@@ -437,10 +440,107 @@ final class PluginValidatorTest extends TestCase
     public function testIntegrationPluginWithOwnIdDomainHasNoErrors(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
 
         self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testIntegrationPluginWithMatchingLocalesAndCatalogsIsValid(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testIntegrationPluginWithDeclaredLocaleMissingCatalogIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru', 'de'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'declared in manifest "locales" but missing a "translations/vendor-name.<locale>.yaml" catalog: de',
+        ));
+    }
+
+    public function testIntegrationPluginWithUndeclaredCatalogLocaleIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'has a "translations/vendor-name.<locale>.yaml" catalog but is not declared in manifest "locales": ru',
+        ));
+    }
+
+    public function testIntegrationPluginWithoutCatalogsAndWithoutLocalesFieldIsValid(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testIntegrationPluginWithoutCatalogsButWithLocalesFieldIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'declares a "locales" field in manifest.json but has no "translations/vendor-name.<locale>.yaml" catalogs',
+        ));
+    }
+
+    public function testLocalPluginTypeIsSubjectToTheSameLocalesRule(): void
+    {
+        $manifest = $this->validManifest('vendor-name', 'local');
+        $manifest['locales'] = ['en'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'Plugin of type "local" declares a "locales" field in manifest.json but has no "translations/vendor-name.<locale>.yaml" catalogs',
+        ));
+    }
+
+    public function testCatalogRejectedByDomainCheckDoesNotAlsoProduceLocaleMismatch(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['ru'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'ru', "greeting: Привет\n");
+        // Wrong domain for an "integration" plugin — rejected by the domain check and excluded
+        // from the "locales" comparison, so its own "fr" locale must not also surface as an
+        // undeclared-catalog locale mismatch.
+        $this->writeTranslation($pluginDir, 'fr', "greeting: Bonjour\n", 'messages');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'uses domain "messages" instead of "vendor-name"'));
+        self::assertFalse(self::hasErrorContaining($errors, 'locale mismatch'));
     }
 
     public function testTranslationKeyParityIsCheckedEvenWhenManifestIsMissing(): void
@@ -487,6 +587,7 @@ final class PluginValidatorTest extends TestCase
     public function testMatchingPlaceholdersHaveNoErrors(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'en', "greeting: 'Hello, %name%!'\n");
         $this->writeTranslation($pluginDir, 'ru', "greeting: 'Привет, %name%!'\n");
@@ -525,6 +626,7 @@ final class PluginValidatorTest extends TestCase
     public function testDifferentPlaceholderOrderWithSameSetHasNoErrors(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en', 'ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'en', "greeting: '%greeting%, %name%!'\n");
         $this->writeTranslation($pluginDir, 'ru', "greeting: '%name%, %greeting%!'\n");
@@ -571,6 +673,7 @@ final class PluginValidatorTest extends TestCase
     public function testCountPlaceholderWithoutPipeIsValid(): void
     {
         $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['ru'];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         $this->writeTranslation($pluginDir, 'ru', "sync_review_badge: 'Требует внимания: %count%'\n");
 

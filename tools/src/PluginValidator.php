@@ -79,14 +79,22 @@ use Symfony\Component\Yaml\Yaml;
  * at all (market registry build, the pre-activation install UI, this validator itself), so a key
  * placed there would render literally instead of resolving to anything.
  *
- * For `translation` plugins specifically, the manifest `locales` list must match the set of
- * locales actually shipped as `translations/messages.<locale>.yaml` files, in both directions: a
+ * The manifest `locales` list must match the set of locales actually shipped as catalogs in the
+ * domain this plugin's `type` resolves (`translations/messages.<locale>.yaml` for `translation`,
+ * `translations/<plugin-id>.<locale>.yaml` for `integration`/`local`), in both directions: a
  * declared locale with no catalog, and a catalog with no declared locale, are both errors. The
- * application resolves the language switcher and `Accept-Language` negotiation from the manifest
- * `locales` alone, so a mismatch is invisible to every other check here (key parity, placeholders,
- * domain) yet silently breaks the language a user picks. A catalog file already rejected by an
- * earlier check (wrong domain, unsupported format, symlink) is excluded from this comparison, so
- * one bad file does not also produce a locale-mismatch error alongside its own.
+ * application resolves the language switcher, `Accept-Language` negotiation and the plugin
+ * listing from the manifest `locales` alone, so a mismatch is invisible to every other check here
+ * (key parity, placeholders, domain) yet silently breaks the language a user picks, or advertises
+ * one the plugin never ships. A catalog file already rejected by an earlier check (wrong domain,
+ * unsupported format, symlink) is excluded from this comparison, so one bad file does not also
+ * produce a locale-mismatch error alongside its own.
+ *
+ * For `translation`, `locales` is required by the shared {@see ManifestValidator} contract
+ * itself, so this validator only compares it once it parses cleanly. For `integration`/`local`
+ * the contract allows the field to be entirely absent — it only matters once the plugin ships
+ * catalogs of its own — so this validator additionally requires it exactly when such catalogs
+ * are present, and forbids it when they are not.
  *
  * A `translation` plugin's manifest must also declare `translation_keys_count`, an integer equal
  * to the number of leaf keys in its own catalog (the same union used for the `name`/`description`
@@ -415,6 +423,22 @@ final class PluginValidator
     private const ICU_DOMAIN_SUFFIX = '+intl-icu';
 
     /**
+     * The single definition of which translation domain a plugin's catalogs must use, driven by
+     * its manifest `type` (see the class docblock and {@see self::CORE_TRANSLATION_DOMAIN}).
+     * Used both to validate each catalog file's own name and, via the same value, to know which
+     * catalogs the manifest "locales" field is compared against — one domain computation, reused
+     * for both checks.
+     */
+    private static function expectedTranslationDomain(?PluginType $type, string $pluginId): ?string
+    {
+        return match ($type) {
+            PluginType::Translation => self::CORE_TRANSLATION_DOMAIN,
+            PluginType::Integration, PluginType::Local => $pluginId,
+            null => null,
+        };
+    }
+
+    /**
      * @param array<string, mixed> $manifestData
      *
      * @return array{0: list<string>, 1: list<string>} errors, and the union of every translation
@@ -426,10 +450,20 @@ final class PluginValidator
     private function validateTranslations(string $pluginDir, string $pluginId, ?PluginType $type, array $manifestData): array
     {
         $translationsDir = $pluginDir.'/translations';
+        $expectedDomain = self::expectedTranslationDomain($type, $pluginId);
 
-        // A plugin without a "translations/" directory is valid; the check is inapplicable.
+        // A plugin without a "translations/" directory is valid for "translation" (reported
+        // separately by validateTranslationSource()) and for a plugin of unrecognised type; for
+        // "integration"/"local" no catalogs at all still means the "locales" presence rule
+        // below applies (no catalogs -> the field must be absent).
         if (!is_dir($translationsDir)) {
-            return [[], []];
+            $localeErrors = [];
+            if ($type === PluginType::Integration || $type === PluginType::Local) {
+                \assert($expectedDomain !== null);
+                $localeErrors = self::validateDeclaredLocales($type, $manifestData, [], $expectedDomain);
+            }
+
+            return [$localeErrors, []];
         }
 
         // Same reasoning as the "src/" checks above: a symlinked "translations/" must not be
@@ -437,12 +471,6 @@ final class PluginValidator
         if (is_link($translationsDir)) {
             return [['Plugin "translations/" must not be a symlink.'], []];
         }
-
-        $expectedDomain = match ($type) {
-            PluginType::Translation => self::CORE_TRANSLATION_DOMAIN,
-            PluginType::Integration, PluginType::Local => $pluginId,
-            null => null,
-        };
 
         $errors = [];
         $catalogs = [];
@@ -583,37 +611,100 @@ final class PluginValidator
 
         $allKeys = array_values(array_unique(array_merge([], ...array_values($catalogs))));
 
-        // Only for "translation" plugins: their manifest "locales" is the single source the
-        // application uses to populate the language switcher (AvailableLocalesProvider), so it
-        // must match the catalogs actually shipped, in both directions — see the class docblock.
-        // $catalogs only contains locales of files that passed every check above (domain, ICU
-        // suffix, naming pattern, YAML syntax, symlink), so a file already rejected for one of
-        // those reasons does not also trigger a locale-mismatch error here.
-        $declaredLocales = $type === PluginType::Translation ? self::declaredLocales($manifestData) : null;
+        // The manifest "locales" field is the single source the application uses to populate
+        // the language switcher and plugin listing, so it must match the catalogs actually
+        // shipped in the domain this plugin type resolves ($expectedDomain, computed above for
+        // the per-file domain check) — see the class docblock. $catalogs only contains locales
+        // of files that passed every check above (domain, ICU suffix, naming pattern, YAML
+        // syntax, symlink), so a file already rejected for one of those reasons does not also
+        // trigger a locale-mismatch error here.
+        $localeErrors = $type !== null && $expectedDomain !== null
+            ? self::validateDeclaredLocales($type, $manifestData, array_keys($catalogs), $expectedDomain)
+            : [];
 
         return [
             [
                 ...$errors,
                 ...self::compareTranslationCatalogs($catalogs),
                 ...self::comparePlaceholders($catalogValues),
-                ...($declaredLocales !== null ? self::compareDeclaredLocales($declaredLocales, array_keys($catalogs)) : []),
+                ...$localeErrors,
             ],
             $allKeys,
         ];
     }
 
     /**
+     * Dispatches the manifest "locales" vs. catalog comparison per plugin type.
+     *
+     * For "translation" the field is required by the shared {@see ManifestValidator} contract
+     * itself, so a missing/malformed field is already reported there and this method only
+     * compares it against the catalogs when it parses cleanly.
+     *
+     * For "integration"/"local" the contract allows the field to be entirely absent (it is
+     * only meaningful when the plugin ships catalogs of its own), so this method additionally
+     * enforces the presence rule the contract does not: catalogs present makes the field
+     * required, catalogs absent makes it forbidden.
+     *
+     * @param array<string, mixed> $manifestData
+     * @param list<string>         $catalogLocales locales of catalog files that passed every
+     *                                             earlier check (domain, format, symlink, ...)
+     *
+     * @return list<string>
+     */
+    private static function validateDeclaredLocales(
+        PluginType $type,
+        array $manifestData,
+        array $catalogLocales,
+        string $expectedDomain,
+    ): array {
+        $hasLocalesField = \array_key_exists('locales', $manifestData);
+        $declaredLocales = self::declaredLocales($manifestData);
+        $catalogFilePattern = \sprintf('translations/%s.<locale>.yaml', $expectedDomain);
+
+        if ($type === PluginType::Integration || $type === PluginType::Local) {
+            if ($catalogLocales === []) {
+                return $hasLocalesField
+                    ? [\sprintf(
+                        'Plugin of type "%s" declares a "locales" field in manifest.json but has no "%s" catalogs; remove the field, or add the corresponding catalogs.',
+                        $type->value,
+                        $catalogFilePattern,
+                    )]
+                    : [];
+            }
+
+            if (!$hasLocalesField) {
+                return [\sprintf(
+                    'Plugin of type "%s" has "%s" catalogs but is missing a "locales" field in manifest.json.',
+                    $type->value,
+                    $catalogFilePattern,
+                )];
+            }
+        }
+
+        // $declaredLocales is null both when the field is missing and when it is present but
+        // malformed (not a list of non-empty strings); the latter is already reported by
+        // ManifestValidator, so this comparison must not run against it either way.
+        return $declaredLocales !== null
+            ? self::compareDeclaredLocales($type, $declaredLocales, $catalogLocales, $catalogFilePattern)
+            : [];
+    }
+
+    /**
      * @param array<string, mixed> $manifestData
      *
-     * @return ?list<string> the declared "locales" as a plain string list, or null when the field
-     *                       is missing or malformed ({@see ManifestValidator} already reports that
-     *                       separately, so {@see self::compareDeclaredLocales()} must not run
-     *                       against it)
+     * @return ?list<string> the declared "locales" as a plain string list (possibly empty), or
+     *                       null when the field is missing or malformed — not a list of
+     *                       non-empty strings ({@see ManifestValidator} already reports the
+     *                       malformed case separately, so {@see self::compareDeclaredLocales()}
+     *                       must not run against it either way). Callers that need to tell
+     *                       "missing" apart from "malformed" check `array_key_exists('locales',
+     *                       ...)` themselves; this method deliberately does not conflate that
+     *                       distinction away.
      */
     private static function declaredLocales(array $manifestData): ?array
     {
         $locales = $manifestData['locales'] ?? null;
-        if (!\is_array($locales) || !array_is_list($locales) || $locales === []) {
+        if (!\is_array($locales) || !array_is_list($locales)) {
             return null;
         }
 
@@ -628,13 +719,17 @@ final class PluginValidator
 
     /**
      * @param list<string> $declaredLocales locales from the manifest "locales" field
-     * @param list<string> $catalogLocales  locales of "translations/messages.<locale>.yaml" files
-     *                                      that passed every other check
+     * @param list<string> $catalogLocales  locales of catalog files in the domain this plugin
+     *                                      type resolves that passed every other check
      *
      * @return list<string>
      */
-    private static function compareDeclaredLocales(array $declaredLocales, array $catalogLocales): array
-    {
+    private static function compareDeclaredLocales(
+        PluginType $type,
+        array $declaredLocales,
+        array $catalogLocales,
+        string $catalogFilePattern,
+    ): array {
         $onlyDeclared = array_values(array_diff($declaredLocales, $catalogLocales));
         $onlyCataloged = array_values(array_diff($catalogLocales, $declaredLocales));
 
@@ -648,18 +743,20 @@ final class PluginValidator
         $details = [];
         if ($onlyDeclared !== []) {
             $details[] = \sprintf(
-                'declared in manifest "locales" but missing a "translations/messages.<locale>.yaml" catalog: %s',
+                'declared in manifest "locales" but missing a "%s" catalog: %s',
+                $catalogFilePattern,
                 implode(', ', $onlyDeclared),
             );
         }
         if ($onlyCataloged !== []) {
             $details[] = \sprintf(
-                'has a "translations/messages.<locale>.yaml" catalog but is not declared in manifest "locales": %s',
+                'has a "%s" catalog but is not declared in manifest "locales": %s',
+                $catalogFilePattern,
                 implode(', ', $onlyCataloged),
             );
         }
 
-        return [\sprintf('Plugin of type "translation" locale mismatch: %s.', implode('; ', $details))];
+        return [\sprintf('Plugin of type "%s" locale mismatch: %s.', $type->value, implode('; ', $details))];
     }
 
     /**
