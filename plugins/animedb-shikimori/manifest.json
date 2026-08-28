@@ -5,7 +5,10 @@
     "type": "integration",
     "description": "Официальный плагин-источник Shikimori: поиск и заполнение карточек аниме.",
     "author": "AnimeDB",
-    "locales": ["en", "ru"],
+    "locales": [
+        "en",
+        "ru"
+    ],
     "features": {
         "filler": true,
         "sync": true,
