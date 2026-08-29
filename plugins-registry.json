@@ -1,5 +1,5 @@
 {
-    "sequence": 21,
+    "sequence": 22,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -29,17 +29,28 @@
                     "version": "0.2.1",
                     "core": ">=0.0.1",
                     "sha256": "2910ece8a94ad1cf55d67f1c19a41385f5b927e18804ba1d6e7beea5034fa8c3",
-                    "translation_keys_count": 356
+                    "translation_keys_count": 356,
+                    "locales": [
+                        "de",
+                        "ja"
+                    ]
                 },
                 {
                     "version": "0.2.0",
                     "core": ">=0.0.1",
-                    "sha256": "7eb30afbd0d72fa8a5ff9912cef5dbddb93dd447e60de336e368c96d93f30ae5"
+                    "sha256": "7eb30afbd0d72fa8a5ff9912cef5dbddb93dd447e60de336e368c96d93f30ae5",
+                    "locales": [
+                        "de",
+                        "ja"
+                    ]
                 },
                 {
                     "version": "0.1.0",
                     "core": ">=0.0.1",
-                    "sha256": "fe82ce81ce5e1586be63026a16b300aa86c1a5b095a0bf4866c5dc2429fe741a"
+                    "sha256": "fe82ce81ce5e1586be63026a16b300aa86c1a5b095a0bf4866c5dc2429fe741a",
+                    "locales": [
+                        "de"
+                    ]
                 }
             ]
         },
@@ -73,7 +84,11 @@
                 {
                     "version": "0.7.1",
                     "core": ">=0.0.1",
-                    "sha256": "70c1a77a0b9016be5b1cb963040448e843b94332da163e12df918be65455a82f"
+                    "sha256": "70c1a77a0b9016be5b1cb963040448e843b94332da163e12df918be65455a82f",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ]
                 },
                 {
                     "version": "0.7.0",
