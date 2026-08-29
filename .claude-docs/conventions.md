@@ -103,9 +103,10 @@ set (a mismatch is its own separate error), that single count applies to every l
 just one — a per-locale map would only be needed if that key-parity guarantee were ever
 relaxed.
 
-The field is **rejected outright** for `integration`/`local`, the same way `locales` already
-is: those plugins' catalogs live in their own id-derived domain, and "coverage of the
-application's interface" is not a meaningful number for them.
+The field is **rejected outright** for `integration`/`local`: those plugins' catalogs live
+in their own id-derived domain, and "coverage of the application's interface" is not a
+meaningful number for them. `locales` is a different story — since contract `v0.15` every
+plugin type may declare it, see the section below.
 
 A count is deliberately not a key list: 358 keys as compact JSON is several kilobytes,
 against a few kilobytes for the entire current `plugins-registry.json` (parsed whole into
@@ -116,6 +117,39 @@ can end up larger than the application's current key count if the application ha
 dropped keys the pack still carries) — an accepted, documented trade-off; the exact diff is
 computed by the application at install time against the catalogs actually installed, not by
 this field.
+
+## `locales` must match the catalogs the plugin actually ships
+
+Since `anime-db/plugin-contracts` `v0.15` the manifest field `locales` is available to
+**every** plugin type, with one meaning: the languages of the translation catalogs this
+plugin ships. What follows from that is decided by `type`, not by the field — a
+`translation` plugin's catalogs live in the `messages` domain and therefore extend the
+application's language switcher, a feature plugin's catalogs live in its own domain and
+do not.
+
+The contract requires the field for `type: translation` and treats it as optional for
+`integration`/`local`. `tools/src/PluginValidator.php` is stricter, and deliberately so:
+
+| Catalogs in the type's domain | `locales` in the manifest | Verdict                                   |
+|-------------------------------|---------------------------|-------------------------------------------|
+| present                       | declared and matching     | valid                                     |
+| present                       | missing                   | error — the plugin ships languages it never advertises |
+| present                       | declared, sets differ     | error, in both directions                 |
+| absent                        | absent                    | valid                                     |
+| absent                        | declared                  | error — advertises a language it does not ship |
+
+The comparison runs against the domain the plugin's `type` prescribes (see "A catalog's
+domain depends on the plugin type"), not against a hardcoded `messages.<locale>.yaml`.
+A catalog file already rejected by an earlier check (wrong domain, unsupported format,
+symlink) is left out of the comparison, so one bad file does not also produce a
+locale-mismatch error next to its own.
+
+Why this is gated rather than left to the author: the application shows a plugin's
+languages **from this field** — on the market storefront before installation (it reads
+`locales` out of the registry's version record) and on the installed-plugins page. A field
+that drifts from the catalogs on disk is invisible to every other check here — key parity,
+placeholders, domain all stay green — and turns straight into a false promise on the
+storefront.
 
 ## Adding a plugin requires a `.github/CODEOWNERS` entry
 

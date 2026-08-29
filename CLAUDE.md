@@ -11,8 +11,8 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
   contract and why this repo's CI is stricter than the application's installer
 - [.claude-docs/conventions.md](.claude-docs/conventions.md) — plugin conventions:
   version bumps for published plugins, catalog domain per plugin type, the
-  `translation_keys_count` manifest field, pluralization, empty values, recommended
-  Russian terminology
+  `translation_keys_count` and `locales` manifest fields, pluralization, empty values,
+  recommended Russian terminology
 
 ## Commands
 
@@ -61,6 +61,12 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
 - Do not add `translation_keys_count` to a plugin of type `integration`/`local`, and do not
   omit it (or let it drift from the actual catalog) for `type: translation` — both are
   gated by `PluginValidator`. See [.claude-docs/conventions.md](.claude-docs/conventions.md).
+- Do not let manifest `locales` drift from the catalogs the plugin ships. Since contract
+  `v0.15` the field is available to every plugin type; `PluginValidator` compares it with
+  the catalogs of the domain the type prescribes, in both directions, and requires it
+  whenever such catalogs exist. The application shows a plugin's languages from this field,
+  so drift becomes a false promise on the market storefront. See
+  [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
 ## Workflow
 
