@@ -171,10 +171,14 @@ the host, precisely so `tools/` never drifts from what the application accepts. 
 declares its catalog's leaf key count in the manifest") is an intentional exception to that
 rule, not a violation someone should "fix" by moving it into the contract:
 
-- `ManifestValidator` rejects only specific known-but-inapplicable fields per type
-  (`features`/`locales`), the same mechanism `PluginValidator` reuses to reject
-  `translation_keys_count` for `integration`/`local`. An *unrecognised* field like
-  `translation_keys_count` simply passes through it unvalidated.
+- `ManifestValidator` rejects specific known-but-inapplicable fields per type (e.g. `features`
+  for `translation`/`local`) — the same mechanism `PluginValidator` reuses on its own terms to
+  reject `translation_keys_count` for `integration`/`local`. Since contract `v0.15`, `locales`
+  is no longer one of those rejected fields for `integration`/`local`: it is now a field the
+  contract itself validates when present for every type (required for `translation`, optional
+  otherwise) — see `PluginValidator`'s own `locales`-vs-catalogs check for why it still matters
+  there. An *unrecognised* field like `translation_keys_count` simply passes through
+  `ManifestValidator` unvalidated.
 - `ManifestParser::buildManifest()` (also in the contract) assembles a `Manifest` DTO from a
   fixed set of known fields, so an unrecognised field never reaches the DTO either — nothing
   downstream that consumes a `Manifest` object would ever see it.

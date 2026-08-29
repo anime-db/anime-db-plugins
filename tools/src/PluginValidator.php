@@ -98,8 +98,9 @@ use Symfony\Component\Yaml\Yaml;
  *
  * A `translation` plugin's manifest must also declare `translation_keys_count`, an integer equal
  * to the number of leaf keys in its own catalog (the same union used for the `name`/`description`
- * check above); the field is rejected outright for `integration`/`local`, the same way the shared
- * {@see ManifestValidator} contract itself rejects `locales` for those types. This field has no
+ * check above); the field is rejected outright for `integration`/`local`, mirroring how the shared
+ * {@see ManifestValidator} contract itself gates its own known fields per type (e.g. `features` is
+ * required for `integration` but rejected for `translation`/`local`). This field has no
  * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
  *
  * Collects every problem instead of stopping at the first one (mirrors
