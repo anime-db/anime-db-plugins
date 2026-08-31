@@ -1,5 +1,5 @@
 {
-    "sequence": 22,
+    "sequence": 23,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -88,47 +88,56 @@
                     "locales": [
                         "en",
                         "ru"
-                    ]
+                    ],
+                    "plugin_contracts": "^0.15"
                 },
                 {
                     "version": "0.7.0",
                     "core": ">=0.0.1",
-                    "sha256": "13d05f56c91e4f9c7637911b6c86f18790aac7562b9003dc9a057bb8dd70f103"
+                    "sha256": "13d05f56c91e4f9c7637911b6c86f18790aac7562b9003dc9a057bb8dd70f103",
+                    "plugin_contracts": "^0.14"
                 },
                 {
                     "version": "0.6.1",
                     "core": ">=0.0.1",
-                    "sha256": "0b4c94b49acf0551f252151b7bd68ca7136b90deafb5956b5449cdc2a71b2fb9"
+                    "sha256": "0b4c94b49acf0551f252151b7bd68ca7136b90deafb5956b5449cdc2a71b2fb9",
+                    "plugin_contracts": "^0.14"
                 },
                 {
                     "version": "0.6.0",
                     "core": ">=0.0.1",
-                    "sha256": "cc741d8f76d5a5f800f9f4dd98212b34777d6cd36f8ffd1794d57b6901289f41"
+                    "sha256": "cc741d8f76d5a5f800f9f4dd98212b34777d6cd36f8ffd1794d57b6901289f41",
+                    "plugin_contracts": "^0.14"
                 },
                 {
                     "version": "0.5.0",
                     "core": ">=0.0.1",
-                    "sha256": "e30c163dd18423214ca4c80deedc7b9aefc24d6b5bf6abc248398dd057eebfde"
+                    "sha256": "e30c163dd18423214ca4c80deedc7b9aefc24d6b5bf6abc248398dd057eebfde",
+                    "plugin_contracts": "^0.13"
                 },
                 {
                     "version": "0.4.0",
                     "core": ">=0.0.1",
-                    "sha256": "d8b6f5f1eef41c8efe93493b2a7136b6c910346ce0d0d8c721d902d52938be77"
+                    "sha256": "d8b6f5f1eef41c8efe93493b2a7136b6c910346ce0d0d8c721d902d52938be77",
+                    "plugin_contracts": "^0.12"
                 },
                 {
                     "version": "0.3.0",
                     "core": ">=0.0.1",
-                    "sha256": "a4a0304f55207eb5ffba4ca2d0816bbf773169e7eb5ef412585ec9065c3d2740"
+                    "sha256": "a4a0304f55207eb5ffba4ca2d0816bbf773169e7eb5ef412585ec9065c3d2740",
+                    "plugin_contracts": "^0.10"
                 },
                 {
                     "version": "0.2.0",
                     "core": ">=0.0.1",
-                    "sha256": "37d93613cc1d13933ada309b0cfa98f669974556a55aba9274d7d79d6e527918"
+                    "sha256": "37d93613cc1d13933ada309b0cfa98f669974556a55aba9274d7d79d6e527918",
+                    "plugin_contracts": "^0.8"
                 },
                 {
                     "version": "0.1.0",
                     "core": ">=0.0.1",
-                    "sha256": "600704ae3a311a148bca4dd36332cfea94aef1928f9535c449587821b28578fa"
+                    "sha256": "600704ae3a311a148bca4dd36332cfea94aef1928f9535c449587821b28578fa",
+                    "plugin_contracts": "^0.5"
                 }
             ]
         }
