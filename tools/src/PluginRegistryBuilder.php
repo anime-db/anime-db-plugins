@@ -27,6 +27,8 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools;
 
+use Composer\Semver\VersionParser;
+
 /**
  * Builds the market registry's root `plugins-registry.json` aggregate from a plugin-manifest
  * directory of this monorepo and a caller-supplied list of already-published versions.
@@ -77,15 +79,15 @@ final class PluginRegistryBuilder
      * (`previous.sequence + 1`) so that it strictly increases between generations — this method
      * only rejects non-positive values, it does not itself compare against a previous registry.
      *
-     * @param list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int, locales?: mixed}> $publishedVersions each entry's optional
-     *                                                                                                                                                 `translation_keys_count`/`locales`
-     *                                                                                                                                                 must come from the downloaded
-     *                                                                                                                                                 release asset's `manifest.json`
-     *                                                                                                                                                 (see the notes below)
-     * @param ?list<string>                                                                                                         $assetMirrors      pre-resolved `asset_mirrors`
-     *                                                                                                                                                 (see {@see AssetMirrorsResolver});
-     *                                                                                                                                                 `null` falls back to
-     *                                                                                                                                                 {@see self::ASSET_MIRRORS} (GitHub only)
+     * @param list<array{id: string, version: string, core: string, sha256: string, translation_keys_count?: int, locales?: mixed, plugin_contracts?: mixed}> $publishedVersions each entry's optional
+     *                                                                                                                                                                           `translation_keys_count`/`locales`/`plugin_contracts`
+     *                                                                                                                                                                           must come from the downloaded
+     *                                                                                                                                                                           release asset's `manifest.json`
+     *                                                                                                                                                                           (see the notes below)
+     * @param ?list<string>                                                                                                                                   $assetMirrors      pre-resolved `asset_mirrors`
+     *                                                                                                                                                                           (see {@see AssetMirrorsResolver});
+     *                                                                                                                                                                           `null` falls back to
+     *                                                                                                                                                                           {@see self::ASSET_MIRRORS} (GitHub only)
      *
      * @return array{
      *     sequence: int,
@@ -93,7 +95,7 @@ final class PluginRegistryBuilder
      *     plugins: list<array{
      *         id: string,
      *         manifest: array<string, mixed>,
-     *         versions: list<array{version: string, core: string, sha256: string, translation_keys_count?: int, locales?: list<string>}>,
+     *         versions: list<array{version: string, core: string, sha256: string, translation_keys_count?: int, locales?: list<string>, plugin_contracts?: string}>,
      *     }>,
      * }
      */
@@ -145,6 +147,21 @@ final class PluginRegistryBuilder
                 $versionRecord['locales'] = $this->validateLocales($entry['locales'], $entry['id'], $entry['version']);
             }
 
+            // `plugin_contracts`, when present, must be taken from the same release asset's
+            // manifest.json as `translation_keys_count`/`locales` above — `require.plugin-contracts`
+            // is the constraint a given published tag was actually built against, while
+            // `master`'s manifest describes the latest, possibly-unreleased, working tree.
+            // Carrying it per-version (rather than only once, in the embedded `manifest` block)
+            // is the whole point: it lets the application filter a plugin's *older* versions by
+            // the contract they were built against, since `require.core` cannot express an upper
+            // bound (only a single lower-bound constraint is allowed there). Omitted (not
+            // `null`/`''`) when the source entry does not carry it — true for every version
+            // published before this field existed, since release assets are immutable and cannot
+            // gain it retroactively, and for plugins that never declare it at all.
+            if (\array_key_exists('plugin_contracts', $entry)) {
+                $versionRecord['plugin_contracts'] = $this->validatePluginContracts($entry['plugin_contracts'], $entry['id'], $entry['version']);
+            }
+
             $versionsByPluginId[$entry['id']][] = $versionRecord;
         }
 
@@ -193,6 +210,21 @@ final class PluginRegistryBuilder
         }
 
         return $locales;
+    }
+
+    private function validatePluginContracts(mixed $pluginContracts, string $pluginId, string $version): string
+    {
+        if (!\is_string($pluginContracts) || $pluginContracts === '') {
+            throw new \RuntimeException(\sprintf('"%s" version "%s": "plugin_contracts" must be a non-empty string, got %s.', $pluginId, $version, $pluginContracts === '' ? 'an empty string' : \get_debug_type($pluginContracts)));
+        }
+
+        try {
+            (new VersionParser())->parseConstraints($pluginContracts);
+        } catch (\UnexpectedValueException $exception) {
+            throw new \RuntimeException(\sprintf('"%s" version "%s": "plugin_contracts" is not a valid version constraint: %s', $pluginId, $version, $exception->getMessage()));
+        }
+
+        return $pluginContracts;
     }
 
     /**
