@@ -302,6 +302,75 @@ final class PluginRegistryBuilderTest extends TestCase
         ], 1);
     }
 
+    public function testPluginContractsIsPreservedWhenPresentAndOmittedWhenAbsent(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-integration' => ['version' => '0.2.0', 'name' => 'Integration'],
+        ]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            // Older version, published before plugin_contracts was carried into the registry:
+            // no such field in the release asset's manifest.json, so none in the entry either.
+            ['id' => 'vendor-integration', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0'],
+            ['id' => 'vendor-integration', 'version' => '0.2.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.2.0', 'plugin_contracts' => '^0.15'],
+        ], 1);
+
+        $versions = $result['plugins'][0]['versions'];
+
+        self::assertSame('0.2.0', $versions[0]['version']);
+        self::assertSame('^0.15', $versions[0]['plugin_contracts']);
+
+        self::assertSame('0.1.0', $versions[1]['version']);
+        self::assertArrayNotHasKey('plugin_contracts', $versions[1]);
+    }
+
+    public function testPluginContractsNullIsTreatedAsAbsentLikeTheContractDoes(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-integration' => ['version' => '0.1.0', 'name' => 'Integration'],
+        ]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            // `ManifestValidator::validatePluginContractsConstraint()` treats
+            // `"plugin-contracts": null` in a manifest as "no constraint declared", so a
+            // published release asset can legally carry `null` here. This must not fail the
+            // build, since release assets are immutable and could never be fixed afterwards.
+            ['id' => 'vendor-integration', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0', 'plugin_contracts' => null],
+        ], 1);
+
+        $versions = $result['plugins'][0]['versions'];
+
+        self::assertArrayNotHasKey('plugin_contracts', $versions[0]);
+    }
+
+    /**
+     * @return iterable<string, array{0: mixed}>
+     */
+    public static function provideInvalidPluginContracts(): iterable
+    {
+        yield 'non-string (int)' => [10];
+        yield 'non-string (list)' => [['^0.10']];
+        yield 'empty string' => [''];
+        yield 'unparsable constraint' => ['not-a-constraint'];
+    }
+
+    /**
+     * @dataProvider provideInvalidPluginContracts
+     */
+    public function testInvalidPluginContractsIsRejectedWithAClearMessageNamingThePluginAndVersion(mixed $invalidPluginContracts): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-integration' => ['version' => '0.1.0', 'name' => 'Integration'],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/"vendor-integration" version "0\.1\.0": "plugin_contracts"/');
+
+        (new PluginRegistryBuilder())->build($pluginsDir, [
+            ['id' => 'vendor-integration', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0', 'plugin_contracts' => $invalidPluginContracts],
+        ], 1);
+    }
+
     public function testExplicitAssetMirrorsOverrideTheGithubOnlyDefault(): void
     {
         $pluginsDir = $this->createPluginsFixture([]);

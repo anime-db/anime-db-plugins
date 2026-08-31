@@ -126,6 +126,22 @@ jobs:
             # иммутабельны и получить его уже не могут, и приложение обязано отличать
             # «покрытие неизвестно» от «переведено ноль строк», а «языки неизвестны» — от
             # «плагин не везёт ни одного языка».
+            #
+            # plugin_contracts переносится оттуда же и по тем же причинам, но лежит внутри
+            # require, а не на верхнем уровне манифеста, и проверяется на значение, а не
+            # через has() — в отличие от двух полей выше. Причина в контракте:
+            # ManifestValidator::validatePluginContractsConstraint() считает
+            # "plugin-contracts": null валидным и трактует его как «ограничение не
+            # объявлено», то есть релизный ассет законно может нести null. has() вернул бы
+            # на нём true, null доехал бы до PluginRegistryBuilder, и тот отверг бы всю
+            # сборку реестра — навсегда, потому что ассеты иммутабельны и починить
+            # источник нечем. Проверка на != null схлопывает «ключа нет» и «ключ есть, но
+            # null» в один исход, как это делает сам контракт.
+            #
+            # Тип значения при этом сохраняется так же, как у соседей: число или список
+            # вместо строки доезжает до тулинга как есть и отвергается там (anime-db-desktop
+            # получает ограничение по версии контракта, под которую версия плагина реально
+            # собрана, — require.core верхнюю границу выразить не может).
             jq \
               --arg id "$id" --arg version "$version" --arg core "$core" --arg sha256 "$sha256" \
               --slurpfile manifest "$tmp/manifest.json" \
@@ -135,6 +151,9 @@ jobs:
                         else {} end)
                      + (if ($manifest[0] | has("locales"))
                         then {locales: $manifest[0].locales}
+                        else {} end)
+                     + (if ($manifest[0].require // {} | .["plugin-contracts"]) != null
+                        then {plugin_contracts: $manifest[0].require["plugin-contracts"]}
                         else {} end)]' \
               published-versions.json > published-versions.tmp
             mv published-versions.tmp published-versions.json
