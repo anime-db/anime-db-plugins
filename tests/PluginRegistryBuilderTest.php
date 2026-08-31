@@ -324,6 +324,25 @@ final class PluginRegistryBuilderTest extends TestCase
         self::assertArrayNotHasKey('plugin_contracts', $versions[1]);
     }
 
+    public function testPluginContractsNullIsTreatedAsAbsentLikeTheContractDoes(): void
+    {
+        $pluginsDir = $this->createPluginsFixture([
+            'vendor-integration' => ['version' => '0.1.0', 'name' => 'Integration'],
+        ]);
+
+        $result = (new PluginRegistryBuilder())->build($pluginsDir, [
+            // `ManifestValidator::validatePluginContractsConstraint()` treats
+            // `"plugin-contracts": null` in a manifest as "no constraint declared", so a
+            // published release asset can legally carry `null` here. This must not fail the
+            // build, since release assets are immutable and could never be fixed afterwards.
+            ['id' => 'vendor-integration', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'sha-0.1.0', 'plugin_contracts' => null],
+        ], 1);
+
+        $versions = $result['plugins'][0]['versions'];
+
+        self::assertArrayNotHasKey('plugin_contracts', $versions[0]);
+    }
+
     /**
      * @return iterable<string, array{0: mixed}>
      */

@@ -157,8 +157,15 @@ final class PluginRegistryBuilder
             // bound (only a single lower-bound constraint is allowed there). Omitted (not
             // `null`/`''`) when the source entry does not carry it — true for every version
             // published before this field existed, since release assets are immutable and cannot
-            // gain it retroactively, and for plugins that never declare it at all.
-            if (\array_key_exists('plugin_contracts', $entry)) {
+            // gain it retroactively, and for plugins that never declare it at all. A `null` value
+            // is treated the same as a missing key: the contract's own
+            // `ManifestValidator::validatePluginContractsConstraint()` accepts
+            // `"plugin-contracts": null` in a manifest as meaning "no constraint declared", so a
+            // published release asset can legally carry that value. Release assets are immutable,
+            // so if this builder rejected `null` instead of skipping it, one such published tag
+            // would make every future registry rebuild fail for good, with no way to fix the
+            // source.
+            if (\array_key_exists('plugin_contracts', $entry) && $entry['plugin_contracts'] !== null) {
                 $versionRecord['plugin_contracts'] = $this->validatePluginContracts($entry['plugin_contracts'], $entry['id'], $entry['version']);
             }
 
