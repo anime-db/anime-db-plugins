@@ -109,10 +109,48 @@ final class AnalysePluginCliTest extends TestCase
         );
     }
 
-    public function testGateAcceptsThePublishedPluginsOfThisRepository(): void
+    /**
+     * Every published plugin passes the gate on `master`.
+     *
+     * The gate itself only ever runs against the plugin a pull request touches, so nothing
+     * else notices when a plugin that nobody is editing drifts out of conformance — a new
+     * contract minor flows in through the floating constraint and the first author to open an
+     * unrelated pull request inherits the red. This test moves that discovery to the commit
+     * that causes it.
+     *
+     * It is also what the framework packages in this repository's require-dev are for: without
+     * them nothing outside CI could analyse a real plugin at all.
+     *
+     * @dataProvider publishedPlugins
+     */
+    public function testEveryPublishedPluginPassesTheGate(string $pluginDir): void
+    {
+        [$exitCode, $output] = $this->analyse($pluginDir);
+
+        self::assertSame(0, $exitCode, $output);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function publishedPlugins(): iterable
+    {
+        $dirs = glob(self::repoRoot().'/plugins/*', \GLOB_ONLYDIR);
+        self::assertIsArray($dirs);
+        self::assertNotSame([], $dirs, 'No plugins found — the data provider would make this test vacuous.');
+
+        foreach ($dirs as $dir) {
+            yield basename($dir) => [$dir];
+        }
+    }
+
+    public function testTranslationPluginIsSkippedRatherThanAnalysed(): void
     {
         // animedb-language-pack is of type "translation": PluginValidator forbids it a src/
-        // directory, so the gate has nothing to analyse and must not fail the build over it.
+        // directory, so the gate has nothing to analyse. It must say so instead of passing
+        // through an empty file list — PHPStan 1.x answers that with exit 0 and 2.x with a
+        // failure, and a green that flips on a dependency bump is what this gate exists to
+        // remove.
         [$exitCode, $output] = $this->analyse(self::repoRoot().'/plugins/animedb-language-pack');
 
         self::assertSame(0, $exitCode, $output);
@@ -158,18 +196,17 @@ final class AnalysePluginCliTest extends TestCase
                     'The plugin analysis step must be skipped on purely infrastructural PRs.',
                 );
 
-                // Without these two the step would still "run the gate" and still be green
-                // forever: pointed at a hardcoded plugin instead of the affected one, or at
-                // the affected one with none of its dependencies installed.
+                // Without this the step would still "run the gate" and still be green
+                // forever, pointed at a hardcoded plugin instead of the affected one.
                 self::assertStringContainsString(
                     'affected-plugin.txt',
                     $run,
                     'The analysis must run against the plugin the PR touches, not a fixed one.',
                 );
-                self::assertStringContainsString(
-                    'composer install --working-dir',
+                self::assertStringNotContainsString(
+                    '--working-dir',
                     $run,
-                    "Without the plugin's own dependencies the analysis cannot resolve its code.",
+                    'The analysis environment is this repository, never the plugin\'s own vendor/.',
                 );
             }
         }

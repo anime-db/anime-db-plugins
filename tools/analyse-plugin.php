@@ -33,12 +33,18 @@ declare(strict_types=1);
  * Usage: php tools/analyse-plugin.php plugins/<id>
  * Exit code: 0 when the plugin is clean or ships no PHP at all, 1 otherwise.
  *
- * Why a separate entry point instead of adding plugins/ to phpstan.neon.dist: the root
- * composer.json autoloads only AnimeDb\Plugins\Tools\ and does not carry the plugins'
- * dependencies (animedb-shikimori alone needs symfony/http-kernel, symfony/http-foundation,
- * symfony/security-csrf and twig/twig), so a single shared run cannot resolve plugin code.
- * Each plugin has its own composer.json with its own PSR-4 and its own dependencies, so the
- * analysis is per-plugin: `composer install` inside the plugin directory, then this script.
+ * Why a separate entry point instead of adding plugins/ to phpstan.neon.dist: the two configs
+ * answer different questions. The root one holds this repository's own tooling to its own
+ * standard; this one holds a plugin to the contract, one plugin at a time, with the rules of
+ * anime-db/plugin-contracts switched on.
+ *
+ * The analysis environment is this repository's own vendor/, and only it. That is not a
+ * shortcut around the plugin's composer.json — it mirrors how a plugin actually runs: its
+ * vendor/ is never archived into the distributable ZIP (see PluginZipBuilder), the host
+ * supplies every class it uses, so a plugin can only rely on what the host has. Declaring the
+ * host's surface once, in the repository's require-dev, is what makes that limit checkable;
+ * installing whatever a plugin's own composer.json asks for would check it against a surface
+ * that will not exist at runtime.
  *
  * The analysed set is every `.php` file the plugin actually ships, taken from
  * {@see PublishedContentRules} — the same list PluginZipBuilder archives and the version-bump
@@ -169,19 +175,24 @@ if ($suppressed !== []) {
     exit(1);
 }
 
-// chdir() rather than passing the directory to PHPStan: the working directory is the only
-// way to tell PHPStan which Composer project the analysed code belongs to. --autoload-file
-// would look equivalent but is not — Composer registers its autoloader with prepend=true, so
-// the plugin's loader would take precedence over this repository's and the plugin's own copy
-// of anime-db/plugin-contracts (rules included) would end up judging the plugin.
-chdir($resolvedPluginDir);
+// The working directory is what tells PHPStan which Composer project the analysed code
+// belongs to, and it must be this repository — not the plugin directory. Run from inside the
+// plugin, PHPStan takes that plugin's own vendor/ as the project: its dependencies, and its
+// own copy of anime-db/plugin-contracts, would be what the plugin is judged against, both of
+// them installed from a composer.json that arrived in the very same pull request as the code
+// being gated. --autoload-file has the same effect for the same reason (Composer registers
+// its autoloader with prepend = true, so the plugin's loader wins over this one).
+chdir($repoRoot);
 
 $command = \sprintf(
     '%s %s analyse --configuration=%s --no-progress --no-interaction %s',
     escapeshellarg(\PHP_BINARY),
     escapeshellarg($phpstan),
     escapeshellarg($config),
-    implode(' ', array_map('escapeshellarg', $files)),
+    implode(' ', array_map(
+        static fn (string $file): string => escapeshellarg($resolvedPluginDir.'/'.$file),
+        $files,
+    )),
 );
 
 $exitCode = 0;

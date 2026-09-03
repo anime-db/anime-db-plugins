@@ -26,8 +26,8 @@ composer phpstan     # static analysis
 composer cs-check    # code style check (php-cs-fixer, --dry-run)
 
 # Analyse a plugin's own code with the plugin-contracts rules (the registry gate).
-# `composer phpstan` above covers tools/ only and never touches plugins/.
-composer install --working-dir=plugins/<plugin-id> --no-scripts --no-plugins
+# `composer phpstan` above covers tools/ only and never touches plugins/. No install
+# inside the plugin: the analysis environment is this repo's vendor/ on purpose.
 php tools/analyse-plugin.php plugins/<plugin-id>
 ```
 
@@ -60,12 +60,12 @@ php tools/analyse-plugin.php plugins/<plugin-id>
   `integration`/`local`, `messages.<locale>.yaml` for `translation`. A catalog in a domain
   nothing resolves passes every other check and translates nothing. See
   [.claude-docs/conventions.md](.claude-docs/conventions.md).
-- Do not fold plugin analysis into `phpstan.neon.dist` (adding `plugins/` to its `paths`), and
-  do not point `tools/phpstan-plugin.neon.dist` at a plugin's own
-  `vendor/anime-db/plugin-contracts`. The first cannot resolve plugin code at all; the second
-  lets a pull request supply the rules that judge it. Do not narrow the analysed set to
-  `src/` either — it is the published set for a reason. See
-  [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
+- Do not make the plugin gate read a plugin's own `vendor/` — no `composer install` inside a
+  plugin directory, no `--autoload-file`, no running PHPStan from the plugin directory. The
+  analysis environment is this repository's `vendor/`, which is why `symfony/http-*` and
+  `twig/twig` sit in `require-dev` here although `tools/` never uses them: do not prune them as
+  unused. Do not narrow the analysed set to `src/` either — it is the published set for a
+  reason. See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
 - Do not commit `composer.lock`, and do not "fix" `.gitignore` to allow it. Floating
   dependencies are deliberate here: nothing would keep a lock fresh, the drift is what
   prompts tooling maintenance, and no published artifact depends on it. Rejected in PR #83.
