@@ -1,0 +1,12 @@
+{
+    "id": "gate-probe",
+    "name": "PHPStan Gate Probe",
+    "version": "0.1.0",
+    "type": "local",
+    "description": "Проба CI: плагин намеренно нарушает NoDangerousPrimitivesRule. Не для мержа.",
+    "author": "AnimeDB",
+    "require": {
+        "core": ">=0.0.1",
+        "php": ">=8.1"
+    }
+}
