@@ -2,6 +2,7 @@ parameters:
     level: 8
     paths:
         - tools/src
+        - tools/analyse-plugin.php
         - tools/validate-plugin.php
         - tools/check-pr-changes.php
         - tools/check-version-bump.php

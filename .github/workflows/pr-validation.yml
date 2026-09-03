@@ -40,7 +40,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('composer.json') }}
+          # Плагины ставят свои зависимости отдельно (шаг «Gate — plugin code analysis»),
+          # поэтому их composer.json тоже участвует в ключе: иначе при точном попадании
+          # ключа actions/cache кеш не перезаписывается, и полсотни пакетов плагина
+          # выкачиваются вживую на каждом плагинном PR.
+          key: ${{ runner.os }}-composer-${{ hashFiles('composer.json', 'plugins/*/composer.json') }}
           restore-keys: ${{ runner.os }}-composer-
 
       # anime-db/plugin-contracts подключается из публичного VCS-репозитория
@@ -115,6 +119,44 @@ jobs:
         run: |
           set -euo pipefail
           php tools/check-version-bump.php "${{ github.event.pull_request.base.sha }}" < changed-files.txt
+
+      # Гейт: код плагина проходит PHPStan с правилами пакета контрактов
+      # (NoDangerousPrimitivesRule, ContractConformanceRule). До issue #111 эти правила не
+      # применялись ни к одному плагину — phpstan.neon.dist перечисляет только tools/, а
+      # extension.neon пакета не был подключён ни автоматически, ни вручную. Плагин с exec()
+      # или походом в сеть мимо абстракций хоста проходил валидацию зелёным.
+      #
+      # Прогон именно per-plugin, а не «добавить plugins/ в общий paths»: корневой
+      # composer.json автолоадит только AnimeDb\Plugins\Tools\ и не несёт зависимостей
+      # плагинов, поэтому общий прогон код плагина не разрешит. Зависимости ставятся в
+      # каталоге самого плагина — их объявляет его собственный composer.json.
+      #
+      # --no-scripts --no-plugins по той же причине, что и у корневой установки выше:
+      # composer.json плагина приезжает этим же PR и доверенным не является. Правила и
+      # интерфейсы контракта при этом берутся из vendor/ репозитория, а не плагина —
+      # см. tools/phpstan-plugin.neon.dist. Сам код зависимостей плагина не исполняется:
+      # PHPStan читает его статической рефлексией, а не через include (проверено).
+      #
+      # Стоит после гейта «один плагин / только его код» намеренно (как и все шаги выше):
+      # именно он гарантирует, что tools/ и конфиги на плагинном PR — содержимое базовой
+      # ветки.
+      #
+      # Плагин без composer.json — штатный случай ровно до тех пор, пока его код не
+      # ссылается на классы, которых нет в vendor/ репозитория: тогда шаг красный, и
+      # починка — объявить зависимости в composer.json плагина. На загрузку классов в
+      # рантайме это по-прежнему не влияет (см. .claude-docs/gotchas.md).
+      #
+      # Плагин без единого публикуемого .php (тип translation) пропускается, шаг зелёный.
+      - name: Gate — plugin code analysis
+        if: steps.diff.outputs.touches_plugins == 'true'
+        run: |
+          set -euo pipefail
+          plugin="plugins/$(cat affected-plugin.txt)"
+          if [ -f "$plugin/composer.json" ]; then
+            composer install --working-dir="$plugin" \
+              --no-interaction --no-progress --prefer-dist --no-scripts --no-plugins
+          fi
+          php tools/analyse-plugin.php "$plugin"
 
       # Тесты, PHPStan и cs-check — тулинг качества всего репозитория (в т.ч. tools/).
       # Гоняются на КАЖДОМ PR: на плагинных (после гейта — конфиги тогда доверенные,

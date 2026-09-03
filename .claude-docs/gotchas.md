@@ -269,3 +269,99 @@ fail-open. Whether and where to call it from
 section already documents for every other tool here ("чистый CLI ... без обвязки CI"),
 and the same boundary already hit once before for the mirror `public_url` tooling (see
 "Issue #26" above in this file).
+
+## The plugin gate analyses each plugin separately, and the contract it judges by is *this repo's*
+
+`phpstan.neon.dist` covers `tools/` only. Plugin code is analysed by a second entry point —
+`tools/analyse-plugin.php` with `tools/phpstan-plugin.neon.dist` — and never by the root
+config. Do not "simplify" this by adding `plugins/` to the root `paths`: the root
+`composer.json` autoloads only `AnimeDb\Plugins\Tools\` and carries none of the plugins'
+dependencies (`animedb-shikimori` alone needs `symfony/http-kernel`,
+`symfony/http-foundation`, `symfony/security-csrf` and `twig/twig`), so a shared run cannot
+resolve plugin code at all. Each plugin declares its own PSR-4 and its own dependencies, so
+the analysis is per-plugin: `composer install` inside the plugin directory, then the script.
+
+Four things about that script look like implementation detail and are not:
+
+- **The analysed set is the published set, not `src/`.** The file list comes from
+  `PublishedContentRules` — the same definition `PluginZipBuilder` archives and the
+  version-bump gate watches. Narrowing it to `src/` opens a hole exactly the width of a
+  `require`: a *local* include is legitimate (`NoDangerousPrimitivesRule` forbids only URL
+  ones), so a plugin can keep `src/` spotless and put `exec()` in a `templates/*.php` that
+  ships in the very same ZIP. `tests/fixtures/gate-probe/templates/inline.php` exists to fail
+  the moment someone narrows it back.
+- **It rejects PHPStan's inline ignore annotation in published files.** One comment above a
+  line suppresses every rule on it, these two included, and a green run keeps no trace of it.
+  Silencing a linter is the ordinary reaction to a red build, not an obfuscated bypass, so a
+  gate that accepts one gates nothing. A plugin's own `tests/` are unaffected — they are not
+  published and not analysed. Note the annotation cannot be *named* in a comment inside
+  `tools/analyse-plugin.php` itself: PHPStan reads that file too and parses the mention as a
+  real annotation. It lives in a string literal for that reason.
+- **It `chdir()`s into the plugin directory instead of passing `--autoload-file`.** The two
+  are not interchangeable. Composer registers its autoloader with `prepend = true`, so an
+  explicitly loaded plugin autoloader would take precedence over this repository's, and the
+  plugin's own copy of `anime-db/plugin-contracts` — PHPStan rules included — would end up
+  judging the plugin. Verified both ways: with `--autoload-file` a tampered contract inside
+  `plugins/<id>/vendor/` is what gets reflected; with `chdir()` it is ignored and this repo's
+  copy wins, while the plugin's other dependencies still resolve.
+- **`tools/phpstan-plugin.neon.dist` includes `../vendor/anime-db/plugin-contracts/extension.neon`**
+  — this repo's `vendor/`, never the plugin's. A `composer.json` arriving in the same pull
+  request as the plugin code can declare its own `repositories` and pull a fork of the
+  contract; a gate assembled from the artifact it is gating is not a gate. It also matches
+  runtime: `vendor/` is not archived into the distributable ZIP (see `PluginZipBuilder`), the
+  host supplies the contract, so the version this repo pins is the stand-in for the host's —
+  not whatever the plugin installed locally for its own tooling.
+
+**A code plugin now effectively needs a `composer.json`,** and that does not contradict the
+very first section of this file. Class loading at *runtime* still does not go through it —
+the host scans `src/` and requires files directly. But a plugin whose code type-hints
+`Twig\Environment` or `Symfony\...` has no way to make those types resolvable during
+analysis except by declaring them, and without them the gate reports several dozen unknown
+classes and fails. A plugin that touches nothing outside the contract needs no
+`composer.json` at all; the workflow skips the install step when there is none.
+
+**Consequence for the `~0.14` pin** documented above: that section justifies a *wide* range on
+the grounds that this repo only *reads* the contract, through `ManifestValidator` and
+`PluginType`. That is no longer the whole story. `ContractConformanceRule` compares plugin
+method signatures against the contract version installed **here**, so a new contract minor
+now reds the next plugin pull request that comes along, whatever it was about, and does so
+before the host has been bumped. The residual the section calls "accepted" has grown from
+"which manifests are valid" to "the entire signature surface of every role interface". Still
+accepted — following the contract forward is the point — but it is now a much bigger surface,
+and it is the reason to revisit the pin at contract `1.0` rather than sooner-or-never. The
+same goes for `level: 8` over floating `symfony/*` and `twig/*`: an upstream minor with
+changed phpdoc can red a plugin pull request whose author changed none of it.
+
+## A gate nobody points at anything is indistinguishable from a gate that finds nothing
+
+`NoDangerousPrimitivesRule` and `ContractConformanceRule` were written, released, wired into
+`extension.neon`, and applied to exactly zero plugins for the whole life of the repository
+(issue #111). Nothing was broken: the rules worked, the config just listed `tools/`, and
+`extension.neon` was never included at all — no `phpstan/extension-installer`, no `includes`.
+Every CI run was green and every green run meant both "no violations" and "nothing analysed".
+
+Hence `tests/AnalysePluginCliTest.php` and the fixtures under `tests/fixtures/`, which violate
+the rules on purpose. Three properties of that test are load-bearing:
+
+- **It asserts the reported messages, not the exit code.** An exit-code-only assertion would
+  pass just as happily if the analysed path had been broken — PHPStan exits non-zero for that
+  too — which is the same false green in a new costume.
+- **It reads `.github/workflows/pr-validation.yml` as data** and asserts a step actually
+  invokes `tools/analyse-plugin.php`, after the "one plugin / only its code" gate, under the
+  same `touches_plugins` condition, against the plugin named in `affected-plugin.txt`, with
+  the plugin's dependencies installed. Drop any one of those and the step still "runs the
+  gate" while being green forever; and that half cannot be checked by running the analysis.
+- **The contract drift it pins is a widened *parameter*, not a narrowed *return*.** Running
+  the gate over `animedb-shikimori` reported its `list<X>` annotations against the contract's
+  `X[]` — the plugin being *more* precise than the interface. `ContractConformanceRule`
+  compares rendered signatures for exact equality and its docblock says both directions of
+  drift are meant to be reported, so this is by design and the plugin's annotations were
+  aligned (PR #112). It is still a live question about the rule, and a fixture must not
+  quietly turn one answer into the specification — so the fixture drifts in the direction
+  nobody disputes.
+
+The fixtures live under `tests/fixtures/`, never under `plugins/`: a directory under
+`plugins/` is picked up by the registry build and shipped as a release. `gate-probe` is also
+excluded from `.php-cs-fixer.dist.php` — `@Symfony` enables `backtick_to_shell_exec`, which
+would rewrite `` `whoami` `` into `shell_exec('whoami')` and collapse two of the expected
+reports into one.
