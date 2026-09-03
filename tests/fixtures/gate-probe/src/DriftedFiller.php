@@ -63,7 +63,7 @@ final class DriftedFiller implements FillerInterface
     /**
      * @param callable(): void|null $onHeartbeat
      *
-     * @return SearchByPluginCandidate[]
+     * @return list<SearchByPluginCandidate>
      */
     public function find(string $name, ?callable $onHeartbeat = null): array
     {
@@ -76,7 +76,7 @@ final class DriftedFiller implements FillerInterface
     }
 
     /**
-     * @return string[]
+     * @return list<string>
      */
     public function getFillableFields(): array
     {

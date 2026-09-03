@@ -357,11 +357,12 @@ the rules on purpose. Four properties of that test are load-bearing:
 - **The contract drift it pins is a widened *parameter*, not a narrowed *return*.** The first
   run of the gate over `animedb-shikimori` reported its `list<X>` annotations against the
   contract's `X[]` — the plugin being *more* precise than the interface. That turned out to be
-  a defect in the contract, not in the plugin: the host already declares
-  `list<SearchByPluginCandidate>` in `SearchByPluginChain` and normalises the plugin's result
-  with `array_values()` precisely because the contract promises a possibly-keyed array. Fixed
-  in the contract (`anime-db/anime-db-plugin-contracts#69`, minor `v0.17.0`), which the
-  floating `~0.14` picks up on its own.
+  a defect in the contract, not in the plugin: the host already declared
+  `list<SearchByPluginCandidate>` in `SearchByPluginChain` and normalised the plugin's result
+  with an `array_values()` call that existed solely because the contract promised a
+  possibly-keyed array. Fixed in the contract (`anime-db/anime-db-plugin-contracts#69`, minor
+  `v0.17.0`), which the floating `~0.14` picked up on its own; the host's `array_values()` went
+  away with the same bump. The fixture's remaining drift is the widened parameter only.
 
   The general shape survives that fix and is worth knowing: `ContractConformanceRule` compares
   rendered signatures for **exact equality**, so a plugin can never be more precise than the
