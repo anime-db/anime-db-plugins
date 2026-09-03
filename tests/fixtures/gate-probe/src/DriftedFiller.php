@@ -35,9 +35,10 @@ use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
  * Deliberate violator of ContractConformanceRule: resolveExternalId() accepts a wider
  * parameter type than ExternalIdResolutionInterface declares — legal under PHP's variance
  * rules, so nothing but the rule reports it. That is the drift the rule was written for
- * (see its docblock), and it is deliberately not the narrowing-a-return-type case: whether
- * `list<X>` against a contract's `X[]` should be reported at all is a live question about
- * the rule, and a fixture must not quietly turn one answer into the specification.
+ * (see its docblock), and it is deliberately not the narrowing-a-return-type case: the one
+ * time the gate reported that shape it turned out to be the contract's own imprecision, not
+ * plugin drift, and whether the rule should report it at all is a live question. A fixture
+ * must not quietly turn one answer into the specification.
  *
  * Test data for {@see \AnimeDb\Plugins\Tools\Tests\AnalysePluginCliTest}. It also pins where
  * the contract comes from: this fixture directory has no composer.json and no vendor/ of its

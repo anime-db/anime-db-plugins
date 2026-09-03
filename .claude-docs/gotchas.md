@@ -351,14 +351,22 @@ the rules on purpose. Three properties of that test are load-bearing:
   same `touches_plugins` condition, against the plugin named in `affected-plugin.txt`, with
   the plugin's dependencies installed. Drop any one of those and the step still "runs the
   gate" while being green forever; and that half cannot be checked by running the analysis.
-- **The contract drift it pins is a widened *parameter*, not a narrowed *return*.** Running
-  the gate over `animedb-shikimori` reported its `list<X>` annotations against the contract's
-  `X[]` — the plugin being *more* precise than the interface. `ContractConformanceRule`
-  compares rendered signatures for exact equality and its docblock says both directions of
-  drift are meant to be reported, so this is by design and the plugin's annotations were
-  aligned (PR #112). It is still a live question about the rule, and a fixture must not
-  quietly turn one answer into the specification — so the fixture drifts in the direction
-  nobody disputes.
+- **The contract drift it pins is a widened *parameter*, not a narrowed *return*.** The first
+  run of the gate over `animedb-shikimori` reported its `list<X>` annotations against the
+  contract's `X[]` — the plugin being *more* precise than the interface. That turned out to be
+  a defect in the contract, not in the plugin: the host already declares
+  `list<SearchByPluginCandidate>` in `SearchByPluginChain` and normalises the plugin's result
+  with `array_values()` precisely because the contract promises a possibly-keyed array. The
+  annotations are being fixed in the contract instead
+  (`anime-db/anime-db-plugin-contracts#69`, minor `v0.17.0`), and the floating `~0.14` here
+  picks that up on its own.
+
+  The general shape survives that fix and is worth knowing: `ContractConformanceRule` compares
+  rendered signatures for **exact equality**, so a plugin can never be more precise than the
+  contract *anywhere* — the contract's phpdoc precision is a ceiling for every plugin at once.
+  Whether the rule should allow legal variance instead is an open question about the rule, and
+  a fixture must not quietly turn one answer into the specification. Hence the fixture drifts
+  in the direction nobody disputes.
 
 The fixtures live under `tests/fixtures/`, never under `plugins/`: a directory under
 `plugins/` is picked up by the registry build and shipped as a release. `gate-probe` is also
