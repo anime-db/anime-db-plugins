@@ -150,9 +150,13 @@ final class ShikimoriFiller implements SyncInterface
     }
 
     /**
+     * Deliberately `SearchByPluginCandidate[]` and not the more precise `list<...>`:
+     * ContractConformanceRule compares the rendered signature against FillerInterface for
+     * exact equality and reports any difference in either direction as contract drift.
+     *
      * @param callable(): void|null $onHeartbeat
      *
-     * @return list<SearchByPluginCandidate>
+     * @return SearchByPluginCandidate[]
      */
     public function find(string $name, ?callable $onHeartbeat = null): array
     {
@@ -213,7 +217,9 @@ final class ShikimoriFiller implements SyncInterface
     }
 
     /**
-     * @return list<string>
+     * `string[]`, not `list<string>`, for the same reason as find() above.
+     *
+     * @return string[]
      */
     public function getFillableFields(): array
     {
