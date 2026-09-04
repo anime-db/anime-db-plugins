@@ -132,7 +132,9 @@ if ($subcommand === 'pick-prev') {
 
 if ($subcommand === 'format') {
     try {
-        $flags = parseFlags(\array_slice($_SERVER['argv'], 2));
+        // array_values(array_filter(...)): $_SERVER['argv'] для PHPStan — array<mixed, mixed>,
+        // а parseFlags() принимает список строк.
+        $flags = parseFlags(array_values(array_filter(\array_slice($_SERVER['argv'], 2), 'is_string')));
     } catch (RuntimeException $exception) {
         fwrite(\STDERR, $exception->getMessage()."\n".USAGE);
         exit(1);

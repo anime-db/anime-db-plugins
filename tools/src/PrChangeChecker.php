@@ -67,7 +67,7 @@ final class PrChangeChecker
             }
 
             $segments = explode('/', $normalized);
-            if (($segments[0] ?? null) !== 'plugins' || !isset($segments[1]) || $segments[1] === '') {
+            if ($segments[0] !== 'plugins' || !isset($segments[1]) || $segments[1] === '') {
                 $errors[] = \sprintf('Path "%s" is outside plugins/<id>/.', $path);
                 continue;
             }

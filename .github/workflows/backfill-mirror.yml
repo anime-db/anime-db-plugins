@@ -54,7 +54,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.5'
           coverage: none
           # ext-ftp нужен FtpMirrorTransport (composer.json требует ext-ftp).
           extensions: ftp
