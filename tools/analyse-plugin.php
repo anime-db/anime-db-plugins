@@ -27,8 +27,11 @@
 declare(strict_types=1);
 
 /*
- * Runs PHPStan with the anime-db/plugin-contracts rule set (NoDangerousPrimitivesRule,
- * ContractConformanceRule) over the code of a single plugin.
+ * Runs PHPStan over the code of a single plugin with whatever rule set
+ * anime-db/plugin-contracts currently declares in its `extension.neon` — that file is the
+ * source of truth, not a list kept here. As of contract v0.17.1 it is three rules
+ * (NoDangerousPrimitivesRule, ContractConformanceRule, NoNetworkAccessInLocalPluginsRule);
+ * a contract release adding a fourth arms it here with no change to this script.
  *
  * Usage: php tools/analyse-plugin.php plugins/<id>
  * Exit code: 0 when the plugin is clean or ships no PHP at all, 1 otherwise.
