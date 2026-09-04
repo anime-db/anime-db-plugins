@@ -46,14 +46,6 @@ final class RelatedWidgetTest extends TestCase
         self::assertSame('widget.related.description', $metadata->descriptionKey);
     }
 
-    public function testResolveExternalIdRecognizesShikimoriUrls(): void
-    {
-        $widget = $this->buildWidget($this->createMock(GraphQlClient::class), null);
-
-        self::assertSame('20', $widget->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
-        self::assertNull($widget->resolveExternalId(['https://myanimelist.net/anime/20']));
-    }
-
     public function testRenderReturnsEmptyListWhenRecordHasNoShikimoriExternalId(): void
     {
         $client = $this->createMock(GraphQlClient::class);

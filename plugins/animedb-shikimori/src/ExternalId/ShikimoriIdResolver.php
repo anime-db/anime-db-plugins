@@ -31,13 +31,9 @@ namespace AnimeDb\Plugins\AnimedbShikimori\ExternalId;
  * Matches Shikimori domains (`shikimori.io`/`.one`/`.org`, including subdomains) and a path of
  * the form `/animes/<id>` or `/animes/z<id>-<slug>`, returning the numeric id.
  *
- * Shared by every role interface that must implement `resolveExternalId()` against this
- * plugin's own vendor: {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller} (extends
- * `ExternalIdResolutionInterface` through `SyncInterface`) and the phase 5 widgets
- * ({@see \AnimeDb\Plugins\AnimedbShikimori\Widget\RelatedWidget},
- * {@see \AnimeDb\Plugins\AnimedbShikimori\Widget\SimilarWidget},
- * {@see \AnimeDb\Plugins\AnimedbShikimori\Widget\NewWidget}) — extracted here instead of
- * duplicated per class so the URL pattern is defined once.
+ * Used by {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller}, which implements
+ * `ExternalIdResolutionInterface` through `SyncInterface` — extracted here instead of inlined
+ * so the URL pattern is defined once.
  */
 final class ShikimoriIdResolver
 {

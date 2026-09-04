@@ -31,7 +31,6 @@ use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\EntryWidgetInterface;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
-use AnimeDb\Plugins\AnimedbShikimori\ExternalId\ShikimoriIdResolver;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use Twig\Environment;
 
@@ -67,14 +66,6 @@ final class SimilarWidget implements EntryWidgetInterface
             'widget.similar.title',
             'widget.similar.description',
         );
-    }
-
-    /**
-     * @param string[] $urls
-     */
-    public function resolveExternalId(array $urls): ?string
-    {
-        return ShikimoriIdResolver::resolve($urls);
     }
 
     public function render(AnimeId $anime): string

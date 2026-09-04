@@ -29,7 +29,6 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Widget;
 
 use AnimeDb\PluginContracts\Widget\CatalogWidgetInterface;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
-use AnimeDb\Plugins\AnimedbShikimori\ExternalId\ShikimoriIdResolver;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
 use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
@@ -86,14 +85,6 @@ final class NewWidget implements CatalogWidgetInterface
             'widget.new.title',
             'widget.new.description',
         );
-    }
-
-    /**
-     * @param string[] $urls
-     */
-    public function resolveExternalId(array $urls): ?string
-    {
-        return ShikimoriIdResolver::resolve($urls);
     }
 
     public function render(): string
