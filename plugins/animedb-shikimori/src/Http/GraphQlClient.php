@@ -138,7 +138,10 @@ class GraphQlClient
             $payload = self::decodeBody($response);
 
             if (!empty($payload['errors']) && \is_array($payload['errors'])) {
-                throw new GraphQlRequestException(\sprintf('Shikimori GraphQL API returned errors: %s', self::formatErrors($payload['errors'])));
+                // array_values(): тело ответа приходит из json_decode(), то есть массив с
+                // произвольными ключами. formatErrors() обещает список, и без нормализации
+                // это обещание держится только на добросовестности внешнего API.
+                throw new GraphQlRequestException(\sprintf('Shikimori GraphQL API returned errors: %s', self::formatErrors(array_values($payload['errors']))));
             }
 
             return \is_array($payload['data'] ?? null) ? $payload['data'] : [];

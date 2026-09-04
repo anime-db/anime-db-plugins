@@ -174,7 +174,10 @@ class ShikimoriRestClient
     {
         $data = $this->request('GET', \sprintf(self::SIMILAR_PATH_FORMAT, rawurlencode($externalId)), null, null);
 
-        return \is_array($data) ? $data : [];
+        // array_values(): ответ приходит из json_decode() и ключи у него произвольные, а метод
+        // объявляет список. Нормализуем здесь, а не в вызывающем коде, чтобы обещание в
+        // сигнатуре было правдой на выходе из этого метода.
+        return \is_array($data) ? array_values($data) : [];
     }
 
     /**
