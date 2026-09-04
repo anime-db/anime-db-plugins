@@ -330,15 +330,29 @@ Three more things look like implementation detail and are not:
   `tools/analyse-plugin.php` itself: PHPStan reads that file too and parses the mention as a
   real annotation. It lives in a string literal for that reason.
 
-**Known and accepted: the analysis environment is Symfony `^6.4` while the host runs Symfony
-`8.1.*` on PHP 8.5.** Not a choice — measured. `phpstan/phpstan` here is `^1.10`, and PHPStan
-1.12 cannot read Symfony 8.1 sources at all: every `Symfony\Component\HttpFoundation\*`
-comes back as "unknown class" even though PHP parses those files fine, which turns 2 real
-reports into 23. Raising the environment to the host's means PHPStan `^2.2` first — and the
-contract's own rules are written against the PHPStan 1.x API, so that is a change in
-`anime-db/plugin-contracts`, not here. Until then the gate checks plugin code against a
-Symfony two majors older than the one it will run on: fine for what the two contract rules
-look at, wrong for anything level 8 concludes about Symfony APIs specifically.
+**The analysis environment matches the host, and the three versions move together** (issue
+#114): PHP `>=8.5`, Symfony `8.1.*`, PHPStan `^2.2`. Do not lower any of them back — a gate
+that judges plugin code against a Symfony two majors older than the one it will run on is
+wrong about every Symfony API at level 8, which is exactly what the environment exists to
+check.
+
+They cannot be raised separately, either, and that is not a preference — it is mechanical.
+PHPStan 1.12 cannot read Symfony 8.1 sources at all: every
+`Symfony\Component\HttpFoundation\*` comes back as "unknown class" even though PHP parses
+those files fine, turning 2 real reports into 23. So Symfony needs PHPStan 2 — which needed
+the contract's rules ported off the PHPStan 1.x API first (`anime-db/plugin-contracts`
+v0.18.0). And `require.php >= 8.5` with a workflow still on 8.3 fails at `composer install`,
+before any of it runs. One pull request, all four workflows, or nothing.
+
+**`treatPhpDocTypesAsCertain: false` in `tools/phpstan-plugin.neon.dist` is load-bearing, not
+noise-reduction.** A plugin's phpdoc is a claim by its author, arriving in the same untrusted
+pull request as the code; nothing verifies it. At the default `true` PHPStan treats that claim
+as fact and reports a defensive `is_string()` on `json_decode()` output as "always true" — so
+the gate would demand the author *delete* the check guarding the trust boundary, on the
+strength of the author's own unverified annotation, at the precise spot the gate exists to
+watch. It suppresses only that direction. A signature that *disagrees* with what the method
+returns (`list<>` promised, arbitrary-keyed array returned) is still reported with the setting
+off — that is how the three findings in `animedb-shikimori` surfaced when PHPStan 2 landed.
 
 **Not a problem, and settled — do not re-open it:** the floating `~0.14` means a new contract
 minor changes which signatures every plugin is judged by. The red only ever lands on the plugin

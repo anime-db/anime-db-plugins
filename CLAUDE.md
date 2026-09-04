@@ -64,7 +64,8 @@ php tools/analyse-plugin.php plugins/<plugin-id>
   plugin directory, no `--autoload-file`, no running PHPStan from the plugin directory. The
   analysis environment is this repository's `vendor/`, which is why `symfony/http-*` and
   `twig/twig` sit in `require-dev` here although `tools/` never uses them: do not prune them as
-  unused. Do not narrow the analysed set to `src/` either — it is the published set for a
+  unused, and do not lower PHP `>=8.5` / Symfony `8.1.*` / PHPStan `^2.2` — they mirror the
+  host and move together (issue #114). Do not narrow the analysed set to `src/` either — it is the published set for a
   reason — and do not pick that set by file extension: `require` executes any name, so a
   published non-`.php` file carrying a PHP open tag is refused, and the walk skips symlinks the
   same way `PluginValidator` does. See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).

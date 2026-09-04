@@ -210,10 +210,13 @@ final class PluginValidator
             return [['manifest.json must contain a JSON object at the top level.'], null, []];
         }
 
-        $errors = array_map(
+        // array_values(): ManifestValidator::validate() объявляет ManifestValidationError[],
+        // то есть массив с произвольными ключами, а метод обещает список. Под PHPStan 1 это
+        // не проверялось.
+        $errors = array_values(array_map(
             static fn ($error): string => \sprintf('%s: %s', $error->field, $error->message),
             $this->manifestValidator->validate($data),
-        );
+        ));
 
         $manifestId = \is_string($data['id'] ?? null) ? $data['id'] : null;
         if ($manifestId !== null && $manifestId !== basename($pluginDir)) {

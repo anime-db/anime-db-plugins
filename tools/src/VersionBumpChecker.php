@@ -130,7 +130,7 @@ final class VersionBumpChecker
             }
 
             $segments = explode('/', $normalized);
-            if (($segments[0] ?? null) !== 'plugins' || !isset($segments[1]) || $segments[1] === '' || \count($segments) < 3) {
+            if ($segments[0] !== 'plugins' || !isset($segments[1]) || $segments[1] === '' || \count($segments) < 3) {
                 continue;
             }
 
