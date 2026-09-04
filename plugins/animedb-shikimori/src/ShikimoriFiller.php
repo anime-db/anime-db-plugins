@@ -187,7 +187,9 @@ final class ShikimoriFiller implements SyncInterface
         }
 
         $title = $anime['name'];
-        $genres = \is_array($anime['genres'] ?? null) ? $anime['genres'] : [];
+        // array_values(): `genres` приходит из json_decode(), а GenreMapper::map() принимает
+        // список. Ключи внешнего ответа контролирует Shikimori, не мы.
+        $genres = \is_array($anime['genres'] ?? null) ? array_values($anime['genres']) : [];
         $mappedGenres = GenreMapper::map($genres);
 
         // `countries` is deliberately left unset: Shikimori's `Anime` type has no field for
