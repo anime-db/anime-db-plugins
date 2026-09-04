@@ -298,13 +298,30 @@ Three more things look like implementation detail and are not:
   with `prepend = true`, so the plugin's loader wins. Verified by planting a marker method in a
   tampered contract copy under `plugins/<id>/vendor/`: from the plugin directory it is what
   gets reflected, from the repository root it is invisible.
-- **The analysed set is the published set, not `src/`.** The file list comes from
-  `PublishedContentRules` — the same definition `PluginZipBuilder` archives and the
-  version-bump gate watches. Narrowing it to `src/` opens a hole exactly the width of a
-  `require`: a *local* include is legitimate (`NoDangerousPrimitivesRule` forbids only URL
-  ones), so a plugin can keep `src/` spotless and put `exec()` in a `templates/*.php` that
-  ships in the very same ZIP. `tests/fixtures/gate-probe/templates/inline.php` fails the moment
-  someone narrows it back.
+- **The analysed set is the published set, not `src/`, and it is chosen by content rather than
+  by extension.** The file list comes from `PublishedContentRules` — the same definition
+  `PluginZipBuilder` archives and the version-bump gate watches. Narrowing it to `src/` opens a
+  hole exactly the width of a `require`: a *local* include is legitimate
+  (`NoDangerousPrimitivesRule` forbids only URL ones), so a plugin can keep `src/` spotless and
+  put `exec()` in a `templates/*.php` that ships in the very same ZIP.
+  `tests/fixtures/gate-probe/templates/inline.php` fails the moment someone narrows it back.
+
+  Picking those files by extension reopens the same hole one notch down, and that is not
+  theoretical: a plugin whose payload sits in a published `templates/pwn.phtml` passed the whole
+  pipeline green — `validate-plugin.php` OK (it lints `*.php` only), the gate `[OK] No errors`
+  (PHPStan skips a path whose extension is outside `fileExtensions` *even when passed
+  explicitly*), and `PublishedContentRules` excludes nothing by extension, so the file shipped.
+  Widening the extension list cannot fix it either: `require` executes any name. So a published
+  file that carries a PHP open tag while not being a `.php` file is **refused**, not analysed —
+  `tests/fixtures/gate-smuggled/` is the regression case. A file with no open tag is echoed
+  verbatim by `require` and can call nothing, so it is left alone.
+- **The walk does not follow symlinks**, using the same `RecursiveCallbackFilterIterator` on
+  `isLink()` that `PluginValidator` uses and for the same reason: plugin content is untrusted.
+  `SplFileInfo::isFile()` dereferences a symlink to a *file*, so without the filter
+  `src/leak.php -> /etc/passwd` is read and handed to PHPStan, which quotes source lines in its
+  reports. Verified both ways: without the filter the gate reports the payload of a file outside
+  the plugin directory; with it, nothing. Two scripts walking the same untrusted tree must not
+  disagree about symlinks.
 - **It rejects PHPStan's inline ignore annotation in published files.** One comment above a
   line suppresses every rule on it, these two included, and a green run keeps no trace of it.
   Silencing a linter is the ordinary reaction to a red build, not an obfuscated bypass, so a

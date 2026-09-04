@@ -54,6 +54,16 @@ declare(strict_types=1);
  * gate watches. Analysing `src/` alone would leave a hole the width of a `require`: a local
  * include is legitimate (only URL includes are forbidden), so a plugin could keep a clean
  * `src/` and put exec() in a `templates/*.php` that ships in the very same ZIP.
+ *
+ * Selecting those files by extension would leave the same hole one notch down, because
+ * `require` executes whatever it is handed and never looks at the name: exec() in a published
+ * `templates/pwn.phtml` (or `.inc`, or `.txt`) would ship, run, and never be analysed —
+ * PHPStan skips a file whose extension is outside `fileExtensions` even when the path is
+ * passed explicitly. Widening that list cannot close it either: the set of names PHP will
+ * execute has no upper bound. So the rule here is about content, not names — a published file
+ * that carries a PHP open tag while not being a `.php` file is REFUSED outright, the same way
+ * an inline ignore annotation is. A file with no open tag is echoed verbatim by `require` and
+ * can call nothing, so it is left alone.
  */
 
 function locateAutoloader(): string
@@ -74,25 +84,28 @@ require locateAutoloader();
 use AnimeDb\Plugins\Tools\PublishedContentRules;
 
 /**
- * Every `.php` file of the plugin that ends up in the distributable ZIP, plugin-relative and
- * sorted, so the analysed set is a function of the plugin's contents and nothing else.
+ * Every file of the plugin that ends up in the distributable ZIP, plugin-relative and sorted,
+ * so the set is a function of the plugin's contents and nothing else.
+ *
+ * Symlinks are dropped from the recursion itself rather than from the result — same mechanism
+ * and same reason as PluginValidator's own scan: plugin
+ * content is untrusted, and a symlink (at `/`, at `..`, or at a single file outside the
+ * plugin) would otherwise be read and handed to PHPStan, which quotes source lines in its
+ * reports. Two scripts walking the same untrusted tree must not disagree about symlinks.
  *
  * @return list<string>
  */
-function collectPublishedPhpFiles(string $pluginDir): array
+function collectPublishedFiles(string $pluginDir): array
 {
     $files = [];
 
-    $iterator = new RecursiveIteratorIterator(
+    $filter = new RecursiveCallbackFilterIterator(
         new RecursiveDirectoryIterator($pluginDir, FilesystemIterator::SKIP_DOTS),
+        static fn (SplFileInfo $fileInfo): bool => !$fileInfo->isLink(),
     );
 
-    foreach ($iterator as $file) {
+    foreach (new RecursiveIteratorIterator($filter) as $file) {
         if (!$file instanceof SplFileInfo || !$file->isFile()) {
-            continue;
-        }
-
-        if (strtolower($file->getExtension()) !== 'php') {
             continue;
         }
 
@@ -108,6 +121,20 @@ function collectPublishedPhpFiles(string $pluginDir): array
     sort($files);
 
     return $files;
+}
+
+/**
+ * Whether `require`ing this file would execute PHP from it.
+ *
+ * Decided by the open tag, not by the name: PHP runs whatever `require` is handed, and the tag
+ * is case-insensitive (`<?PHP` runs). `<?=` counts too — it is always available, unlike the
+ * `<?` short tag, which the host does not enable.
+ */
+function carriesPhpCode(string $path): bool
+{
+    $contents = file_get_contents($path);
+
+    return $contents !== false && (stripos($contents, '<?php') !== false || str_contains($contents, '<?='));
 }
 
 $repoRoot = \dirname(__DIR__);
@@ -136,7 +163,37 @@ if (!is_file($config)) {
     exit(1);
 }
 
-$files = collectPublishedPhpFiles($resolvedPluginDir);
+$published = collectPublishedFiles($resolvedPluginDir);
+
+// PHP smuggled into a published file that is not a `.php` file. Refused rather than analysed:
+// PHPStan skips a path whose extension is outside `fileExtensions` even when it is passed
+// explicitly, and no list of extensions can be complete, since `require` executes any name.
+// Refusing keeps the rule exact — published content either carries no PHP at all, or is a
+// `.php` file the gate analyses.
+$smuggled = [];
+$files = [];
+foreach ($published as $file) {
+    if (strtolower(pathinfo($file, \PATHINFO_EXTENSION)) === 'php') {
+        $files[] = $file;
+
+        continue;
+    }
+
+    if (carriesPhpCode($resolvedPluginDir.'/'.$file)) {
+        $smuggled[] = $file;
+    }
+}
+
+if ($smuggled !== []) {
+    fwrite(\STDERR, \sprintf(
+        "\"%s\" ships PHP code in files that are not PHP files, which the registry gate does not accept:\n",
+        $pluginDir,
+    ));
+    foreach ($smuggled as $file) {
+        fwrite(\STDERR, '  - '.$file." carries a PHP open tag\n");
+    }
+    exit(1);
+}
 
 // A plugin of type "translation" is a declarative resource and must not contain src/ at all,
 // so it legitimately ships no PHP. Reported explicitly rather than handed to PHPStan with an

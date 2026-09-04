@@ -65,7 +65,9 @@ php tools/analyse-plugin.php plugins/<plugin-id>
   analysis environment is this repository's `vendor/`, which is why `symfony/http-*` and
   `twig/twig` sit in `require-dev` here although `tools/` never uses them: do not prune them as
   unused. Do not narrow the analysed set to `src/` either — it is the published set for a
-  reason. See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
+  reason — and do not pick that set by file extension: `require` executes any name, so a
+  published non-`.php` file carrying a PHP open tag is refused, and the walk skips symlinks the
+  same way `PluginValidator` does. See [.claude-docs/gotchas.md](.claude-docs/gotchas.md).
 - Do not commit `composer.lock`, and do not "fix" `.gitignore` to allow it. Floating
   dependencies are deliberate here: nothing would keep a lock fresh, the drift is what
   prompts tooling maintenance, and no published artifact depends on it. Rejected in PR #83.

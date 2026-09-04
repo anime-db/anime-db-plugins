@@ -47,6 +47,20 @@ use Symfony\Component\Yaml\Yaml;
  */
 final class AnalysePluginCliTest extends TestCase
 {
+    /** @var list<string> */
+    private array $temporaryDirectories = [];
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        foreach ($this->temporaryDirectories as $directory) {
+            exec('rm -rf '.escapeshellarg($directory));
+        }
+
+        $this->temporaryDirectories = [];
+    }
+
     /**
      * Every report tests/fixtures/gate-probe must produce. Eight come from
      * NoDangerousPrimitivesRule, the last one from ContractConformanceRule — a rule set with
@@ -88,6 +102,47 @@ final class AnalysePluginCliTest extends TestCase
 
         self::assertSame(1, $exitCode, $output);
         self::assertStringContainsString('src/Suppressed.php contains @phpstan-ignore', $output);
+    }
+
+    public function testGateRefusesPhpSmuggledIntoANonPhpPublishedFile(): void
+    {
+        // `require` executes whatever it is handed, so a payload in a published file that is
+        // not a `.php` file ships and runs while PHPStan silently skips it — it ignores a path
+        // whose extension is outside `fileExtensions` even when passed explicitly. The refusal
+        // therefore cannot come from a rule; only from the script rejecting the file.
+        [$exitCode, $output] = $this->analyse(self::repoRoot().'/tests/fixtures/gate-smuggled');
+
+        self::assertSame(1, $exitCode, $output);
+        self::assertStringContainsString('templates/smuggled.tpl carries a PHP open tag', $output);
+    }
+
+    public function testGateDoesNotFollowASymlinkOutOfThePluginDirectory(): void
+    {
+        // A symlinked file is dereferenced by SplFileInfo::isFile(), so without an explicit
+        // filter the gate reads a file outside the plugin and hands it to PHPStan — which
+        // quotes source lines in its reports. Built at runtime rather than committed: a
+        // repository symlink pointing outside the checkout is its own hazard.
+        $plugin = $this->temporaryDirectory();
+        mkdir($plugin.'/src', recursive: true);
+        file_put_contents($plugin.'/src/Clean.php', "<?php\n\ndeclare(strict_types=1);\n\nfinal class Clean\n{\n}\n");
+
+        $outside = $this->temporaryDirectory();
+        file_put_contents($outside.'/Payload.php', "<?php\n\nexec('id');\n");
+        symlink($outside.'/Payload.php', $plugin.'/src/leak.php');
+
+        [$exitCode, $output] = $this->analyse($plugin);
+
+        self::assertSame(0, $exitCode, $output);
+        self::assertStringNotContainsString('exec()', $output);
+    }
+
+    private function temporaryDirectory(): string
+    {
+        $path = sys_get_temp_dir().'/animedb-gate-'.bin2hex(random_bytes(6));
+        mkdir($path, recursive: true);
+        $this->temporaryDirectories[] = $path;
+
+        return $path;
     }
 
     public function testAnalysisConfigurationTakesTheContractFromThisRepository(): void
