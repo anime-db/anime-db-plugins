@@ -132,6 +132,7 @@ settings:
     sync_review_badge: 'Zu prüfen: %count%'
     proxy_link: Proxy-Server
     language_label: Anzeigesprache
+    language_plugin_translation_note: Die Oberflächen von Plugins werden von ihren jeweiligen Autoren übersetzt — außerhalb der in der App integrierten Sprachen kann ein Teil der Plugin-Oberfläche unübersetzt bleiben.
     search_reindex_heading: Suchindex
     search_reindex_button: Neu indizieren
     search_reindex_success: Der Suchindex wurde neu aufgebaut.
@@ -195,8 +196,12 @@ settings_plugins:
     id_column: ID
     version_column: Version
     type_column: Typ
+    languages_column: Sprachen
+    translation_coverage_column: Oberflächenabdeckung
     actions_column: Aktionen
     settings_link: Einstellungen
+    missing_fallback_locale: Dieses Plugin enthält weder die aktuelle Oberflächensprache noch eine Ausweichsprache dafür — in seiner Oberfläche werden rohe Übersetzungsschlüssel angezeigt.
+    translation_coverage_badge: '%locale%: %covered% von %total% Oberflächentexten der App übersetzt'
     remove_button: Entfernen
     remove_success: 'Plugin „%pluginId%“ wurde entfernt. Die von ihm im Katalog gesammelten Daten bleiben erhalten und werden bei einer erneuten Installation wiederverwendet.'
     install_heading: Aus ZIP installieren
@@ -218,13 +223,19 @@ settings_market:
     back_link: ← Einstellungen
     heading: Plugin-Marktplatz
     empty: Der Marktplatz enthält noch keine Plugins.
+    incompatible_plugins_summary: Einige Plugins sind für Ihre aktuelle App-Version nicht verfügbar. Eine Aktualisierung der App kann sie verfügbar machen.
     name_column: Name
     description_column: Beschreibung
     type_column: Typ
     version_column: Version
+    locales_column: Sprachen
+    translation_coverage_column: Oberflächenabdeckung
     actions_column: Aktionen
     already_installed: Bereits installiert
     incompatible_core: 'Erfordert eine Kernversion, die mit „%requiredCore%“ kompatibel ist.'
+    locale_missing_warning: Die Oberfläche dieses Plugins wird nicht in der aktuellen Sprache der App verfügbar sein.
+    locale_missing_fallback_warning: Dieses Plugin unterstützt weder die aktuelle Sprache der App noch deren Ausweichsprache — Sie sehen rohe Textschlüssel anstelle übersetzter Texte.
+    translation_coverage_badge: '%percent%% der Oberflächentexte der App übersetzt'
     install_button: Installieren
     install_success: 'Plugin „%pluginId%“ wurde installiert.'
     update_button: Aktualisieren
@@ -369,6 +380,7 @@ anime_detail:
     fill_from_source_button: Aus Quelle übernehmen
     fill_source_label: Quelle
     error_fill_not_found: Die Quelle hat keine Übereinstimmung für diesen Anime gefunden.
+    error_fill_image_rejected: Die Quelle hat ein Bild zurückgegeben, das nicht gespeichert werden konnte.
 
 anime_new:
     title: Neuer Eintrag — AnimeDB
