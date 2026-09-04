@@ -31,7 +31,6 @@ use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\EntryWidgetInterface;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
-use AnimeDb\Plugins\AnimedbShikimori\ExternalId\ShikimoriIdResolver;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use Twig\Environment;
 
@@ -85,14 +84,6 @@ final class RelatedWidget implements EntryWidgetInterface
             'widget.related.title',
             'widget.related.description',
         );
-    }
-
-    /**
-     * @param string[] $urls
-     */
-    public function resolveExternalId(array $urls): ?string
-    {
-        return ShikimoriIdResolver::resolve($urls);
     }
 
     public function render(AnimeId $anime): string
