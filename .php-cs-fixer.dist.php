@@ -27,6 +27,11 @@ declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
     ->in([__DIR__.'/tools', __DIR__.'/tests'])
+    // Фикстура гейта плагинов — вход для PHPStan, а не код: она обязана содержать ровно те
+    // конструкции, которые правила пакета контрактов запрещают. @Symfony тут не стилизует, а
+    // переписывает: backtick_to_shell_exec превращает `whoami` в shell_exec('whoami'), и два
+    // из ожидаемых нарушений схлопываются в одно.
+    ->exclude('fixtures/gate-probe')
     ->append([__FILE__]);
 
 return (new PhpCsFixer\Config())

@@ -1,0 +1,32 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+#
+# Конфиг анализа ОДНОГО плагина, в отличие от phpstan.neon.dist, который покрывает
+# тулинг самого репозитория. Вручную его не запускают: анализируемые файлы передаёт
+# аргументами tools/analyse-plugin.php (список публикуемых .php плагина —
+# PublishedContentRules), он же делает рабочим каталогом корень репозитория. Поэтому
+# здесь нет ни paths, ни excludePaths.
+#
+# Среда анализа — vendor/ ЭТОГО репозитория, и только он. Никакой composer install в
+# каталоге плагина не выполняется, vendor/ плагина не используется вовсе. Это не
+# обход его composer.json, а повторение рантайма: vendor/ в дистрибутив плагина не
+# попадает (см. PluginZipBuilder), все классы даёт хост, значит плагин может
+# опираться только на то, что есть у хоста. Поверхность хоста объявлена один раз, в
+# require-dev корневого composer.json (symfony/http-*, twig/twig,
+# anime-db/plugin-contracts) — именно это делает ограничение проверяемым. Плагин,
+# которому нужно что-то ещё, красный до тех пор, пока мейнтейнер осознанно не
+# расширит эту поверхность.
+#
+# Отсюда же и сам путь включения: правила берутся из vendor/ репозитория. Гейт,
+# собранный из проверяемого артефакта, гейтом не является — composer.json плагина
+# приезжает тем же PR, что и его код, и может объявить свои repositories с форком
+# anime-db/plugin-contracts.
+
+includes:
+    - ../vendor/anime-db/plugin-contracts/extension.neon
+
+parameters:
+    level: 8
