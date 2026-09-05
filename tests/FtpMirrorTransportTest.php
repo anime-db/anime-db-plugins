@@ -43,21 +43,21 @@ final class FtpMirrorTransportTest extends TestCase
     public function testAuthenticationFailureClosesTheConnection(): void
     {
         $resultFile = sys_get_temp_dir().'/ftp-mirror-transport-close-'.bin2hex(random_bytes(8));
-        $port = 20000 + random_int(1, 20000);
 
         $server = proc_open(
-            [\PHP_BINARY, \dirname(__DIR__).'/tests/fixtures/fake-ftp-login-reject-server.php', (string) $port, $resultFile, '2'],
+            [\PHP_BINARY, \dirname(__DIR__).'/tests/fixtures/fake-ftp-login-reject-server.php', $resultFile, '2'],
             [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
             $pipes,
         );
         self::assertIsResource($server);
 
-        self::assertServerIsUp('127.0.0.1', $port);
+        $port = self::readAnnouncedPort($pipes[1]);
 
         $credential = new MirrorCredential('mirror1', '127.0.0.1', $port, 'u', 'wrong-password', '/mirror', 'ftp', 'https://mirror.tld/<id>/<version>/<file>');
 
         try {
             $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Failed to authenticate to mirror "mirror1".');
             (new FtpMirrorTransport())->uploadFile($credential, __FILE__, '/plugin.zip');
         } finally {
             proc_close($server);
@@ -68,18 +68,16 @@ final class FtpMirrorTransportTest extends TestCase
         }
     }
 
-    private static function assertServerIsUp(string $host, int $port): void
+    /**
+     * @param resource $stdout
+     */
+    private static function readAnnouncedPort($stdout): int
     {
-        for ($i = 0; $i < 50; ++$i) {
-            $connection = @fsockopen($host, $port, $errno, $errstr, 0.1);
-            if ($connection !== false) {
-                fclose($connection);
-
-                return;
-            }
-            usleep(50000);
+        $line = fgets($stdout);
+        if ($line === false || !str_starts_with($line, 'LISTENING ')) {
+            self::fail('Fake FTP server did not announce its listening port.');
         }
 
-        self::fail('Fake FTP server did not start in time.');
+        return (int) substr($line, \strlen('LISTENING '));
     }
 }
