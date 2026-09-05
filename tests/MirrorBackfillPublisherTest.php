@@ -135,22 +135,24 @@ final class MirrorBackfillPublisherTest extends TestCase
 
     public function testUnwritableTempDirectoryIsAHardFailWithAClearMessage(): void
     {
-        // sys_get_temp_dir() caches its resolved value for the life of the process, so
-        // overriding TMPDIR here would not be observed — strip write permission from the real
-        // temp directory instead. Root ignores permission bits, so mkdir() would still succeed;
-        // skip rather than false-pass in that environment.
+        // Deny write access on a dedicated fixture directory owned by the test process, not on
+        // the shared system temp directory: on CI, sys_get_temp_dir() is commonly owned by
+        // root, and chmod() requires ownership — it would fail here (false, not a permission
+        // error) regardless of the outcome we are trying to exercise. Root itself ignores
+        // permission bits, so mkdir() would still succeed; skip rather than false-pass there.
         if (posix_getuid() === 0) {
             self::markTestSkipped('Cannot deny write access to a directory while running as root.');
         }
 
-        $tempRoot = sys_get_temp_dir();
-        $originalMode = fileperms($tempRoot) & 0777;
-        self::assertTrue(chmod($tempRoot, 0500));
+        $tempBase = sys_get_temp_dir().'/mirror-backfill-test-'.bin2hex(random_bytes(8));
+        mkdir($tempBase);
+        self::assertTrue(chmod($tempBase, 0500));
 
         $publisher = new MirrorBackfillPublisher(
             new FakeReleaseAssetSource([['id' => 'animedb-shikimori', 'version' => '0.1.0']]),
             new MirrorAssetPublisher(new FakeMirrorTransport()),
             new MirrorAssetReachabilityVerifier(new FakeMirrorReachabilityChecker()),
+            $tempBase,
         );
 
         try {
@@ -159,7 +161,8 @@ final class MirrorBackfillPublisherTest extends TestCase
 
             $publisher->backfill($this->credential());
         } finally {
-            chmod($tempRoot, $originalMode);
+            chmod($tempBase, 0700);
+            rmdir($tempBase);
         }
     }
 

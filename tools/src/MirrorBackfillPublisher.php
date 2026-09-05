@@ -46,10 +46,18 @@ namespace AnimeDb\Plugins\Tools;
  */
 final class MirrorBackfillPublisher
 {
+    /**
+     * @param non-empty-string|null $tempDirBase base directory for the per-release scratch
+     *                                           directory; defaults to {@see sys_get_temp_dir()}.
+     *                                           Injectable so tests can exercise an unwritable
+     *                                           base without touching the shared system temp
+     *                                           directory (which may not be owned by the process).
+     */
     public function __construct(
         private readonly ReleaseAssetSource $source,
         private readonly MirrorAssetPublisher $publisher,
         private readonly MirrorAssetReachabilityVerifier $verifier,
+        private readonly ?string $tempDirBase = null,
     ) {
     }
 
@@ -66,7 +74,7 @@ final class MirrorBackfillPublisher
         $mirrors = [$mirror->id => $mirror];
 
         foreach ($this->source->listReleases() as $release) {
-            $tempDir = sys_get_temp_dir().'/mirror-backfill-'.bin2hex(random_bytes(8));
+            $tempDir = ($this->tempDirBase ?? sys_get_temp_dir()).'/mirror-backfill-'.bin2hex(random_bytes(8));
             if (!@mkdir($tempDir)) {
                 throw new \RuntimeException(\sprintf('Failed to create temporary directory "%s" for backfilling mirror "%s".', $tempDir, $mirror->id));
             }
