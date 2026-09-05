@@ -38,6 +38,11 @@ interface ManifestVersionSource
     /**
      * @return string|null the base-branch version, or null if the plugin's manifest.json
      *                     does not exist there at all (a plugin newly added by this PR)
+     *
+     * @throws BaseManifestReadFailedException when the base-branch version could not be
+     *                                         determined at all (e.g. the base ref itself
+     *                                         is missing) — never conflate this with "the
+     *                                         plugin does not exist on the base branch"
      */
     public function baseVersion(string $pluginId): ?string;
 

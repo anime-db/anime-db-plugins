@@ -48,7 +48,11 @@ namespace AnimeDb\Plugins\Tools;
  * A plugin is skipped entirely (no violation, regardless of the two conditions above) when:
  * it does not exist on the base branch (newly added by this PR), it no longer exists on the
  * PR head (removed by this PR), or none of its changed paths are published content (e.g.
- * only `tests/` changed).
+ * only `tests/` changed). That "does not exist on the base branch" case is a legitimate
+ * `null` from {@see ManifestVersionSource::baseVersion()}; if the base version could not be
+ * read at all instead (e.g. an unresolvable base ref — {@see BaseManifestReadFailedException}),
+ * that is reported as a violation for the same reason as condition 2's tag-check failure: a
+ * check that fails open on tool errors would defeat this entire gate silently.
  *
  * Deliberately independent of git/gh itself — {@see ManifestVersionSource} and
  * {@see TagExistenceChecker} carry that I/O, so this class is a pure function of a path list
@@ -69,7 +73,18 @@ final class VersionBumpChecker
                 continue;
             }
 
-            $baseVersion = $manifests->baseVersion($pluginId);
+            try {
+                $baseVersion = $manifests->baseVersion($pluginId);
+            } catch (BaseManifestReadFailedException $e) {
+                $violations[] = new VersionBumpViolation($pluginId, \sprintf(
+                    'Could not read plugins/%s/manifest.json from the base branch (%s). Failing closed rather '
+                    .'than silently skipping the version-bump check — re-run once the check itself can succeed.',
+                    $pluginId,
+                    $e->getMessage(),
+                ));
+                continue;
+            }
+
             $headVersion = $manifests->headVersion($pluginId);
 
             if ($baseVersion === null || $headVersion === null) {
