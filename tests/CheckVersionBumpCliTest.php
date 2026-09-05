@@ -75,4 +75,26 @@ final class CheckVersionBumpCliTest extends TestCase
         self::assertNotSame(0, $exitCode);
         self::assertStringContainsString('animedb-shikimori', implode("\n", $output));
     }
+
+    /**
+     * Issue #123's repro: a published file changed without a version bump, but this time the
+     * base ref itself cannot be resolved (a syntactically valid but unfetched commit sha,
+     * standing in for a shallow clone that never fetched the base branch). The gate must
+     * fail closed with exactly one violation, not silently pass with zero.
+     */
+    public function testUnresolvableBaseRefFailsClosedWithExactlyOneViolation(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $unresolvableBaseRef = '0000000000000000000000000000000000000000';
+        $cmd = 'printf %s '.escapeshellarg('plugins/animedb-shikimori/src/DoesNotNeedToExist.php')
+            .' | '.escapeshellarg(\PHP_BINARY).' '.escapeshellarg($repoRoot.'/tools/check-version-bump.php').' '
+            .escapeshellarg($unresolvableBaseRef).' 2>&1';
+        exec($cmd, $output, $exitCode);
+
+        self::assertNotSame(0, $exitCode);
+        $violationLines = array_values(array_filter($output, static fn (string $line): bool => str_starts_with($line, '  - ')));
+        self::assertCount(1, $violationLines, implode("\n", $output));
+        self::assertStringContainsString('animedb-shikimori', $violationLines[0]);
+        self::assertStringContainsString('Failing closed', $violationLines[0]);
+    }
 }

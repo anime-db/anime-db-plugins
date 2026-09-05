@@ -32,6 +32,11 @@ namespace AnimeDb\Plugins\Tools;
  * (no working-tree checkout of the base branch needed); the head version is read straight
  * off the working tree, which the caller is expected to already have checked out at the
  * PR's head commit (true for the `pr-validation.yml` gate, which checks out `head.sha`).
+ *
+ * `git show`'s exit code alone does not distinguish "the path does not exist at that ref"
+ * from "the ref itself could not be resolved" — both exit 128. `baseVersion()` tells them
+ * apart from the stderr text instead, since only the former is a legitimate "plugin does
+ * not exist on the base branch" ({@see BaseManifestReadFailedException} for the latter).
  */
 final class GitManifestVersionSource implements ManifestVersionSource
 {
@@ -58,15 +63,25 @@ final class GitManifestVersionSource implements ManifestVersionSource
         }
 
         $output = stream_get_contents($pipes[1]);
+        $errorOutput = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
         $exitCode = proc_close($process);
 
-        if ($exitCode !== 0 || $output === false || trim($output) === '') {
+        if ($exitCode === 0) {
+            return self::extractVersion($output === false ? '' : $output);
+        }
+
+        // `git show <ref>:<path>` reports a path missing from an otherwise-resolvable ref
+        // this way — the legitimate "plugin does not exist on the base branch" case. Any
+        // other failure (most notably an unresolvable ref, e.g. a shallow clone that never
+        // fetched the base commit) means the base version genuinely could not be read and
+        // must not be silently treated as "no base version".
+        if ($errorOutput !== false && str_contains($errorOutput, 'does not exist in')) {
             return null;
         }
 
-        return self::extractVersion($output);
+        throw new BaseManifestReadFailedException(\sprintf('git show %s:%s exited with code %d: %s', $this->baseRef, $path, $exitCode, trim($errorOutput === false ? '' : $errorOutput)));
     }
 
     public function headVersion(string $pluginId): ?string

@@ -27,22 +27,31 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools\Tests;
 
+use AnimeDb\Plugins\Tools\BaseManifestReadFailedException;
 use AnimeDb\Plugins\Tools\ManifestVersionSource;
 
 final class FakeManifestVersionSource implements ManifestVersionSource
 {
     /**
-     * @param array<string, string> $base plugin id => base-branch version (absent = plugin does not exist on base)
-     * @param array<string, string> $head plugin id => PR-head version (absent = plugin does not exist on head)
+     * @param array<string, string> $base           plugin id => base-branch version (absent = plugin does not exist on base)
+     * @param array<string, string> $head           plugin id => PR-head version (absent = plugin does not exist on head)
+     * @param list<string>          $failingBaseIds plugin ids for which reading the base version itself fails
+     *                                              (simulates e.g. an unresolvable base ref, as opposed to a
+     *                                              definitive "plugin does not exist on the base branch")
      */
     public function __construct(
         private readonly array $base = [],
         private readonly array $head = [],
+        private readonly array $failingBaseIds = [],
     ) {
     }
 
     public function baseVersion(string $pluginId): ?string
     {
+        if (\in_array($pluginId, $this->failingBaseIds, true)) {
+            throw new BaseManifestReadFailedException(\sprintf('simulated base read failure for "%s"', $pluginId));
+        }
+
         return $this->base[$pluginId] ?? null;
     }
 
