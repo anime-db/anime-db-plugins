@@ -143,7 +143,12 @@ foreach ($publishedVersions as $index => $entry) {
 
 $previousRegistryPath = $_SERVER['argv'][3] ?? null;
 $sequence = 1;
-if ($previousRegistryPath !== null && $previousRegistryPath !== '' && is_file($previousRegistryPath)) {
+if ($previousRegistryPath !== null && $previousRegistryPath !== '') {
+    if (!is_file($previousRegistryPath)) {
+        fwrite(\STDERR, \sprintf('Previous registry file "%s" does not exist.'."\n", $previousRegistryPath));
+        exit(1);
+    }
+
     $previousRegistryJson = file_get_contents($previousRegistryPath);
     if ($previousRegistryJson === false) {
         fwrite(\STDERR, \sprintf('Failed to read "%s".'."\n", $previousRegistryPath));
