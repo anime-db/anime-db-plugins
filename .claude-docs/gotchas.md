@@ -407,3 +407,40 @@ The fixtures live under `tests/fixtures/`, never under `plugins/`: a directory u
 excluded from `.php-cs-fixer.dist.php` — `@Symfony` enables `backtick_to_shell_exec`, which
 would rewrite `` `whoami` `` into `shell_exec('whoami')` and collapse two of the expected
 reports into one.
+
+## `chmod()`-ing `sys_get_temp_dir()` to simulate a write failure is CI-hostile
+
+A test that wants to exercise an unwritable-directory code path (e.g. a `mkdir()` failure)
+must never `chmod()` the real `sys_get_temp_dir()` itself: on the GitHub Actions runner the
+process does not own `/tmp` (root does), and `chmod()` on a path you don't own fails —
+returning `false`, not throwing — regardless of what the test is actually trying to exercise.
+Locally this hid the bug entirely, because a developer's own user typically does own their
+`/tmp`. The fix is to `mkdir()` a fixture directory the test process itself owns and `chmod()`
+that, then have the code under test accept the base directory as an injectable parameter
+(defaulting to `sys_get_temp_dir()` for production callers) — see
+`MirrorBackfillPublisher`'s `$tempDirBase` constructor argument and
+`MirrorBackfillPublisherTest::testUnwritableTempDirectoryIsAHardFailWithAClearMessage` (PR
+#126). Also note `sys_get_temp_dir()` memoizes its result for the life of the process, so
+`putenv('TMPDIR=...')` inside a PHPUnit run has no effect once any earlier test in the same
+process has already called it.
+
+## A test asserting "the socket got closed" cannot tell `ftp_close()` apart from garbage collection
+
+`ext-ftp`'s `\FTP\Connection` closes its underlying socket as soon as the object is destroyed
+— including via ordinary refcounting when a local variable simply falls out of scope (e.g.
+during exception unwinding), with no explicit `ftp_close()` call anywhere. Verified directly:
+connecting, failing a login, and returning without ever calling `ftp_close()` still results in
+the peer observing a closed connection, immediately. So a fixture that treats *any* clean
+disconnect (EOF without a timeout) as "the caller closed it" cannot distinguish an explicit
+`ftp_close()` call from the object simply going out of scope — both look identical from the
+other end, and a test built on that fixture cannot fail even if the explicit close call is
+removed from the code under test.
+
+The one observable difference: `ftp_close()` sends the FTP `QUIT` command before dropping the
+socket; letting the object get garbage-collected does not (confirmed with a fixture that logs
+whether it actually received `QUIT` versus just seeing the socket drop). `tests/fixtures/fake-ftp-login-reject-server.php`
+(`FtpMirrorTransportTest`) requires an actual `QUIT` line to report "closed" for this reason —
+without it, the test passed even with the `ftp_close()` call deleted from
+`FtpMirrorTransport::connect()` (PR #126, follow-up review). Any future fixture built the same
+way (assert a resource was released by observing the peer side) needs to check for the specific
+protocol-level signal the close function sends, not merely "the connection is no longer open".

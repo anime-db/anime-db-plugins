@@ -41,20 +41,37 @@ final class GitTagExistenceChecker implements TagExistenceChecker
 {
     private const EXIT_CODE_REF_NOT_FOUND = 2;
 
+    public function __construct(
+        private readonly string $repoRoot,
+    ) {
+    }
+
     public function exists(string $pluginId, string $version): bool
     {
         $tag = $pluginId.'/'.$version;
 
-        exec(
-            'git ls-remote --exit-code --tags origin '.escapeshellarg('refs/tags/'.$tag).' 2>&1',
-            $output,
-            $exitCode,
+        $descriptorSpec = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+        $process = proc_open(
+            ['git', 'ls-remote', '--exit-code', '--tags', 'origin', 'refs/tags/'.$tag],
+            $descriptorSpec,
+            $pipes,
+            $this->repoRoot,
         );
+
+        if (!\is_resource($process)) {
+            throw new TagExistenceCheckFailedException(\sprintf('Failed to spawn "git ls-remote" for tag "%s".', $tag));
+        }
+
+        $output = stream_get_contents($pipes[1]);
+        $errorOutput = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
 
         return match ($exitCode) {
             0 => true,
             self::EXIT_CODE_REF_NOT_FOUND => false,
-            default => throw new TagExistenceCheckFailedException(\sprintf('git ls-remote for tag "%s" exited with code %d: %s', $tag, $exitCode, implode("\n", $output))),
+            default => throw new TagExistenceCheckFailedException(\sprintf('git ls-remote for tag "%s" exited with code %d: %s', $tag, $exitCode, trim(($output ?: '').($errorOutput ?: '')))),
         };
     }
 }
