@@ -407,3 +407,19 @@ The fixtures live under `tests/fixtures/`, never under `plugins/`: a directory u
 excluded from `.php-cs-fixer.dist.php` — `@Symfony` enables `backtick_to_shell_exec`, which
 would rewrite `` `whoami` `` into `shell_exec('whoami')` and collapse two of the expected
 reports into one.
+
+## `chmod()`-ing `sys_get_temp_dir()` to simulate a write failure is CI-hostile
+
+A test that wants to exercise an unwritable-directory code path (e.g. a `mkdir()` failure)
+must never `chmod()` the real `sys_get_temp_dir()` itself: on the GitHub Actions runner the
+process does not own `/tmp` (root does), and `chmod()` on a path you don't own fails —
+returning `false`, not throwing — regardless of what the test is actually trying to exercise.
+Locally this hid the bug entirely, because a developer's own user typically does own their
+`/tmp`. The fix is to `mkdir()` a fixture directory the test process itself owns and `chmod()`
+that, then have the code under test accept the base directory as an injectable parameter
+(defaulting to `sys_get_temp_dir()` for production callers) — see
+`MirrorBackfillPublisher`'s `$tempDirBase` constructor argument and
+`MirrorBackfillPublisherTest::testUnwritableTempDirectoryIsAHardFailWithAClearMessage` (PR
+#126). Also note `sys_get_temp_dir()` memoizes its result for the life of the process, so
+`putenv('TMPDIR=...')` inside a PHPUnit run has no effect once any earlier test in the same
+process has already called it.
