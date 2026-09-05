@@ -72,9 +72,31 @@ final class GitManifestVersionSourceTest extends TestCase
         self::assertNull($source->baseVersion('new-plugin'));
     }
 
+    /**
+     * Reproduces the actual PR-validation setup: the working tree is checked out at the PR's
+     * head, which already contains the new plugin's manifest on disk, while the base ref
+     * resolves fine but never had that plugin. This must stay a legitimate `null`, not
+     * {@see BaseManifestReadFailedException} — distinguishing on ref resolvability rather than
+     * on-disk presence is exactly what keeps this case apart from an unresolvable base ref.
+     */
+    public function testBaseVersionIsNullForANewPluginPresentOnDiskButNotOnTheResolvableBaseRef(): void
+    {
+        $repoRoot = $this->initRepo();
+        $this->writeManifest($repoRoot, 'other-plugin', '0.1.0');
+        $baseSha = $this->commit($repoRoot, 'unrelated plugin only');
+        $this->writeManifest($repoRoot, 'new-plugin', '0.1.0');
+
+        $source = new GitManifestVersionSource($baseSha, $repoRoot);
+
+        self::assertNull($source->baseVersion('new-plugin'));
+    }
+
     public function testBaseVersionThrowsWhenTheBaseRefCannotBeResolved(): void
     {
         $repoRoot = $this->initRepo();
+        // The manifest exists on disk here (committed, so still present in the working
+        // tree) — proving the exception comes from the ref failing to resolve, not from
+        // the path being absent on disk.
         $this->writeManifest($repoRoot, 'vendor-name', '0.2.0');
         $this->commit($repoRoot, 'add plugin');
 
