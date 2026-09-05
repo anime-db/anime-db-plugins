@@ -185,7 +185,7 @@ final class BuildRegistryCliTest extends TestCase
         self::assertSame(42, $registry['sequence']);
     }
 
-    public function testMissingPreviousRegistryFileFallsBackToSequenceOne(): void
+    public function testMissingPreviousRegistryFileExitsNonZero(): void
     {
         $repoRoot = \dirname(__DIR__);
         $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
@@ -196,11 +196,30 @@ final class BuildRegistryCliTest extends TestCase
             ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
         ], \JSON_THROW_ON_ERROR));
 
+        $missingPreviousRegistryPath = $this->tempDir.'/does-not-exist.json';
+
         [$output, $exitCode] = $this->runCli(
             $repoRoot.'/plugins',
             $publishedVersionsPath,
-            $this->tempDir.'/does-not-exist.json',
+            $missingPreviousRegistryPath,
         );
+
+        self::assertNotSame(0, $exitCode);
+        self::assertStringContainsString($missingPreviousRegistryPath, implode("\n", $output));
+    }
+
+    public function testOmittedPreviousRegistryArgumentYieldsSequenceOne(): void
+    {
+        $repoRoot = \dirname(__DIR__);
+        $this->tempDir = sys_get_temp_dir().'/build-registry-cli-test-'.bin2hex(random_bytes(8));
+        mkdir($this->tempDir);
+
+        $publishedVersionsPath = $this->tempDir.'/published-versions.json';
+        file_put_contents($publishedVersionsPath, json_encode([
+            ['id' => 'animedb-shikimori', 'version' => '0.1.0', 'core' => '>=0.0.1', 'sha256' => 'abc123'],
+        ], \JSON_THROW_ON_ERROR));
+
+        [$output, $exitCode] = $this->runCli($repoRoot.'/plugins', $publishedVersionsPath);
 
         self::assertSame(0, $exitCode, implode("\n", $output));
         $registry = json_decode(implode("\n", $output), true, 512, \JSON_THROW_ON_ERROR);

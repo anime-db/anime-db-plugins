@@ -40,10 +40,13 @@ declare(strict_types=1);
  *     > plugins-registry.json.new
  *   mv plugins-registry.json.new plugins-registry.json
  *
- * <previous-registry.json>, when given and existing, supplies the previous "sequence" value;
- * the new registry's sequence is that value + 1 (anti-rollback: strictly increasing between
- * generations). When omitted, or when the path does not exist yet (first ever generation),
- * sequence starts at 1.
+ * <previous-registry.json>, when given, supplies the previous "sequence" value; the new
+ * registry's sequence is that value + 1 (anti-rollback: strictly increasing between
+ * generations). When the argument is omitted (or an empty string), sequence starts at 1 —
+ * that is the only way to get sequence 1. When the argument is given but the file does not
+ * exist, the script fails with a non-zero exit code instead of silently restarting the
+ * sequence: a missing previous registry usually means a misconfigured path, not a genuinely
+ * first generation.
  *
  * <active-mirrors-file> and <mirror-creds-env-var-name>, when BOTH given, resolve `asset_mirrors`
  * as [GitHub] + every `MIRROR_CREDS` entry whose id is listed in <active-mirrors-file> (see
@@ -143,7 +146,12 @@ foreach ($publishedVersions as $index => $entry) {
 
 $previousRegistryPath = $_SERVER['argv'][3] ?? null;
 $sequence = 1;
-if ($previousRegistryPath !== null && $previousRegistryPath !== '' && is_file($previousRegistryPath)) {
+if ($previousRegistryPath !== null && $previousRegistryPath !== '') {
+    if (!is_file($previousRegistryPath)) {
+        fwrite(\STDERR, \sprintf('Previous registry file "%s" does not exist.'."\n", $previousRegistryPath));
+        exit(1);
+    }
+
     $previousRegistryJson = file_get_contents($previousRegistryPath);
     if ($previousRegistryJson === false) {
         fwrite(\STDERR, \sprintf('Failed to read "%s".'."\n", $previousRegistryPath));
