@@ -79,7 +79,7 @@ $paths = $stdin === false ? [] : (preg_split('/\R/', $stdin) ?: []);
 
 $repoRoot = \dirname(__DIR__);
 $manifests = new GitManifestVersionSource($baseRef, $repoRoot);
-$tags = new GitTagExistenceChecker();
+$tags = new GitTagExistenceChecker($repoRoot);
 
 $result = (new VersionBumpChecker())->check($paths, $manifests, $tags);
 

@@ -69,6 +69,8 @@ final class FtpMirrorTransport implements MirrorTransport
         }
 
         if (!ftp_login($connection, $credential->user, $credential->password)) {
+            ftp_close($connection);
+
             throw new \RuntimeException(\sprintf('Failed to authenticate to mirror "%s".', $credential->id));
         }
 
