@@ -1198,10 +1198,14 @@ final class PluginValidator
     }
 
     /**
-     * Independently of whether `ui` is declared at all, every file actually present under
-     * `assets/` must carry an extension the host serves — {@see PublishedContentRules} does
-     * not exclude `assets/` from the plugin ZIP, so anything else still ships, dead weight
-     * with no route ever serving it.
+     * Independently of whether `ui` is declared at all, every file actually *published*
+     * under `assets/` must carry an extension the host serves. Files {@see
+     * PublishedContentRules} excludes from the plugin ZIP (e.g. ".gitkeep") are skipped: the
+     * rule's rationale is that an unlisted extension ships dead weight with no route ever
+     * serving it, which is false for a file that never ships. The check is also
+     * case-sensitive: the host route only matches a lower-case extension, and {@see
+     * ManifestValidator} already rejects an upper-case one in "ui.css"/"ui.js", so allowing
+     * it here for an undeclared asset would be a second, looser rule for the same directory.
      *
      * @return list<string>
      */
@@ -1221,11 +1225,16 @@ final class PluginValidator
 
         $errors = [];
         foreach (self::findFiles($assetsDir) as $file) {
-            $extension = strtolower(pathinfo($file, \PATHINFO_EXTENSION));
+            $relativePath = substr($file, \strlen($pluginDir) + 1);
+            if (PublishedContentRules::isExcluded($relativePath)) {
+                continue;
+            }
+
+            $extension = pathinfo($file, \PATHINFO_EXTENSION);
             if (!\in_array($extension, self::ALLOWED_ASSET_EXTENSIONS, true)) {
                 $errors[] = \sprintf(
                     'File "%s" has an extension not on the host\'s allow-list ("%s"); it would ship inside the plugin ZIP with no route ever serving it.',
-                    substr($file, \strlen($pluginDir) + 1),
+                    $relativePath,
                     implode('", "', self::ALLOWED_ASSET_EXTENSIONS),
                 );
             }

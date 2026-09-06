@@ -224,8 +224,12 @@ a pattern the core has deliberately never used, and nobody notices until it's on
 ## `ui` files must exist, stay inside `assets/`, and `assets/` content is allow-listed
 
 `anime-db/plugin-contracts` `v0.19` adds a manifest `ui` block (`{"css": [...], "js":
-[...]}`) declaring stylesheet/script files under the plugin's own `assets/` directory
-that the host inserts into the plugin's page itself. The shared `ManifestValidator` only
+[...]}`) declaring stylesheet/script files under the plugin's own `assets/` directory that
+the host inserts wherever it renders the page shell itself (the plugin's settings page, a
+page carrying its widgets). On a plugin's own page templates and in responses from its own
+routes — e.g. an OAuth-callback page with its own `<!DOCTYPE html>`/`<head>` — the host
+shell plays no part, and the plugin's own markup is responsible for the `<link>`/`<script>`
+tags. The shared `ManifestValidator` only
 checks the *shape* of each path (relative, `assets/`-prefixed, matching extension, no
 `..` segments) — it validates decoded manifest data alone and is also used to parse
 `plugins-registry.json`, where no plugin directory sits next to the manifest, so it has
@@ -239,12 +243,18 @@ has `$pluginDir`, so `tools/src/PluginValidator.php` adds what the contract cann
   (e.g. `^0.19`), the version that introduced the field — an older pin promises a host
   too old to read it.
 
-Independently of whether `ui` is declared at all, every file actually present under
-`assets/` must carry an extension the host serves: `.css`, `.js`, `.svg`, `.png`,
-`.webp`, `.woff2`. `PublishedContentRules` does not exclude `assets/` from the plugin
-ZIP (issue #129 deliberately leaves the ZIP build untouched), so anything else still
-ships — dead weight with no route ever serving it. None of this checks file *content*:
-no JS linter, no CSS parsing, just "declared exists and sits where it should".
+Independently of whether `ui` is declared at all, every file actually *published* under
+`assets/` must carry a lower-case extension the host serves: `.css`, `.js`, `.svg`,
+`.png`, `.webp`, `.woff2`. `PublishedContentRules` does not exclude `assets/` from the
+plugin ZIP (issue #129 deliberately leaves the ZIP build untouched), so anything else that
+does end up in the archive still ships — dead weight with no route ever serving it. Files
+`PublishedContentRules::isExcluded()` already keeps out of that archive (`.gitkeep`,
+`.gitignore`, `.gitattributes`) are exempt from the allow-list — the rationale doesn't
+apply to something that never ships. The extension check does not lower-case before
+comparing: `ManifestValidator` already rejects an upper-case extension declared in
+`ui.css`/`ui.js`, so an undeclared asset must follow the same rule rather than a looser
+one. None of this checks file *content*: no JS linter, no CSS parsing, just "declared
+exists and sits where it should".
 
 Images referenced from a plugin's UI are **not** declared in `ui` — the plugin's own
 markup pulls them in via the host's Twig function `plugin_asset()`, or its own CSS

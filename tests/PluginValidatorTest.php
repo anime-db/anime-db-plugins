@@ -886,6 +886,30 @@ final class PluginValidatorTest extends TestCase
         self::assertSame([], $errors);
     }
 
+    public function testGitkeepInAssetsDirectoryHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/.gitkeep', '');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testAssetsDirectoryUppercaseExtensionIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/Logo.SVG', '<svg></svg>');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'File "assets/Logo.SVG" has an extension not on the host\'s allow-list'));
+    }
+
     public function testUiWithPluginContractsPinNotCoveringUiVersionIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
