@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\Tools;
 
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
 use AnimeDb\PluginContracts\Manifest\PluginType;
+use Composer\Semver\Semver;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -103,6 +104,20 @@ use Symfony\Component\Yaml\Yaml;
  * required for `integration` but rejected for `translation`/`local`). This field has no
  * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
  *
+ * A manifest `ui` block is checked against the plugin directory's actual contents — something
+ * {@see ManifestValidator} cannot do itself, since it validates decoded manifest data alone
+ * and also parses manifests from `plugins-registry.json`, where no plugin directory sits
+ * alongside it (see the class-level docblock of {@see \AnimeDb\PluginContracts\Manifest\PluginUi}).
+ * Every path listed in `ui.css`/`ui.js` must exist as a file, and its `realpath()` must resolve
+ * inside `<pluginDir>/assets/` (guards against a symlink escaping that directory; the path shape
+ * itself — relative, `assets/`-prefixed, no `..` segments — is already {@see ManifestValidator}'s
+ * job). A plugin declaring `ui` must also pin `require.plugin-contracts` to a range covering
+ * `0.19`, the contract version that introduced the field — an older pin promises a host that
+ * cannot read it. Independently of whether `ui` is declared at all, every file actually present
+ * under `assets/` must carry one of the extensions the host serves (`.css`, `.js`, `.svg`,
+ * `.png`, `.webp`, `.woff2`); anything else would ship inside the plugin ZIP
+ * ({@see PublishedContentRules} does not exclude `assets/`) with no route ever serving it.
+ *
  * Collects every problem instead of stopping at the first one (mirrors
  * {@see ManifestValidator}'s own "report everything" approach), so a plugin author sees the
  * full list of what to fix in one CI run.
@@ -130,6 +145,22 @@ final class PluginValidator
      * @var list<string>
      */
     private const OFFICIAL_PLUGIN_IDS = ['animedb-shikimori', 'animedb-language-pack'];
+
+    /**
+     * Extensions the application actually has a route for. A file under `assets/` with any
+     * other extension still ships inside the plugin ZIP (see {@see PublishedContentRules}) but
+     * is dead weight nothing ever serves.
+     *
+     * @var list<string>
+     */
+    private const ALLOWED_ASSET_EXTENSIONS = ['css', 'js', 'svg', 'png', 'webp', 'woff2'];
+
+    /**
+     * Lowest `anime-db/plugin-contracts` version whose manifest schema knows the `ui` field.
+     * A plugin declaring `ui` while pinning a `require.plugin-contracts` range that excludes
+     * this version promises a host old enough to never read it.
+     */
+    private const UI_CONTRACT_VERSION = '0.19.0';
 
     public function __construct(
         private readonly ManifestValidator $manifestValidator = new ManifestValidator(),
@@ -175,6 +206,7 @@ final class PluginValidator
         $errors = [...$errors, ...$translationErrors];
         $errors = [...$errors, ...self::validateManifestLiterals($manifestData, $catalogKeys)];
         $errors = [...$errors, ...self::validateTranslationKeysCount($manifestData, $pluginType, $catalogKeys)];
+        $errors = [...$errors, ...$this->validateUiAssets($pluginDir, $manifestData)];
 
         return $errors;
     }
@@ -347,6 +379,17 @@ final class PluginValidator
      */
     private static function findPhpFiles(string $dir): array
     {
+        return array_values(array_filter(
+            self::findFiles($dir),
+            static fn (string $file): bool => pathinfo($file, \PATHINFO_EXTENSION) === 'php',
+        ));
+    }
+
+    /**
+     * @return list<string> every file under $dir, recursively, sorted
+     */
+    private static function findFiles(string $dir): array
+    {
         $files = [];
         // Plugin source is untrusted: a symlink (e.g. pointing at "/" or "..") must not be
         // followed, or the scan could read files outside $dir or loop forever on a symlink
@@ -359,7 +402,7 @@ final class PluginValidator
         $iterator = new \RecursiveIteratorIterator($filter);
 
         foreach ($iterator as $fileInfo) {
-            if ($fileInfo->isFile() && $fileInfo->getExtension() === 'php') {
+            if ($fileInfo->isFile()) {
                 $files[] = $fileInfo->getPathname();
             }
         }
@@ -1049,6 +1092,155 @@ final class PluginValidator
         }
 
         return [];
+    }
+
+    /**
+     * @param array<string, mixed> $manifestData
+     *
+     * @return list<string>
+     */
+    private function validateUiAssets(string $pluginDir, array $manifestData): array
+    {
+        $errors = [];
+
+        $ui = $manifestData['ui'] ?? null;
+        if (\is_array($ui)) {
+            $errors = [...$errors, ...$this->validateDeclaredUiPaths($pluginDir, $ui)];
+            $errors = [...$errors, ...self::validateUiContractPin($manifestData)];
+        }
+
+        $errors = [...$errors, ...$this->validateAssetsAllowlist($pluginDir)];
+
+        return $errors;
+    }
+
+    /**
+     * Every path declared in `ui.css`/`ui.js` must exist as a file inside the plugin
+     * directory, and must not resolve (after following symlinks via `realpath()`) outside
+     * `<pluginDir>/assets/`. The path *shape* — relative, `assets/`-prefixed, matching
+     * extension, no `..` segments — is already {@see ManifestValidator}'s job; this only
+     * checks it against the filesystem, which that shared package cannot do (see the class
+     * docblock).
+     *
+     * @param array<string, mixed> $ui decoded manifest "ui" object
+     *
+     * @return list<string>
+     */
+    private function validateDeclaredUiPaths(string $pluginDir, array $ui): array
+    {
+        $errors = [];
+        $assetsRoot = realpath($pluginDir.'/assets');
+
+        foreach (['css', 'js'] as $key) {
+            $paths = $ui[$key] ?? null;
+            if (!\is_array($paths)) {
+                // Malformed "ui.css"/"ui.js" shape is already reported by ManifestValidator.
+                continue;
+            }
+
+            foreach ($paths as $path) {
+                if (!\is_string($path)) {
+                    continue;
+                }
+
+                $fullPath = $pluginDir.'/'.$path;
+                if (!is_file($fullPath)) {
+                    $errors[] = \sprintf('Field "ui.%s" declares "%s", which does not exist in the plugin directory.', $key, $path);
+                    continue;
+                }
+
+                $realPath = realpath($fullPath);
+                if ($realPath === false || $assetsRoot === false || !str_starts_with($realPath, $assetsRoot.\DIRECTORY_SEPARATOR)) {
+                    $errors[] = \sprintf('Field "ui.%s" entry "%s" resolves outside the plugin\'s "assets/" directory.', $key, $path);
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * A plugin declaring `ui` relies on a host new enough to read the field, so it must pin
+     * `require.plugin-contracts` to a range that covers {@see self::UI_CONTRACT_VERSION}.
+     *
+     * @param array<string, mixed> $manifestData
+     *
+     * @return list<string>
+     */
+    private static function validateUiContractPin(array $manifestData): array
+    {
+        $require = $manifestData['require'] ?? null;
+        $constraint = \is_array($require) ? ($require['plugin-contracts'] ?? null) : null;
+
+        if (!\is_string($constraint) || $constraint === '') {
+            return [\sprintf(
+                'Plugin declares "ui" but is missing a "require.plugin-contracts" constraint covering %s, the contract version that introduced the field.',
+                self::UI_CONTRACT_VERSION,
+            )];
+        }
+
+        try {
+            $covers = Semver::satisfies(self::UI_CONTRACT_VERSION, $constraint);
+        } catch (\UnexpectedValueException) {
+            // Malformed constraint is already reported by ManifestValidator.
+            return [];
+        }
+
+        if (!$covers) {
+            return [\sprintf(
+                'Plugin declares "ui" but "require.plugin-contracts" constraint "%s" does not cover %s, the contract version that introduced the field.',
+                $constraint,
+                self::UI_CONTRACT_VERSION,
+            )];
+        }
+
+        return [];
+    }
+
+    /**
+     * Independently of whether `ui` is declared at all, every file actually *published*
+     * under `assets/` must carry an extension the host serves. Files {@see
+     * PublishedContentRules} excludes from the plugin ZIP (e.g. ".gitkeep") are skipped: the
+     * rule's rationale is that an unlisted extension ships dead weight with no route ever
+     * serving it, which is false for a file that never ships. The check is also
+     * case-sensitive: the host route only matches a lower-case extension, and {@see
+     * ManifestValidator} already rejects an upper-case one in "ui.css"/"ui.js", so allowing
+     * it here for an undeclared asset would be a second, looser rule for the same directory.
+     *
+     * @return list<string>
+     */
+    private function validateAssetsAllowlist(string $pluginDir): array
+    {
+        $assetsDir = $pluginDir.'/assets';
+
+        // Same reasoning as the "src/"/"translations/" checks above: a symlinked "assets/"
+        // must not be followed.
+        if (is_link($assetsDir)) {
+            return ['Plugin "assets/" must not be a symlink.'];
+        }
+
+        if (!is_dir($assetsDir)) {
+            return [];
+        }
+
+        $errors = [];
+        foreach (self::findFiles($assetsDir) as $file) {
+            $relativePath = substr($file, \strlen($pluginDir) + 1);
+            if (PublishedContentRules::isExcluded($relativePath)) {
+                continue;
+            }
+
+            $extension = pathinfo($file, \PATHINFO_EXTENSION);
+            if (!\in_array($extension, self::ALLOWED_ASSET_EXTENSIONS, true)) {
+                $errors[] = \sprintf(
+                    'File "%s" has an extension not on the host\'s allow-list ("%s"); it would ship inside the plugin ZIP with no route ever serving it.',
+                    $relativePath,
+                    implode('", "', self::ALLOWED_ASSET_EXTENSIONS),
+                );
+            }
+        }
+
+        return $errors;
     }
 
     private static function expectedRootNamespace(string $pluginId): string
