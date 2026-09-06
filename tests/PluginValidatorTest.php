@@ -806,6 +806,113 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'not allowed for type "local"'));
     }
 
+    public function testValidPluginWithUiHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['plugin-contracts'] = '^0.19';
+        $manifest['ui'] = ['css' => ['assets/carousel.css'], 'js' => ['assets/settings.js']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/carousel.css', '.carousel {}');
+        file_put_contents($pluginDir.'/assets/settings.js', 'console.log(1);');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testValidPluginWithoutUiHasNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testUiFileNotExistingOnDiskIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['plugin-contracts'] = '^0.19';
+        $manifest['ui'] = ['css' => ['assets/missing.css']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'ui.css" declares "assets/missing.css", which does not exist'));
+    }
+
+    public function testUiFileEscapingAssetsDirectoryViaSymlinkIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['plugin-contracts'] = '^0.19';
+        $manifest['ui'] = ['css' => ['assets/escape.css']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+
+        $outsideFile = \dirname($pluginDir).'/outside.css';
+        file_put_contents($outsideFile, '.evil {}');
+        symlink($outsideFile, $pluginDir.'/assets/escape.css');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'resolves outside the plugin\'s "assets/" directory'));
+    }
+
+    public function testForeignFileInAssetsDirectoryIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/notes.txt', 'not a served asset');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'File "assets/notes.txt" has an extension not on the host\'s allow-list'));
+    }
+
+    public function testAssetsDirectoryAllowedExtensionsHaveNoErrors(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        foreach (['style.css', 'script.js', 'icon.svg', 'cover.png', 'cover.webp', 'font.woff2'] as $file) {
+            file_put_contents($pluginDir.'/assets/'.$file, 'x');
+        }
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
+    }
+
+    public function testUiWithPluginContractsPinNotCoveringUiVersionIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['plugin-contracts'] = '^0.18';
+        $manifest['ui'] = ['css' => ['assets/carousel.css']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/carousel.css', '.carousel {}');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'does not cover 0.19.0'));
+    }
+
+    public function testUiWithoutPluginContractsPinIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['ui'] = ['css' => ['assets/carousel.css']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/carousel.css', '.carousel {}');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'missing a "require.plugin-contracts" constraint covering 0.19.0'));
+    }
+
     /**
      * @return array<string, mixed>
      */

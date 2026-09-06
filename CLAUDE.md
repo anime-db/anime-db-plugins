@@ -13,7 +13,7 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
 - [.claude-docs/conventions.md](.claude-docs/conventions.md) — plugin conventions:
   version bumps for published plugins, catalog domain per plugin type, the
   `translation_keys_count` and `locales` manifest fields, pluralization, empty values,
-  recommended Russian terminology
+  the `ui` manifest field and `assets/` directory rules, recommended Russian terminology
 
 ## Commands
 
@@ -81,6 +81,13 @@ php tools/analyse-plugin.php plugins/<plugin-id>
   the catalogs of the domain the type prescribes, in both directions, and requires it
   whenever such catalogs exist. The application shows a plugin's languages from this field,
   so drift becomes a false promise on the market storefront. See
+  [.claude-docs/conventions.md](.claude-docs/conventions.md).
+- Do not let a manifest `ui.css`/`ui.js` entry name a file that does not exist, escape
+  `assets/` (checked via `realpath()`), or leave `require.plugin-contracts` pinned below
+  `0.19` (the version that introduced `ui`). Do not ship any file under `assets/` with an
+  extension outside the host's allow-list (`.css`, `.js`, `.svg`, `.png`, `.webp`,
+  `.woff2`), whether or not it is declared in `ui` — `PublishedContentRules` does not
+  exclude `assets/` from the ZIP, so it would ship dead weight. See
   [.claude-docs/conventions.md](.claude-docs/conventions.md).
 
 ## Workflow

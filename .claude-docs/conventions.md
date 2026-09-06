@@ -221,6 +221,44 @@ a pattern the core has deliberately never used, and nobody notices until it's on
   apart (and a word-form-aware pattern for "тег" flags unrelated words like "Тегеран"), so
   a human editorial judgment call is required instead of a mechanical gate.
 
+## `ui` files must exist, stay inside `assets/`, and `assets/` content is allow-listed
+
+`anime-db/plugin-contracts` `v0.19` adds a manifest `ui` block (`{"css": [...], "js":
+[...]}`) declaring stylesheet/script files under the plugin's own `assets/` directory
+that the host inserts into the plugin's page itself. The shared `ManifestValidator` only
+checks the *shape* of each path (relative, `assets/`-prefixed, matching extension, no
+`..` segments) — it validates decoded manifest data alone and is also used to parse
+`plugins-registry.json`, where no plugin directory sits next to the manifest, so it has
+no filesystem to check against (see `PluginUi`'s own docblock). Only this repo's tooling
+has `$pluginDir`, so `tools/src/PluginValidator.php` adds what the contract cannot:
+
+- every path in `ui.css`/`ui.js` must exist as a file in the plugin directory;
+- its `realpath()` must resolve inside `<pluginDir>/assets/` — guards against a symlink
+  escaping that directory, since the contract's path-shape check cannot see through one;
+- a plugin declaring `ui` must pin `require.plugin-contracts` to a range covering `0.19`
+  (e.g. `^0.19`), the version that introduced the field — an older pin promises a host
+  too old to read it.
+
+Independently of whether `ui` is declared at all, every file actually present under
+`assets/` must carry an extension the host serves: `.css`, `.js`, `.svg`, `.png`,
+`.webp`, `.woff2`. `PublishedContentRules` does not exclude `assets/` from the plugin
+ZIP (issue #129 deliberately leaves the ZIP build untouched), so anything else still
+ships — dead weight with no route ever serving it. None of this checks file *content*:
+no JS linter, no CSS parsing, just "declared exists and sits where it should".
+
+Images referenced from a plugin's UI are **not** declared in `ui` — the plugin's own
+markup pulls them in via the host's Twig function `plugin_asset()`, or its own CSS
+references them with a relative `url(...)`. `ui` only lists what the host itself must
+insert into the page shell (stylesheets and scripts), not everything a widget happens to
+load.
+
+A plugin's widgets arrive in the page after it has already loaded (htmx swaps), not at
+`DOMContentLoaded` time, so a plugin's JS must attach handlers by delegation on
+`document` or on the `htmx:load` event — a one-shot `DOMContentLoaded` DOM walk simply
+never sees a widget inserted later. This is a convention for plugin authors, not
+something `PluginValidator` can gate (it cannot tell a delegated listener from a targeted
+one by reading source text).
+
 ## `manifest.json` `name`/`description` must be literals, never translation keys
 
 See the "Manifest `name`/`description` are literals, not translation keys" entry in
