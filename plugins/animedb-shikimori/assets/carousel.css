@@ -1,0 +1,10 @@
+.animedb-shikimori-carousel .plugin-widget__list {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.75rem;
+    padding-bottom: 0.25rem;
+}
+.animedb-shikimori-carousel .plugin-widget__list > li {
+    flex: 0 0 auto;
+}
