@@ -95,9 +95,8 @@ composer install   # контракт + PHPUnit для IDE, статическо
 composer test
 ```
 
-`anime-db/plugin-contracts` подключается из публичного VCS-репозитория (см.
-`repositories` в `composer.json`); `composer install` работает без токена. В ZIP-сборку
-не попадают `vendor/` (контракт даёт хост) и `tests/`.
+`anime-db/plugin-contracts` устанавливается с Packagist; `composer install` работает без
+токена. В ZIP-сборку не попадают `vendor/` (контракт даёт хост) и `tests/`.
 
 ## Лицензия
 
