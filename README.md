@@ -398,10 +398,9 @@ composer cs-check   # проверка стиля кода (php-cs-fixer, --dry-
 `.github/workflows`, который их дёргает (git diff → `check-pr-changes` → `validate-plugin` →
 `build-plugin-zip` + создание Release на затронутом плагине), интегрирует ментейнер отдельно.
 
-`anime-db/plugin-contracts` пока не опубликован в Packagist, поэтому подключается из
-публичного VCS-репозитория (см. `repositories` в `composer.json`). Репозиторий
-публичный — `composer install` работает без аутентификации и без токена, как локально,
-так и в CI (в т.ч. на PR из форков).
+`anime-db/plugin-contracts` устанавливается с Packagist (https://packagist.org/packages/anime-db/plugin-contracts).
+Пакет публичный — `composer install` работает без аутентификации и без токена, как
+локально, так и в CI (в т.ч. на PR из форков).
 
 ## Лицензия
 
