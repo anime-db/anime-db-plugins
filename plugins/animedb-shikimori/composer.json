@@ -14,12 +14,6 @@
         "symfony/security-csrf": "8.1.*",
         "twig/twig": "^3.0"
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/anime-db/anime-db-plugin-contracts"
-        }
-    ],
     "autoload": {
         "psr-4": {
             "AnimeDb\\Plugins\\AnimedbShikimori\\": "src/"
