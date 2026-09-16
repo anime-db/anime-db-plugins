@@ -704,9 +704,11 @@ final class PluginValidator
      * The main {@see self::validateTranslations()} scan skips this subdirectory entirely (its
      * `scandir()` loop's `if (!is_file($file)) continue;` passes over any directory, `native`
      * included, without touching the domain check at all) — this method is the positive check
-     * for what that scan leaves untouched. A `translations/native` symlink is already rejected
-     * by that same loop (the symlink check runs before the `is_file()` skip), so this method
-     * treats a symlinked `native/` the same way: nothing left to check here.
+     * for what that scan leaves untouched. A `translations/` or `translations/native` symlink
+     * is already rejected by that same loop (the symlink check runs before the `is_file()`
+     * skip), so this method treats either as the same case: nothing left to check here, to
+     * avoid following a symlink outside the plugin directory and reading data that is not part
+     * of the package.
      *
      * Key/placeholder parity is compared only between locales inside `translations/native/`
      * itself, never against the plugin's own `translations/messages.<locale>.yaml` catalog —
@@ -721,6 +723,10 @@ final class PluginValidator
      */
     private function validateNativeTranslations(string $pluginDir, array $manifestData): array
     {
+        if (is_link($pluginDir.'/translations')) {
+            return [];
+        }
+
         $nativeDir = $pluginDir.'/translations/native';
 
         if (is_link($nativeDir) || !is_dir($nativeDir)) {

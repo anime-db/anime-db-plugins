@@ -1140,6 +1140,22 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'Translation catalog "translations/native" must not be a symlink'));
     }
 
+    public function testSymlinkedTranslationsDirectoryDoesNotExposeNativeCatalogErrors(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $outsideDir = \dirname($pluginDir).'/outside-translations';
+        mkdir($outsideDir.'/native', 0o777, true);
+        file_put_contents($outsideDir.'/native/de.json', json_encode(['splash.loading' => 'Wird {geladen}'], \JSON_THROW_ON_ERROR));
+        symlink($outsideDir, $pluginDir.'/translations');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, '"translations/" must not be a symlink'));
+        self::assertFalse(self::hasErrorContaining($errors, 'translations/native/'));
+    }
+
     /**
      * @return array<string, mixed>
      */
