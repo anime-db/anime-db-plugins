@@ -104,6 +104,15 @@ use Symfony\Component\Yaml\Yaml;
  * required for `integration` but rejected for `translation`/`local`). This field has no
  * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
  *
+ * A `translation` plugin's `translations/native/<locale>.json` files, if present, are checked
+ * independently of the YAML catalog above: each must be a flat JSON object of string values
+ * (the application's native layer has no runtime dependencies and cannot parse YAML or unwrap a
+ * nested value), subject to the same empty-value/curly-brace/`|` content rules, with key and
+ * placeholder parity required between the locales found under that subdirectory — never against
+ * the YAML catalog, which is a disjoint key space for a different layer of the application.
+ * Every locale found there must be declared in manifest `locales`; the reverse is not required,
+ * since the native subdirectory is optional. See {@see self::validateNativeTranslations()}.
+ *
  * A manifest `ui` block is checked against the plugin directory's actual contents — something
  * {@see ManifestValidator} cannot do itself, since it validates decoded manifest data alone
  * and also parses manifests from `plugins-registry.json`, where no plugin directory sits
@@ -207,6 +216,10 @@ final class PluginValidator
         $errors = [...$errors, ...self::validateManifestLiterals($manifestData, $catalogKeys)];
         $errors = [...$errors, ...self::validateTranslationKeysCount($manifestData, $pluginType, $catalogKeys)];
         $errors = [...$errors, ...$this->validateUiAssets($pluginDir, $manifestData)];
+
+        if ($pluginType === PluginType::Translation) {
+            $errors = [...$errors, ...$this->validateNativeTranslations($pluginDir, $manifestData)];
+        }
 
         return $errors;
     }
@@ -678,6 +691,180 @@ final class PluginValidator
             ],
             $allKeys,
         ];
+    }
+
+    /**
+     * A "translation" plugin may additionally carry the application's native layer (splash
+     * screen, tray menu, launch-failure dialogs) as `translations/native/<locale>.json` — a
+     * subdirectory of the existing `translations/`, one flat JSON map per locale. The native
+     * layer has no runtime dependencies and does not parse YAML, so JSON is the only format it
+     * can read; it also resolves a key with a plain `catalog[key]` lookup, so nesting would
+     * silently miss.
+     *
+     * The main {@see self::validateTranslations()} scan skips this subdirectory entirely (its
+     * `scandir()` loop's `if (!is_file($file)) continue;` passes over any directory, `native`
+     * included, without touching the domain check at all) — this method is the positive check
+     * for what that scan leaves untouched. A `translations/native` symlink is already rejected
+     * by that same loop (the symlink check runs before the `is_file()` skip), so this method
+     * treats a symlinked `native/` the same way: nothing left to check here.
+     *
+     * Key/placeholder parity is compared only between locales inside `translations/native/`
+     * itself, never against the plugin's own `translations/messages.<locale>.yaml` catalog —
+     * they are disjoint key spaces addressed to different layers of the application, so a key
+     * name colliding between the two means nothing. For the same reason these keys are not
+     * added to the `translation_keys_count` union: that count is comparable to the core's own
+     * "messages" domain key count and would change meaning if native keys were folded in.
+     *
+     * @param array<string, mixed> $manifestData
+     *
+     * @return list<string>
+     */
+    private function validateNativeTranslations(string $pluginDir, array $manifestData): array
+    {
+        $nativeDir = $pluginDir.'/translations/native';
+
+        if (is_link($nativeDir) || !is_dir($nativeDir)) {
+            return [];
+        }
+
+        $errors = [];
+        $catalogs = [];
+        $catalogValues = [];
+
+        foreach (scandir($nativeDir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $file = $nativeDir.'/'.$entry;
+
+            if (is_link($file)) {
+                $errors[] = \sprintf('Native translation catalog "translations/native/%s" must not be a symlink.', $entry);
+                continue;
+            }
+
+            if (!is_file($file)) {
+                $errors[] = \sprintf(
+                    'Native translation catalog "translations/native/%s" is not a file; only "<locale>.json" files are allowed in "translations/native/".',
+                    $entry,
+                );
+                continue;
+            }
+
+            $locale = self::parseNativeTranslationFileName($entry);
+            if ($locale === null) {
+                $errors[] = \sprintf(
+                    'File "translations/native/%s" does not match the "<locale>.json" naming pattern.',
+                    $entry,
+                );
+                continue;
+            }
+
+            $content = file_get_contents($file);
+            if ($content === false) {
+                $errors[] = \sprintf('Failed to read "translations/native/%s".', $entry);
+                continue;
+            }
+
+            try {
+                $data = json_decode($content, true, 512, \JSON_THROW_ON_ERROR);
+            } catch (\JsonException $exception) {
+                $errors[] = \sprintf(
+                    'Native translation catalog "translations/native/%s" is not valid JSON: %s',
+                    $entry,
+                    $exception->getMessage(),
+                );
+                continue;
+            }
+
+            if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
+                $errors[] = \sprintf(
+                    'Native translation catalog "translations/native/%s" must contain a flat JSON object mapping keys to string values.',
+                    $entry,
+                );
+                continue;
+            }
+
+            foreach ($data as $key => $value) {
+                if (!\is_string($value)) {
+                    $errors[] = \sprintf(
+                        'Native translation catalog "translations/native/%s" key "%s" must be a string value, got %s; the native layer resolves a key with a plain lookup and does not unwrap a nested value.',
+                        $entry,
+                        $key,
+                        get_debug_type($value),
+                    );
+                    continue;
+                }
+
+                if ($value === '') {
+                    $errors[] = \sprintf(
+                        'Native translation value for key "%s" in "translations/native/%s" is empty; a missing translation is a defect, not a valid fallback to another locale.',
+                        $key,
+                        $entry,
+                    );
+                }
+
+                $foundBraces = array_filter(['{', '}'], static fn (string $char): bool => str_contains($value, $char));
+                if ($foundBraces !== []) {
+                    $errors[] = \sprintf(
+                        'Native translation value for key "%s" in "translations/native/%s" contains "%s"; this project uses the "%%name%%" placeholder syntax, not curly-brace "{name}" syntax.',
+                        $key,
+                        $entry,
+                        implode('", "', $foundBraces),
+                    );
+                }
+
+                if (str_contains($value, '|')) {
+                    $errors[] = \sprintf(
+                        'Native translation value for key "%s" in "translations/native/%s" contains "|"; this project has no Symfony pluralization — phrase a countable string without grammatical agreement instead, e.g. "label: %%count%%".',
+                        $key,
+                        $entry,
+                    );
+                }
+            }
+
+            $keys = array_keys($data);
+            sort($keys);
+            $catalogs[$locale] = $keys;
+            $catalogValues[$locale] = $data;
+        }
+
+        // Only the "declared locale has no native file" direction is optional (the native
+        // subdirectory itself is optional); a native file for a locale absent from manifest
+        // "locales" is still an error, same reasoning as validateDeclaredLocales() for the
+        // YAML catalogs.
+        $declaredLocales = self::declaredLocales($manifestData) ?? [];
+        $undeclaredLocales = array_values(array_diff(array_keys($catalogs), $declaredLocales));
+        sort($undeclaredLocales);
+        if ($undeclaredLocales !== []) {
+            $errors[] = \sprintf(
+                'Native translation catalog(s) found for locale(s) not declared in manifest "locales": %s.',
+                implode(', ', $undeclaredLocales),
+            );
+        }
+
+        return [
+            ...$errors,
+            ...self::compareTranslationCatalogs($catalogs),
+            ...self::comparePlaceholders($catalogValues),
+        ];
+    }
+
+    /**
+     * @return ?string the locale, or null when $fileName doesn't match the "<locale>.json"
+     *                 pattern (locale itself must not contain a dot, same restriction as the
+     *                 locale segment of {@see self::parseTranslationFileName()})
+     */
+    private static function parseNativeTranslationFileName(string $fileName): ?string
+    {
+        $suffix = '.json';
+        if (!str_ends_with($fileName, $suffix)) {
+            return null;
+        }
+
+        $locale = substr($fileName, 0, -\strlen($suffix));
+
+        return $locale === '' || str_contains($locale, '.') ? null : $locale;
     }
 
     /**

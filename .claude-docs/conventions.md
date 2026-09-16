@@ -221,6 +221,40 @@ a pattern the core has deliberately never used, and nobody notices until it's on
   apart (and a word-form-aware pattern for "тег" flags unrelated words like "Тегеран"), so
   a human editorial judgment call is required instead of a mechanical gate.
 
+## `translations/native/<locale>.json` is a separate, JSON-only catalog for the application's native layer
+
+A `type: translation` plugin may additionally ship `translations/native/<locale>.json` — a
+subdirectory of the existing `translations/`, not a sibling domain file. It carries the
+application's native layer (splash screen, tray menu, launch-failure dialogs), which has no
+runtime dependencies and therefore cannot parse YAML; it resolves a key with a plain
+`catalog[key]` lookup, so a nested value would simply be missed rather than flattened.
+
+Why a subdirectory and not a flat `translations/native.<locale>.json`: the application feeds
+every plugin's `translations/` into Symfony's translation paths, and `FrameworkExtension`
+walks them with a recursive Finder filtered on "at least two dots in the file name" — a flat
+`native.de.json` would pass that filter and register a stray `native` translation domain
+nobody intends, while `translations/native/de.json` (one dot) does not.
+
+`tools/src/PluginValidator.php` validates this subdirectory independently of the
+`messages.<locale>.yaml` catalog documented above — same content rules (no empty value, no
+curly-brace placeholders, no `|`), but key/placeholder parity and the "declared in manifest
+`locales`" check run **only** between locales found inside `translations/native/` itself.
+Never against the YAML catalog: the two are disjoint key spaces addressed to different layers
+of the application, so a key name colliding between them (e.g. both defining `greeting`) is
+not an error. For the same reason, native keys are excluded from `translation_keys_count` —
+that field is comparable to the core's own `messages` domain key count and would change
+meaning if native keys were folded in.
+
+A locale declared in manifest `locales` without a matching native file is valid — the
+subdirectory itself is optional, so `locales` merely bounds which locales a native file may
+claim, not which ones must have one. This mirrors the `locales`-vs-catalog rule above in one
+direction and deliberately not the other.
+
+This subdirectory is entirely unchecked for `integration`/`local` plugins: the existing
+`translations/` scan's `if (!is_file($file)) continue;` already skips any directory entry
+(this one included) without touching the domain check, and this positive check only runs for
+`type: translation`.
+
 ## `ui` files must exist, stay inside `assets/`, and `assets/` content is allow-listed
 
 `anime-db/plugin-contracts` `v0.19` adds a manifest `ui` block (`{"css": [...], "js":
