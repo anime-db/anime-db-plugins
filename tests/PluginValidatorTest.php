@@ -937,6 +937,225 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'missing a "require.plugin-contracts" constraint covering 0.19.0'));
     }
 
+    public function testTranslationPluginWithValidNativeCatalogHasNoErrors(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de', 'ja'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeTranslation($pluginDir, 'ja', "greeting: Konnichiwa\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Wird geladen']);
+        $this->writeNativeTranslation($pluginDir, 'ja', ['splash.loading' => 'Loading']);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testNativeTranslationFileWithWrongNameIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        mkdir($pluginDir.'/translations/native', 0o777, true);
+        file_put_contents($pluginDir.'/translations/native/readme.txt', 'not a catalog');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining(
+            $errors,
+            'translations/native/readme.txt" does not match the "<locale>.json" naming pattern',
+        ));
+    }
+
+    public function testNativeTranslationLocaleNotDeclaredInManifestIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'fr', ['splash.loading' => 'Chargement']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'not declared in manifest "locales": fr'));
+    }
+
+    public function testDeclaredLocaleWithoutNativeCatalogFileIsValid(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de', 'ja'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeTranslation($pluginDir, 'ja', "greeting: Konnichiwa\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Wird geladen']);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testNativeTranslationInvalidJsonIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        mkdir($pluginDir.'/translations/native', 0o777, true);
+        file_put_contents($pluginDir.'/translations/native/de.json', '{not valid json');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'translations/native/de.json" is not valid JSON'));
+    }
+
+    public function testNativeTranslationNestedOrNonStringValueIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        mkdir($pluginDir.'/translations/native', 0o777, true);
+        file_put_contents(
+            $pluginDir.'/translations/native/de.json',
+            json_encode(['splash' => ['loading' => 'Wird geladen'], 'count' => 5], \JSON_THROW_ON_ERROR),
+        );
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "splash" must be a string value'));
+        self::assertTrue(self::hasErrorContaining($errors, 'key "count" must be a string value'));
+    }
+
+    public function testNativeTranslationEmptyValueIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => '']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'Native translation value for key "splash.loading"'));
+        self::assertTrue(self::hasErrorContaining($errors, 'is empty'));
+    }
+
+    public function testNativeTranslationCurlyBraceValueIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Loading {name}']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "splash.loading"'));
+        self::assertTrue(self::hasErrorContaining($errors, '"{", "}"'));
+    }
+
+    public function testNativeTranslationPipeCharacterIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Loading|please wait']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'key "splash.loading"'));
+        self::assertTrue(self::hasErrorContaining($errors, '"|"'));
+    }
+
+    public function testNativeTranslationKeyMismatchBetweenLocalesIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de', 'ja'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeTranslation($pluginDir, 'ja', "greeting: Konnichiwa\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Wird geladen', 'tray.exit' => 'Beenden']);
+        $this->writeNativeTranslation($pluginDir, 'ja', ['splash.loading' => 'Loading']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'Translation key mismatch between "de" and "ja"'));
+        self::assertTrue(self::hasErrorContaining($errors, 'tray.exit'));
+    }
+
+    public function testNativeTranslationPlaceholderMismatchBetweenLocalesIsReported(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de', 'ja'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeTranslation($pluginDir, 'ja', "greeting: Konnichiwa\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['splash.loading' => 'Loading %percent%']);
+        $this->writeNativeTranslation($pluginDir, 'ja', ['splash.loading' => 'Loading']);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'Placeholder mismatch for key "splash.loading"'));
+    }
+
+    public function testNativeTranslationKeyCollisionWithMessagesDomainIsNotAnError(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', ['greeting' => 'Hallo (native)']);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testTranslationKeysCountIsUnaffectedByNativeCatalog(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+        $this->writeNativeTranslation($pluginDir, 'de', [
+            'splash.loading' => 'Wird geladen',
+            'tray.exit' => 'Beenden',
+            'launch.failed' => 'Start fehlgeschlagen',
+        ]);
+
+        // Если бы нативные ключи попадали в translation_keys_count, тут потребовалось бы
+        // значение 4, а не 1 — их отсутствие в счётчике проверяется тем, что ошибки нет.
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testIntegrationPluginNativeSubdirectoryIsNotChecked(): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['locales'] = ['en'];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        $this->writeTranslation($pluginDir, 'en', "greeting: Hello\n");
+        mkdir($pluginDir.'/translations/native', 0o777, true);
+        file_put_contents($pluginDir.'/translations/native/whatever.json', '{not valid json');
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testSymlinkedNativeTranslationsDirectoryIsRejected(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+        $this->writeTranslation($pluginDir, 'de', "greeting: Hallo\n", 'messages');
+
+        $outsideDir = \dirname($pluginDir).'/outside-native';
+        mkdir($outsideDir);
+        file_put_contents($outsideDir.'/de.json', json_encode(['splash.loading' => 'Wird geladen'], \JSON_THROW_ON_ERROR));
+        symlink($outsideDir, $pluginDir.'/translations/native');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'Translation catalog "translations/native" must not be a symlink'));
+    }
+
+    public function testSymlinkedTranslationsDirectoryDoesNotExposeNativeCatalogErrors(): void
+    {
+        $manifest = $this->validTranslationManifest('vendor-name', ['de'], translationKeysCount: 1);
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest, withSrc: false);
+
+        $outsideDir = \dirname($pluginDir).'/outside-translations';
+        mkdir($outsideDir.'/native', 0o777, true);
+        file_put_contents($outsideDir.'/native/de.json', json_encode(['splash.loading' => 'Wird {geladen}'], \JSON_THROW_ON_ERROR));
+        symlink($outsideDir, $pluginDir.'/translations');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, '"translations/" must not be a symlink'));
+        self::assertFalse(self::hasErrorContaining($errors, 'translations/native/'));
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -1013,6 +1232,19 @@ final class PluginValidatorTest extends TestCase
 
         $domain ??= basename($pluginDir);
         file_put_contents($translationsDir.'/'.$domain.'.'.$locale.'.yaml', $yaml);
+    }
+
+    /**
+     * @param array<string, string> $data
+     */
+    private function writeNativeTranslation(string $pluginDir, string $locale, array $data): void
+    {
+        $nativeDir = $pluginDir.'/translations/native';
+        if (!is_dir($nativeDir)) {
+            mkdir($nativeDir, 0o777, true);
+        }
+
+        file_put_contents($nativeDir.'/'.$locale.'.json', json_encode($data, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
     }
 
     /**
