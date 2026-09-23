@@ -1,0 +1,97 @@
+{
+    "id": "16498",
+    "name": "Shingeki no Kyojin",
+    "russian": "Атака титанов",
+    "english": "Attack on Titan",
+    "japanese": "進撃の巨人",
+    "synonyms": [
+        "Вторжение гигантов",
+        "Атакующий титан",
+        "Вторжение титанов",
+        "AoT"
+    ],
+    "kind": "tv",
+    "rating": "r",
+    "status": "released",
+    "episodes": 25,
+    "duration": 24,
+    "score": 8.58,
+    "airedOn": {
+        "date": "2013-04-07"
+    },
+    "releasedOn": {
+        "date": "2013-09-29"
+    },
+    "poster": {
+        "originalUrl": "https://shikimori.io/uploads/poster/animes/16498/7a452aa20f27318bd8d87e3d70c2ccca.jpeg",
+        "mainUrl": "https://shikimori.io/uploads/poster/animes/16498/main-5b9ad3fa8e2c55a1de82954f3982bf50.webp"
+    },
+    "studios": [
+        {
+            "id": "858",
+            "name": "Wit Studio"
+        }
+    ],
+    "genres": [
+        {
+            "id": "27",
+            "name": "Shounen",
+            "russian": "Сёнен",
+            "kind": "demographic"
+        },
+        {
+            "id": "1",
+            "name": "Action",
+            "russian": "Экшен",
+            "kind": "genre"
+        },
+        {
+            "id": "8",
+            "name": "Drama",
+            "russian": "Драма",
+            "kind": "genre"
+        },
+        {
+            "id": "117",
+            "name": "Suspense",
+            "russian": "Триллер",
+            "kind": "genre"
+        },
+        {
+            "id": "114",
+            "name": "Award Winning",
+            "russian": "Удостоено наград",
+            "kind": "theme"
+        },
+        {
+            "id": "105",
+            "name": "Gore",
+            "russian": "Жестокость",
+            "kind": "theme"
+        },
+        {
+            "id": "38",
+            "name": "Military",
+            "russian": "Военное",
+            "kind": "theme"
+        },
+        {
+            "id": "141",
+            "name": "Survival",
+            "russian": "Выживание",
+            "kind": "theme"
+        }
+    ],
+    "description": "С давних времён человечество ведёт свою борьбу с титанами. Титаны — это огромные существа, ростом с многоэтажный дом, которые не обладают большим интеллектом, но сила их просто ужасна. Они едят людей и получают от этого удовольствие. После продолжительной борьбы остатки человечества создали стену, окружившую мир людей, через которую не пройдут даже титаны.\nС тех пор прошло сто лет. Человечество мирно живёт под защитой стены. Но в один день мальчик Эрен [エレン・イェーガー] и его приёмная сестра Микаса [ミカサ・アッカーマン] становятся свидетелями страшного события: участок стены был разрушен супертитаном, появившимся прямо из воздуха. Титаны атакуют город, и двое детей в ужасе видят, как один из монстров заживо съедает их мать.\nБрат и сестра выживают, и Эрен клянётся, что убьёт всех титанов и отомстит за всё человечество!",
+    "screenshots": [
+        {
+            "originalUrl": "https://shikimori.io/system/screenshots/original/6bd6bcd45831dec851e029486d8b08bea5bd5615.jpg?1656089341"
+        },
+        {
+            "originalUrl": "https://shikimori.io/system/screenshots/original/3d5d710f743d74634ba03a79c0ee0f03d41475ac.jpg?1656089344"
+        },
+        {
+            "originalUrl": "https://shikimori.io/system/screenshots/original/fb63e2b49e78a980fa9fb8896cf3ed42965e8b23.jpg?1656089347"
+        }
+    ]
+}
