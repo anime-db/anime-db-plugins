@@ -16,11 +16,6 @@
         "similar": false,
         "new": false
     },
-    "ui": {
-        "css": [
-            "assets/carousel.css"
-        ]
-    },
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",

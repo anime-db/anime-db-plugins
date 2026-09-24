@@ -44,8 +44,9 @@ use Twig\Environment;
  * score/kind/status/dates, but the widget has no use for them and mapping them would be scope the
  * task did not ask for.
  *
- * All matches are rendered, same as {@see RelatedWidget} — the CSS-only horizontal-scroll
- * "carousel" in the template keeps a long list from pushing the rest of the page down.
+ * All matches are rendered, same as {@see RelatedWidget} — the host's `plugin/_widget_list`
+ * helper renders it as a horizontally scrolling list, which keeps a long list from pushing the
+ * rest of the page down.
  */
 final class SimilarWidget implements EntryWidgetInterface
 {
