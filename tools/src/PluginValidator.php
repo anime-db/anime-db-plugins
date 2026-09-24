@@ -29,7 +29,7 @@ namespace AnimeDb\Plugins\Tools;
 
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
 use AnimeDb\PluginContracts\Manifest\PluginType;
-use Composer\Semver\Semver;
+use Composer\Semver\VersionParser;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -1354,7 +1354,10 @@ final class PluginValidator
 
     /**
      * A plugin declaring `ui` relies on a host new enough to read the field, so it must pin
-     * `require.plugin-contracts` to a range that covers {@see self::UI_CONTRACT_VERSION}.
+     * `require.plugin-contracts` to a range that excludes every version older than
+     * {@see self::UI_CONTRACT_VERSION} — an older pin promises a host that cannot read it. A
+     * pin newer than {@see self::UI_CONTRACT_VERSION} (e.g. `^0.21`) is not itself an error: it
+     * is strictly safer than the minimum, since every version it admits already has the field.
      *
      * @param array<string, mixed> $manifestData
      *
@@ -1373,15 +1376,17 @@ final class PluginValidator
         }
 
         try {
-            $covers = Semver::satisfies(self::UI_CONTRACT_VERSION, $constraint);
+            $parser = new VersionParser();
+            $admitsOlder = $parser->parseConstraints($constraint)
+                ->matches($parser->parseConstraints('<'.self::UI_CONTRACT_VERSION));
         } catch (\UnexpectedValueException) {
             // Malformed constraint is already reported by ManifestValidator.
             return [];
         }
 
-        if (!$covers) {
+        if ($admitsOlder) {
             return [\sprintf(
-                'Plugin declares "ui" but "require.plugin-contracts" constraint "%s" does not cover %s, the contract version that introduced the field.',
+                'Plugin declares "ui" but "require.plugin-contracts" constraint "%s" admits a host older than %s, the contract version that introduced the field.',
                 $constraint,
                 self::UI_CONTRACT_VERSION,
             )];
