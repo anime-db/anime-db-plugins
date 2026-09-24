@@ -32,7 +32,7 @@ widget:
         title: Похожие аниме
         description: Показывает похожие аниме, подобранные Shikimori.
     new:
-        title: Новинки Shikimori
+        title: Новинки
         description: Показывает недавно вышедшие аниме; при подключённом аккаунте Shikimori скрывает те, что уже добавлены в список.
 
 oauth_result:
