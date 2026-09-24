@@ -28,9 +28,11 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests;
 
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
+use AnimeDb\PluginContracts\Model\AnimeName;
 use AnimeDb\PluginContracts\Model\AnimeType;
 use AnimeDb\PluginContracts\Model\Demographic;
 use AnimeDb\PluginContracts\Model\GenreCode;
+use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncItem;
@@ -85,33 +87,106 @@ final class ShikimoriFillerTest extends TestCase
         self::assertNull($filler->findById('999999999'));
     }
 
+    /**
+     * Uses a real captured GraphQL response ({@see self::attackOnTitanFixture()}) rather than a
+     * handwritten array: `japanese`, `english` and `synonyms` are exactly the fields
+     * {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::buildAlternativeNames()} lays out
+     * by locale and role, so a fixture that leaves them empty cannot exercise that mapping.
+     */
     public function testFindByIdMapsFullCard(): void
     {
         $client = $this->createMock(GraphQlClient::class);
-        $client->method('query')->willReturn(['animes' => [self::narutoFixture()]]);
+        $client->method('query')->willReturn(['animes' => [self::attackOnTitanFixture()]]);
+
+        $filler = $this->buildFiller($client);
+        $data = $filler->findById('16498');
+
+        self::assertNotNull($data);
+        self::assertSame('Shingeki no Kyojin', $data->title);
+        self::assertEquals([
+            new AnimeName('進撃の巨人', 'ja', NameRole::Official),
+            new AnimeName('Атака титанов', 'ru', NameRole::Official),
+            new AnimeName('Attack on Titan', 'en', NameRole::Official),
+            new AnimeName('Вторжение гигантов', null, NameRole::Synonym),
+            new AnimeName('Атакующий титан', null, NameRole::Synonym),
+            new AnimeName('Вторжение титанов', null, NameRole::Synonym),
+            new AnimeName('AoT', null, NameRole::Synonym),
+        ], $data->alternativeNames);
+        self::assertSame(
+            ['ru' => 'С давних времён человечество ведёт свою борьбу с титанами. Титаны — это огромные существа, ростом с многоэтажный дом, которые не обладают большим интеллектом, но сила их просто ужасна. Они едят людей и получают от этого удовольствие. После продолжительной борьбы остатки человечества создали стену, окружившую мир людей, через которую не пройдут даже титаны. С тех пор прошло сто лет. Человечество мирно живёт под защитой стены. Но в один день мальчик Эрен и его приёмная сестра Микаса становятся свидетелями страшного события: участок стены был разрушен супертитаном, появившимся прямо из воздуха. Титаны атакуют город, и двое детей в ужасе видят, как один из монстров заживо съедает их мать. Брат и сестра выживают, и Эрен клянётся, что убьёт всех титанов и отомстит за всё человечество!'],
+            $data->descriptions,
+        );
+        self::assertSame([GenreCode::Action, GenreCode::Drama, GenreCode::Suspense, GenreCode::AwardWinning], $data->genres);
+        self::assertSame([ThemeCode::Gore, ThemeCode::Military, ThemeCode::Survival], $data->themes);
+        self::assertSame(Demographic::Shounen, $data->demographic);
+        self::assertSame(['Wit Studio'], $data->studios);
+        self::assertSame(AnimeType::Tv, $data->type);
+        self::assertEquals(new \DateTimeImmutable('2013-04-07'), $data->datePremiere);
+        self::assertEquals(new \DateTimeImmutable('2013-09-29'), $data->dateEnd);
+        self::assertSame(24, $data->durationMinutes);
+        self::assertSame(25, $data->episodesCount);
+        self::assertSame('https://shikimori.io/uploads/poster/animes/16498/7a452aa20f27318bd8d87e3d70c2ccca.jpeg', $data->cover);
+        self::assertSame([
+            'https://shikimori.io/system/screenshots/original/6bd6bcd45831dec851e029486d8b08bea5bd5615.jpg?1656089341',
+            'https://shikimori.io/system/screenshots/original/3d5d710f743d74634ba03a79c0ee0f03d41475ac.jpg?1656089344',
+            'https://shikimori.io/system/screenshots/original/fb63e2b49e78a980fa9fb8896cf3ed42965e8b23.jpg?1656089347',
+        ], $data->images);
+        self::assertNull($data->countries);
+    }
+
+    public function testFindByIdEmitsSeparateEntriesWhenTheSameStringIsDeclaredInTwoFields(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['russian'] = 'Одно и то же название';
+        $fixture['english'] = 'Одно и то же название';
+
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$fixture]]);
 
         $filler = $this->buildFiller($client);
         $data = $filler->findById('20');
 
-        self::assertNotNull($data);
-        self::assertSame('Naruto', $data->title);
-        self::assertSame(['Наруто'], $data->alternativeNames);
-        self::assertSame(['ru' => 'Девятихвостый лис напал на деревню.'], $data->descriptions);
-        self::assertSame([GenreCode::Action, GenreCode::AwardWinning], $data->genres);
-        self::assertSame([ThemeCode::Isekai], $data->themes);
-        self::assertSame(Demographic::Shounen, $data->demographic);
-        self::assertSame(['Studio Pierrot'], $data->studios);
-        self::assertSame(AnimeType::Tv, $data->type);
-        self::assertEquals(new \DateTimeImmutable('2002-10-03'), $data->datePremiere);
-        self::assertEquals(new \DateTimeImmutable('2007-02-08'), $data->dateEnd);
-        self::assertSame(23, $data->durationMinutes);
-        self::assertSame(220, $data->episodesCount);
-        self::assertSame('https://shikimori.io/system/animes/original/20.jpg', $data->cover);
-        self::assertSame([
-            'https://shikimori.io/system/screenshots/original/20/1.jpg',
-            'https://shikimori.io/system/screenshots/original/20/2.jpg',
-        ], $data->images);
-        self::assertNull($data->countries);
+        self::assertEquals([
+            new AnimeName('Одно и то же название', 'ru', NameRole::Official),
+            new AnimeName('Одно и то же название', 'en', NameRole::Official),
+        ], $data->alternativeNames);
+    }
+
+    public function testFindByIdKeepsSynonymsLocaleNullRegardlessOfScript(): void
+    {
+        $fixture = self::narutoFixture();
+        // `NARUTO` официально по-японски не заявлен (`japanese` тут null), но состоит целиком
+        // из кандзи/каны — источник тем не менее не декларирует для него язык, и эвристика по
+        // письменности намеренно не подставляет `ja` вместо этого.
+        $fixture['synonyms'] = ['ナルト外伝'];
+
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$fixture]]);
+
+        $filler = $this->buildFiller($client);
+        $data = $filler->findById('20');
+
+        self::assertEquals([
+            new AnimeName('Наруто', 'ru', NameRole::Official),
+            new AnimeName('ナルト外伝', null, NameRole::Synonym),
+        ], $data->alternativeNames);
+    }
+
+    public function testFindByIdDeduplicatesRepeatedSynonyms(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['synonyms'] = ['NARUTO', 'NARUTO'];
+
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$fixture]]);
+
+        $filler = $this->buildFiller($client);
+        $data = $filler->findById('20');
+
+        self::assertEquals([
+            new AnimeName('Наруто', 'ru', NameRole::Official),
+            new AnimeName('NARUTO', null, NameRole::Synonym),
+        ], $data->alternativeNames);
     }
 
     public function testFindByIdLeavesImagesNullWhenScreenshotsAreMissing(): void
@@ -155,7 +230,7 @@ final class ShikimoriFillerTest extends TestCase
         $filler = $this->buildFiller($client);
         $data = $filler->findById('20');
 
-        self::assertSame(['NARUTO -ナルト-'], $data->alternativeNames);
+        self::assertEquals([new AnimeName('NARUTO -ナルト-', null, NameRole::Synonym)], $data->alternativeNames);
     }
 
     public function testFindByIdMapsTvSpecialToSpecial(): void
@@ -432,6 +507,27 @@ final class ShikimoriFillerTest extends TestCase
         $manifest->method('id')->willReturn(self::STUB_MANIFEST_ID);
 
         return $manifest;
+    }
+
+    /**
+     * A real `CARD_QUERY` response, captured live against `shikimori.one` (screenshots trimmed
+     * to 3 of the original ~40 — the count is not what this fixture exists to exercise) — unlike
+     * {@see self::narutoFixture()}, `japanese`, `english` and `synonyms` are non-empty here, none
+     * of them coinciding with `name` (the title), so this is the one fixture that can actually
+     * exercise {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::buildAlternativeNames()}'s
+     * field-to-(locale, role) mapping end to end.
+     *
+     * @return array<string, mixed>
+     */
+    private static function attackOnTitanFixture(): array
+    {
+        $json = file_get_contents(__DIR__.'/Fixture/attack_on_titan_card.json');
+        \assert($json !== false);
+
+        /** @var array<string, mixed> $fixture */
+        $fixture = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
+
+        return $fixture;
     }
 
     /**

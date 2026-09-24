@@ -29,6 +29,8 @@ namespace AnimeDb\Plugins\AnimedbShikimori;
 
 use AnimeDb\PluginContracts\Filler\PluginAnimeData;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
+use AnimeDb\PluginContracts\Model\AnimeName;
+use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncInterface;
 use AnimeDb\PluginContracts\Sync\SyncItem;
@@ -369,24 +371,52 @@ final class ShikimoriFiller implements SyncInterface
     }
 
     /**
+     * Lays each source field out onto its own (locale, role) pair rather than flattening them
+     * into one untyped list: `japanese`/`russian`/`english` are official titles the source
+     * declares in a specific language, `synonyms` is an untyped bucket the source makes no
+     * language claim about at all, so its entries keep `locale: null`. A script heuristic
+     * (e.g. treating kanji as `ja`) is deliberately not applied to guess one: an anime commonly
+     * has both an official kanji title and a kanji-bearing synonym, so the presence of a
+     * particular script proves nothing about a synonym's role or language.
+     *
+     * The same string declared under two different fields (e.g. `russian` and `english` both
+     * holding the same text) is not a duplicate: each field is an independent fact the source
+     * asserted, so both come out as separate {@see AnimeName} entries with their own locale.
+     * Deduplication instead keys on the full (name, locale) pair, collapsing only a field that
+     * genuinely repeats itself (e.g. the same synonym listed twice).
+     *
      * @param array<string, mixed> $anime
      *
-     * @return list<string>|null
+     * @return AnimeName[]|null
      */
     private static function buildAlternativeNames(string $title, array $anime): ?array
     {
-        $synonyms = \is_array($anime['synonyms'] ?? null) ? $anime['synonyms'] : [];
-        $candidates = [$anime['russian'] ?? null, $anime['english'] ?? null, $anime['japanese'] ?? null, ...$synonyms];
+        $fields = [
+            ['value' => $anime['japanese'] ?? null, 'locale' => 'ja', 'role' => NameRole::Official],
+            ['value' => $anime['russian'] ?? null, 'locale' => 'ru', 'role' => NameRole::Official],
+            ['value' => $anime['english'] ?? null, 'locale' => 'en', 'role' => NameRole::Official],
+        ];
 
+        $synonyms = \is_array($anime['synonyms'] ?? null) ? $anime['synonyms'] : [];
+        foreach ($synonyms as $synonym) {
+            $fields[] = ['value' => $synonym, 'locale' => null, 'role' => NameRole::Synonym];
+        }
+
+        $seen = [];
         $names = [];
-        foreach ($candidates as $candidate) {
-            if (!\is_string($candidate) || $candidate === '' || $candidate === $title) {
+        foreach ($fields as $field) {
+            $value = $field['value'];
+            if (!\is_string($value) || $value === '' || $value === $title) {
                 continue;
             }
 
-            if (!\in_array($candidate, $names, true)) {
-                $names[] = $candidate;
+            $localeKey = $field['locale'] ?? '';
+            if (isset($seen[$localeKey][$value])) {
+                continue;
             }
+            $seen[$localeKey][$value] = true;
+
+            $names[] = new AnimeName($value, $field['locale'], $field['role']);
         }
 
         return $names === [] ? null : $names;
