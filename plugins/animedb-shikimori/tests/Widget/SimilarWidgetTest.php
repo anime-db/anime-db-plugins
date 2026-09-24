@@ -59,6 +59,20 @@ final class SimilarWidgetTest extends TestCase
         self::assertStringNotContainsString('<li>', $html);
     }
 
+    public function testRenderDoesNotWrapTheHostListHelperInAPluginSpecificCarouselElement(): void
+    {
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('getSimilarAnimes')->willReturn([
+            ['id' => 205, 'name' => 'Samurai Champloo', 'image' => ['original' => null]],
+        ]);
+
+        $widget = $this->buildWidget($restClient, '1');
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('animedb-shikimori-carousel', $html);
+    }
+
     public function testRenderMapsRestResponseIntoWidgetItems(): void
     {
         $restClient = $this->createMock(ShikimoriRestClient::class);

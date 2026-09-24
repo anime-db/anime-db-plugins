@@ -1,7 +1,7 @@
 {
     "id": "animedb-shikimori",
     "name": "Shikimori",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "type": "integration",
     "description": "Официальный плагин-источник Shikimori: поиск и заполнение карточек аниме.",
     "author": "AnimeDB",
@@ -15,11 +15,6 @@
         "related": false,
         "similar": false,
         "new": false
-    },
-    "ui": {
-        "css": [
-            "assets/carousel.css"
-        ]
     },
     "require": {
         "core": ">=0.0.1",

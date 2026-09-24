@@ -46,8 +46,9 @@ use Twig\Environment;
  * dropped, since they are still relevant, just unordered relative to each other.
  *
  * All matches are rendered — Shikimori's related list for a single title is small (rarely more
- * than a handful of entries), so no limit/pagination is needed; the CSS-only horizontal-scroll
- * "carousel" in the template keeps a long list from pushing the rest of the page down.
+ * than a handful of entries), so no limit/pagination is needed; the host's `plugin/_widget_list`
+ * helper renders it as a horizontally scrolling list, which keeps a long list from pushing the
+ * rest of the page down.
  */
 final class RelatedWidget implements EntryWidgetInterface
 {
