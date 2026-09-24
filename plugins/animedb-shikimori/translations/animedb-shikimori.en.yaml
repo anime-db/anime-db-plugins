@@ -32,7 +32,7 @@ widget:
         title: Similar anime
         description: Shows similar titles picked by Shikimori.
     new:
-        title: Shikimori new releases
+        title: New releases
         description: Shows recently aired anime; when a Shikimori account is connected, titles already on the list are hidden.
 
 oauth_result:
