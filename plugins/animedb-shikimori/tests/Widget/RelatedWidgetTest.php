@@ -59,6 +59,24 @@ final class RelatedWidgetTest extends TestCase
         self::assertStringNotContainsString('<li>', $html);
     }
 
+    public function testRenderDoesNotWrapTheHostListHelperInAPluginSpecificCarouselElement(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn([
+            'animes' => [[
+                'related' => [
+                    ['anime' => ['id' => '5', 'name' => 'Cowboy Bebop: Tengoku no Tobira', 'airedOn' => null]],
+                ],
+            ]],
+        ]);
+
+        $widget = $this->buildWidget($client, '1');
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('animedb-shikimori-carousel', $html);
+    }
+
     public function testRenderDropsMangaRelationsAndKeepsOnlyAnime(): void
     {
         $client = $this->createMock(GraphQlClient::class);
