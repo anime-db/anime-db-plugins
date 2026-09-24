@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools\Tests;
 
 use AnimeDb\Plugins\Tools\PluginValidator;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class PluginValidatorTest extends TestCase
@@ -910,10 +911,21 @@ final class PluginValidatorTest extends TestCase
         self::assertTrue(self::hasErrorContaining($errors, 'File "assets/Logo.SVG" has an extension not on the host\'s allow-list'));
     }
 
-    public function testUiWithPluginContractsPinNotCoveringUiVersionIsReported(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function tooOldUiContractPinProvider(): iterable
+    {
+        yield '^0.18' => ['^0.18'];
+        yield '^0.17' => ['^0.17'];
+        yield '>=0.1' => ['>=0.1'];
+    }
+
+    #[DataProvider('tooOldUiContractPinProvider')]
+    public function testUiWithPluginContractsPinAdmittingOlderHostIsReported(string $constraint): void
     {
         $manifest = $this->validManifest('vendor-name');
-        $manifest['require']['plugin-contracts'] = '^0.18';
+        $manifest['require']['plugin-contracts'] = $constraint;
         $manifest['ui'] = ['css' => ['assets/carousel.css']];
         $pluginDir = $this->createPluginDir('vendor-name', $manifest);
         mkdir($pluginDir.'/assets');
@@ -921,7 +933,34 @@ final class PluginValidatorTest extends TestCase
 
         $errors = (new PluginValidator())->validate($pluginDir);
 
-        self::assertTrue(self::hasErrorContaining($errors, 'does not cover 0.19.0'));
+        self::assertTrue(self::hasErrorContaining($errors, 'admits a host older than 0.19.0'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function safeUiContractPinProvider(): iterable
+    {
+        yield '^0.19' => ['^0.19'];
+        yield '>=0.19' => ['>=0.19'];
+        yield '^0.20' => ['^0.20'];
+        yield '^0.21' => ['^0.21'];
+        yield '^1.0' => ['^1.0'];
+    }
+
+    #[DataProvider('safeUiContractPinProvider')]
+    public function testUiWithPluginContractsPinNotOlderThanUiVersionHasNoErrors(string $constraint): void
+    {
+        $manifest = $this->validManifest('vendor-name');
+        $manifest['require']['plugin-contracts'] = $constraint;
+        $manifest['ui'] = ['css' => ['assets/carousel.css']];
+        $pluginDir = $this->createPluginDir('vendor-name', $manifest);
+        mkdir($pluginDir.'/assets');
+        file_put_contents($pluginDir.'/assets/carousel.css', '.carousel {}');
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertSame([], $errors);
     }
 
     public function testUiWithoutPluginContractsPinIsReported(): void
