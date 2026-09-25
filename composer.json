@@ -7,7 +7,7 @@
         "php": ">=8.5",
         "ext-ftp": "*",
         "ext-sodium": "*",
-        "anime-db/plugin-contracts": "~0.14",
+        "anime-db/plugin-contracts": "~0.22",
         "composer/semver": "^3.4",
         "symfony/yaml": "8.1.*"
     },
