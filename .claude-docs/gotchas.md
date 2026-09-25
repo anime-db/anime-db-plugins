@@ -115,11 +115,11 @@ related. That is the intended trigger, but it collides with the rule that an inc
 finding gets its own task rather than being folded into an in-flight one. When it happens,
 fix it in a separate PR.
 
-## `anime-db/plugin-contracts` is pinned `~0.22` on purpose — a *wide* range, not a typo
+## `anime-db/plugin-contracts` is pinned `~0.14` on purpose — a *wide* range, not a typo
 
-`~0.22` means `>=0.22.0 <1.0.0`, so every pre-1.0 minor of the contract flows in
-automatically. That is wider than `^0.22` (`>=0.22.0 <0.23.0`), and it is deliberate. Do not
-"tighten" it to `^0.22` to match the host. The lower bound is raised together with the host's contract (so a fresh, lock-less install never resolves a contract older than the one the application ships); the upper bound stays open.
+`~0.14` means `>=0.14.0 <1.0.0`, so every pre-1.0 minor of the contract flows in
+automatically. That is wider than `^0.14` (`>=0.14.0 <0.15.0`), and it is deliberate. Do not
+"tighten" it to `^0.14` to match the host.
 
 Why a wide range is right *while the contract is pre-1.0*:
 
@@ -147,7 +147,7 @@ The rule is *implementers pin narrow, readers may float*:
 |---------------------------|---------------------------------------------------|------------|
 | `anime-db-desktop` (host) | **implements** it — 34 contract types in use      | `^0.14`    |
 | plugins (`manifest.json`) | **implement** it — that is what a plugin *is*     | `^0.14`    |
-| this repo (tooling)       | **reads** it — `ManifestValidator` + `PluginType` | `~0.22`    |
+| this repo (tooling)       | **reads** it — `ManifestValidator` + `PluginType` | `~0.14`    |
 
 The host sits on both sides of the contract: it implements the interfaces a plugin calls
 (`QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`,
