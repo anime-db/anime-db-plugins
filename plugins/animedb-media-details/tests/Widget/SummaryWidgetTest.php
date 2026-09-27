@@ -289,6 +289,49 @@ final class SummaryWidgetTest extends TestCase
         self::assertStringContainsString('not present in every file', $html);
     }
 
+    public function testRenderExcludesFilesWithoutAudioFromAudioTrackCountAndMarksItPartial(): void
+    {
+        // "c.srt" is an external subtitle file the core library returns alongside the two
+        // videos -- it has no audio stream at all, so its zero-track count must not enter the
+        // set of distinct values (that used to render as "1, 0").
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 3,
+            'files' => [
+                'a.mkv' => $this->fileEntry(['audio' => [$this->audioTrack()]]),
+                'b.mkv' => $this->fileEntry(['audio' => [$this->audioTrack()]]),
+                'c.srt' => $this->fileEntry(['audio' => []]),
+            ],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        preg_match('/<li>\s*<span>Audio tracks:<\/span>.*?<\/li>/s', $html, $matches);
+        self::assertNotEmpty($matches, 'Expected an "Audio tracks" line in the rendered summary.');
+        $audioTracksLine = $matches[0];
+        self::assertStringContainsString('1', $audioTracksLine);
+        self::assertStringNotContainsString('0', $audioTracksLine);
+        self::assertStringContainsString('not present in every file', $audioTracksLine);
+    }
+
+    public function testRenderOmitsAudioTracksLineWhenNoFileHasAudio(): void
+    {
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 2,
+            'files' => [
+                'a.srt' => $this->fileEntry(['audio' => []]),
+                'b.srt' => $this->fileEntry(['audio' => []]),
+            ],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('Audio tracks', $html);
+    }
+
     public function testRenderShowsLanguageUnknownForSubtitlesWhenNoTrackCarriesALanguageTag(): void
     {
         $store = new FakePluginDataStore();

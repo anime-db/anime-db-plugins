@@ -255,8 +255,8 @@ final class SummaryWidget implements EntryWidgetInterface
             }
 
             $audio = $this->filterFileEntries($file['audio'] ?? null);
-            $audioTrackCounts[] = \count($audio);
             if ($audio !== []) {
+                $audioTrackCounts[] = \count($audio);
                 ++$filesWithAudio;
             }
             $hasKnownAudioLanguage = false;
@@ -296,9 +296,10 @@ final class SummaryWidget implements EntryWidgetInterface
             'video_codec' => $videoCodecs === [] ? null : $this->buildValueDisplay($videoCodecs),
             'video_resolution' => $videoResolutions === [] ? null : $this->buildValueDisplay($videoResolutions),
             'video_frame_rate' => $videoFrameRates === [] ? null : $this->buildValueDisplay($videoFrameRates),
-            'audio_tracks' => $filesWithAudio === 0
-                ? null
-                : $this->buildValueDisplay(array_map(strval(...), $audioTrackCounts)),
+            'audio_tracks' => $filesWithAudio === 0 ? null : [
+                ...$this->buildValueDisplay(array_map(strval(...), $audioTrackCounts)),
+                'partial' => $filesWithAudio < $knownCount,
+            ],
             'audio_languages' => $filesWithAudio === 0 ? null : [
                 ...$this->buildValueDisplay($audioLanguages),
                 'unknown' => $audioLanguages === [],
