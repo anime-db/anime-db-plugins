@@ -45,9 +45,13 @@ use Symfony\Component\Yaml\Yaml;
  *   catalog events, see {@see PluginType}) are both treated as code plugins: a `src/`
  *   directory is required, every class declared under `src/**.php` must sit in the
  *   namespace PSR-4 derives from the plugin id, and every `*.php` file in the plugin must
- *   be syntactically valid (`php -l`). `local` has no `type`-specific contract requirement
- *   beyond that (it declares neither `features` nor `locales`), so it falls back to the
- *   same code-plugin checks as `integration`.
+ *   be syntactically valid (`php -l`). `local` may declare `features` and `locales` the
+ *   same as `integration`; the only `type`-specific difference, per
+ *   {@see ManifestValidator::validateFeaturesOrLocales()}, is that `local` rejects the
+ *   `filler`, `sync` and `search` feature keys (that method's `LOCAL_DISALLOWED_FEATURE_KEYS`
+ *   constant), while `locales` stays optional for both and, when present, is checked the same
+ *   way (see below). Otherwise `local` falls back to the same code-plugin checks as
+ *   `integration`.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
  *   against), while a `translations/` directory and a non-empty manifest `locales` list are
