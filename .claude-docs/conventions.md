@@ -159,15 +159,20 @@ Nothing else in the repository maps a plugin id to who owns it, so `.github/CODE
 carries that map instead, one explicit line per plugin directory:
 
 ```
-/plugins/animedb-language-pack/ @peter-gribanov
-/plugins/animedb-shikimori/     @peter-gribanov
+/plugins/animedb-language-pack/  @peter-gribanov
+/plugins/animedb-media-details/  @peter-gribanov
+/plugins/animedb-shikimori/      @peter-gribanov
 ```
 
-The PR that adds a new plugin must add its owner's line in the same PR — there is no
-separate id-to-handle list to fall back on, and an omitted entry silently resolves to "no
-owner" rather than failing loudly. There is deliberately no catch-all (`* @handle`) line:
-one would request review on every unrelated PR and would mask a missing per-plugin entry
-by silently resolving it to a default owner instead.
+The owner's line cannot land in the same PR as the plugin it covers: `tools/src/PrChangeChecker.php`
+rejects any pull request that touches `plugins/<id>/` together with a path outside it, and
+`.github/CODEOWNERS` is such a path. Add the line — together with the id's entry in
+`PluginValidator::OFFICIAL_PLUGIN_IDS` if the id uses the reserved `animedb` vendor — in a
+separate, plugin-free preparatory PR that lands **before** the PR adding the plugin itself.
+There is no separate id-to-handle list to fall back on, and an omitted entry silently
+resolves to "no owner" rather than failing loudly. There is deliberately no catch-all
+(`* @handle`) line: one would request review on every unrelated PR and would mask a missing
+per-plugin entry by silently resolving it to a default owner instead.
 
 ## Plugin translation catalogs must follow the core's translation conventions
 
