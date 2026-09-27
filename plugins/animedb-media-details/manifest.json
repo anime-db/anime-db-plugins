@@ -1,7 +1,7 @@
 {
     "id": "animedb-media-details",
     "name": "Media details",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "local",
     "description": "Официальный плагин AnimeDB: характеристики файлов записи (контейнер, дорожки, субтитры).",
     "author": "AnimeDB",

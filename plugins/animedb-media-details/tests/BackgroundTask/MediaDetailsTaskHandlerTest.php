@@ -129,6 +129,36 @@ final class MediaDetailsTaskHandlerTest extends TestCase
         self::assertSame($seeded, $this->store->read($anime));
     }
 
+    public function testWritesTerminalNoFilesStateOnFirstRunWhenFileListIsEmpty(): void
+    {
+        // No seed: this is a record SummaryWidget has never probed before. Unlike the
+        // established-data case above, there is nothing to preserve, and leaving the payload
+        // untouched would make the widget re-submit this same task on every render forever.
+        $anime = new AnimeId(15);
+        $this->library->willReturn($anime, []);
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->store->writeCallCount);
+        $stored = $this->store->read($anime);
+        self::assertSame(0, $stored['files_total']);
+        self::assertSame([], $stored['files']);
+        self::assertIsString($stored['generated_at']);
+    }
+
+    public function testWritesTerminalNoFilesStateOnFirstRunWhenStorageIsUnavailable(): void
+    {
+        $anime = new AnimeId(16);
+        $this->library->willThrowStorageUnavailable($anime);
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->store->writeCallCount);
+        $stored = $this->store->read($anime);
+        self::assertSame(0, $stored['files_total']);
+        self::assertSame([], $stored['files']);
+    }
+
     public function testRemovesFileMissingFromNonEmptyList(): void
     {
         $anime = new AnimeId(5);
