@@ -49,8 +49,9 @@ use Symfony\Component\Yaml\Yaml;
  *   same as `integration`; the only `type`-specific difference, per
  *   {@see ManifestValidator::validateFeaturesOrLocales()}, is that `local` rejects the
  *   `filler`, `sync` and `search` feature keys (that method's `LOCAL_DISALLOWED_FEATURE_KEYS`
- *   constant), while `locales` stays optional for both and, when present, is checked the same
- *   way (see below). Otherwise `local` falls back to the same code-plugin checks as
+ *   constant). `locales` is optional for both only at the contract level; this validator
+ *   additionally requires or forbids it depending on shipped catalogs (see below). Otherwise
+ *   `local` falls back to the same code-plugin checks as
  *   `integration`.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
@@ -105,7 +106,8 @@ use Symfony\Component\Yaml\Yaml;
  * to the number of leaf keys in its own catalog (the same union used for the `name`/`description`
  * check above); the field is rejected outright for `integration`/`local`, mirroring how the shared
  * {@see ManifestValidator} contract itself gates its own known fields per type (e.g. `features` is
- * required for `integration` but rejected for `translation`/`local`). This field has no
+ * required for `integration`, restricted — the `filler`/`sync`/`search` keys are disallowed — for
+ * `local`, and rejected outright for `translation`). This field has no
  * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
  *
  * A `translation` plugin's `translations/native/<locale>.json` files, if present, are checked
