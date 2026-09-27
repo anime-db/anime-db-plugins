@@ -1,0 +1,10 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+widget:
+    summary:
+        title: Media details
+        description: Shows container, track and subtitle details collected from the record's files.
