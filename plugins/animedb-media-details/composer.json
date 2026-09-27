@@ -1,0 +1,30 @@
+{
+    "name": "anime-db/animedb-media-details",
+    "description": "Официальный плагин AnimeDB: характеристики файлов записи (контейнер, дорожки, субтитры).",
+    "type": "anime-db-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.5",
+        "anime-db/plugin-contracts": "^0.22"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "symfony/http-kernel": "8.1.*",
+        "symfony/http-foundation": "8.1.*",
+        "symfony/security-csrf": "8.1.*",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbMediaDetails\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbMediaDetails\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
