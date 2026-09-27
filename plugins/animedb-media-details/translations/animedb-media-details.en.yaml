@@ -15,6 +15,11 @@ widget:
         files_count: 'Files: %count%'
         files_unparsed: 'Not parsed: %count%'
         size_label: Size
+        size_unit_b: B
+        size_unit_kb: KB
+        size_unit_mb: MB
+        size_unit_gb: GB
+        size_unit_tb: TB
         duration_label: Duration
         video_codec_label: Video codec
         video_resolution_label: Resolution

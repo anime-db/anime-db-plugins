@@ -289,7 +289,7 @@ final class SummaryWidget implements EntryWidgetInterface
         return [
             'files_total' => $filesTotal,
             'unparsed_count' => max(0, $filesTotal - $knownCount),
-            'size_formatted' => $this->formatBytes($sizeBytes),
+            ...$this->formatBytes($sizeBytes),
             'size_partial' => $knownCount < $filesTotal,
             'duration_formatted' => $durationKnownCount > 0 ? $this->formatDuration($durationSum) : null,
             'duration_partial' => $durationKnownCount > 0 && $durationKnownCount < $filesTotal,
@@ -340,9 +340,16 @@ final class SummaryWidget implements EntryWidgetInterface
         ];
     }
 
-    private function formatBytes(int $bytes): string
+    /**
+     * The unit itself is a translated string, not a hardcoded English abbreviation — the
+     * catalog holds one key per order of magnitude (see `widget.summary.size_unit_*`), and
+     * this method only picks which one applies.
+     *
+     * @return array{size_value: string, size_unit_key: string}
+     */
+    private function formatBytes(int $bytes): array
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $units = ['b', 'kb', 'mb', 'gb', 'tb'];
         $value = (float) $bytes;
         $unitIndex = 0;
         while ($value >= 1024.0 && $unitIndex < \count($units) - 1) {
@@ -350,7 +357,10 @@ final class SummaryWidget implements EntryWidgetInterface
             ++$unitIndex;
         }
 
-        return number_format($value, $unitIndex === 0 ? 0 : 2).' '.$units[$unitIndex];
+        return [
+            'size_value' => number_format($value, $unitIndex === 0 ? 0 : 2),
+            'size_unit_key' => 'widget.summary.size_unit_'.$units[$unitIndex],
+        ];
     }
 
     private function formatDuration(float $seconds): string

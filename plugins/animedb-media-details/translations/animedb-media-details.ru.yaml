@@ -15,6 +15,11 @@ widget:
         files_count: 'Файлов: %count%'
         files_unparsed: 'Не разобрано: %count%'
         size_label: Размер
+        size_unit_b: Б
+        size_unit_kb: КБ
+        size_unit_mb: МБ
+        size_unit_gb: ГБ
+        size_unit_tb: ТБ
         duration_label: Длительность
         video_codec_label: Видеокодек
         video_resolution_label: Разрешение

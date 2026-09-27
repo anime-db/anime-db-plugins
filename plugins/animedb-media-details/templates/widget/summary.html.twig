@@ -36,7 +36,7 @@
         {% endif %}
         <ul>
             <li>
-                <span>{{ 'widget.summary.size_label'|trans({}, 'animedb-media-details') }}:</span> {{ size_formatted }}
+                <span>{{ 'widget.summary.size_label'|trans({}, 'animedb-media-details') }}:</span> {{ size_value }} {{ size_unit_key|trans({}, 'animedb-media-details') }}
                 {% if size_partial %}<em>({{ 'widget.summary.not_all_files'|trans({}, 'animedb-media-details') }})</em>{% endif %}
             </li>
             {% if duration_formatted is not null %}
