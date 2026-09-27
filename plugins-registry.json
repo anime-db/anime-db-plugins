@@ -1,5 +1,5 @@
 {
-    "sequence": 33,
+    "sequence": 34,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -59,7 +59,7 @@
             "manifest": {
                 "id": "animedb-media-details",
                 "name": "Media details",
-                "version": "0.1.0",
+                "version": "0.2.0",
                 "type": "local",
                 "description": "Официальный плагин AnimeDB: характеристики файлов записи (контейнер, дорожки, субтитры).",
                 "author": "AnimeDB",
@@ -77,6 +77,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.2.0",
+                    "core": ">=0.0.1",
+                    "sha256": "6a17eb2ef4d19c5a47ece7eb9db1d696009eb85b9a454d96c4dcda9455b4bf4e",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.22"
+                },
                 {
                     "version": "0.1.0",
                     "core": ">=0.0.1",
