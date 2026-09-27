@@ -70,11 +70,14 @@ final class SummaryWidgetTest extends TestCase
         $store = new FakePluginDataStore();
         $tasks = new FakeBackgroundTaskQueue();
         $widget = $this->buildWidget($store, $tasks, new FakeMediaProbe());
+        $anime = new AnimeId(42);
 
-        $html = $widget->render(new AnimeId(1));
+        $html = $widget->render($anime);
 
         self::assertStringStartsWith(WidgetPendingUpdate::MARKER, $html);
         self::assertCount(1, $tasks->submitted);
+        self::assertSame('probe-files', $tasks->submitted[0]->name);
+        self::assertSame($anime, $tasks->submitted[0]->anime);
     }
 
     public function testRenderReturnsSummaryWithoutMarkerOrTaskWhenIdentityMatches(): void
@@ -97,32 +100,53 @@ final class SummaryWidgetTest extends TestCase
     public function testRenderShowsExistingSummaryAndQueuesRefreshWhenIdentityDiverges(): void
     {
         $store = new FakePluginDataStore();
-        $store->seed(new AnimeId(1), [
+        $anime = new AnimeId(42);
+        $store->seed($anime, [
             'files_total' => 1,
             'files' => ['a.mkv' => $this->fileEntry(['probe_identity' => 'stale-identity'])],
         ]);
         $tasks = new FakeBackgroundTaskQueue();
         $widget = $this->buildWidget($store, $tasks, new FakeMediaProbe());
 
-        $html = $widget->render(new AnimeId(1));
+        $html = $widget->render($anime);
 
         self::assertStringStartsNotWith(WidgetPendingUpdate::MARKER, $html);
         self::assertCount(1, $tasks->submitted);
+        self::assertSame('probe-files', $tasks->submitted[0]->name);
+        self::assertSame($anime, $tasks->submitted[0]->anime);
         self::assertStringContainsString('Files: 1', $html);
     }
 
-    public function testRenderReturnsNeutralMessageWhenProberMarkedUnavailableInPayload(): void
+    public function testRenderReturnsNeutralMessageWhenProberMarkedUnavailableInPayloadAndStillUnavailable(): void
     {
         $store = new FakePluginDataStore();
         $store->seed(new AnimeId(1), ['prober_unavailable_at' => '2026-01-01T00:00:00+00:00']);
         $tasks = new FakeBackgroundTaskQueue();
-        $widget = $this->buildWidget($store, $tasks, new FakeMediaProbe());
+        $prober = new FakeMediaProbe();
+        $prober->setUnavailable();
+        $widget = $this->buildWidget($store, $tasks, $prober);
 
         $html = $widget->render(new AnimeId(1));
 
         self::assertStringStartsNotWith(WidgetPendingUpdate::MARKER, $html);
         self::assertSame([], $tasks->submitted);
         self::assertStringContainsString('File details are unavailable.', $html);
+    }
+
+    public function testRenderQueuesRefreshWhenProberMarkedUnavailableInPayloadButHasRecovered(): void
+    {
+        $store = new FakePluginDataStore();
+        $anime = new AnimeId(1);
+        $store->seed($anime, ['prober_unavailable_at' => '2026-01-01T00:00:00+00:00']);
+        $tasks = new FakeBackgroundTaskQueue();
+        $widget = $this->buildWidget($store, $tasks, new FakeMediaProbe());
+
+        $html = $widget->render($anime);
+
+        self::assertStringStartsWith(WidgetPendingUpdate::MARKER, $html);
+        self::assertCount(1, $tasks->submitted);
+        self::assertSame('probe-files', $tasks->submitted[0]->name);
+        self::assertSame($anime, $tasks->submitted[0]->anime);
     }
 
     public function testRenderDoesNotThrowAndReturnsNeutralMessageWhenProbeIdentityThrows(): void
@@ -158,6 +182,26 @@ final class SummaryWidgetTest extends TestCase
         self::assertStringContainsString('Could not read details for any file.', $html);
     }
 
+    public function testRenderShowsNoFilesMessageWithoutQueuingWhenHandlerAlreadyConfirmedZeroFiles(): void
+    {
+        $store = new FakePluginDataStore();
+        // What MediaDetailsTaskHandler writes for a record it probed and found to have no
+        // files at all -- distinct from a never-yet-probed record, whose payload is [].
+        $store->seed(new AnimeId(1), [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 0,
+            'files' => [],
+        ]);
+        $tasks = new FakeBackgroundTaskQueue();
+        $widget = $this->buildWidget($store, $tasks, new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringStartsNotWith(WidgetPendingUpdate::MARKER, $html);
+        self::assertSame([], $tasks->submitted);
+        self::assertStringContainsString('This record has no files.', $html);
+    }
+
     public function testRenderShowsBothValuesWhenTwoFilesDisagreeOnResolution(): void
     {
         $store = new FakePluginDataStore();
@@ -174,7 +218,7 @@ final class SummaryWidgetTest extends TestCase
 
         self::assertStringContainsString('1920x1080', $html);
         self::assertStringContainsString('1280x720', $html);
-        self::assertStringNotContainsString('and %count% more', $html);
+        self::assertDoesNotMatchRegularExpression('/and \d+ more/', $html);
     }
 
     public function testRenderShowsThreeValuesAndMoreCountWhenFiveFilesDisagree(): void
@@ -222,6 +266,86 @@ final class SummaryWidgetTest extends TestCase
 
         self::assertStringContainsString('ja', $html);
         self::assertStringContainsString('not present in every file', $html);
+    }
+
+    public function testRenderMarksAudioLanguageAsPartialWhenATrackHasNoLanguageTag(): void
+    {
+        // "b.mkv" has an audio track, but the track itself carries no language tag -- unlike
+        // the case above (no audio track at all), simply comparing "has an audio track" is
+        // not enough to know the language is known for every file.
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 2,
+            'files' => [
+                'a.mkv' => $this->fileEntry(['audio' => [$this->audioTrack(['language' => 'ja'])]]),
+                'b.mkv' => $this->fileEntry(['audio' => [$this->audioTrack(['language' => null])]]),
+            ],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringContainsString('ja', $html);
+        self::assertStringContainsString('not present in every file', $html);
+    }
+
+    public function testRenderShowsLanguageUnknownForSubtitlesWhenNoTrackCarriesALanguageTag(): void
+    {
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 1,
+            'files' => [
+                'a.mkv' => $this->fileEntry(['subtitles' => [$this->subtitleTrack(['language' => null])]]),
+            ],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringContainsString('Subtitles', $html);
+        self::assertStringContainsString('not tagged with a language', $html);
+    }
+
+    public function testRenderMarksSizeAndDurationAsPartialWhenNotAllFilesWereParsed(): void
+    {
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 2,
+            'files' => ['a.mkv' => $this->fileEntry(['handle_size' => 100, 'duration' => 60.0])],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringContainsString('Size', $html);
+        self::assertStringContainsString('Duration', $html);
+        self::assertSame(2, substr_count($html, 'not present in every file'));
+    }
+
+    public function testRenderEscapesUntrustedMetadataFromFileTags(): void
+    {
+        // codec/language/etc. come straight from tags embedded in the media file itself --
+        // untrusted input as far as this widget is concerned. Twig's autoescaping is the only
+        // thing standing between that and the record page, so this locks it down against a
+        // future |raw or a template rewrite silently dropping it.
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 1,
+            'files' => [
+                'a.mkv' => $this->fileEntry([
+                    'video' => [$this->videoTrack(['codec' => '"><img src=x>'])],
+                    'audio' => [$this->audioTrack(['language' => '<script>alert(1)</script>'])],
+                ]),
+            ],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('<script', $html);
+        self::assertStringNotContainsString('<img', $html);
+        self::assertStringContainsString('&lt;script&gt;', $html);
+        self::assertStringContainsString('&gt;&lt;img', $html);
     }
 
     public function testRenderOutputNeverContainsDisallowedHtmlElements(): void

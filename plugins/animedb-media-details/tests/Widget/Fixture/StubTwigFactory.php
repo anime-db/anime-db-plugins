@@ -54,6 +54,7 @@ final class StubTwigFactory
         'widget.summary.pending' => 'Collecting file details…',
         'widget.summary.unavailable' => 'File details are unavailable.',
         'widget.summary.parse_failed' => 'Could not read details for any file.',
+        'widget.summary.no_files' => 'This record has no files.',
         'widget.summary.files_count' => 'Files: %count%',
         'widget.summary.files_unparsed' => 'Not parsed: %count%',
         'widget.summary.size_label' => 'Size',
@@ -66,6 +67,7 @@ final class StubTwigFactory
         'widget.summary.subtitle_languages_label' => 'Subtitles',
         'widget.summary.not_all_files' => 'not present in every file',
         'widget.summary.more_values' => 'and %count% more',
+        'widget.summary.language_unknown' => 'not tagged with a language',
     ];
 
     private function __construct()
