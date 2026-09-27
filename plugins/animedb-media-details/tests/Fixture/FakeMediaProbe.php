@@ -38,13 +38,19 @@ use AnimeDb\PluginContracts\Media\MediaProbeUnavailableException;
  * identity, exactly like the real contract requires: a handle registered via
  * {@see self::registerResult()} is honoured, a `new MediaFile(...)` built from cached data
  * with the same {@see MediaFile::$relativePath} is rejected with
- * {@see MediaProbeFailedException}, the same way a real implementation would reject a handle
- * it never issued.
+ * {@see MediaProbeFailedException} for the whole {@see self::probeAll()} call, the same way a
+ * real implementation would reject a handle it never issued. A handle registered via
+ * {@see self::registerFailure()} is a different case: it was issued (e.g. by the test's own
+ * {@see FakeMediaLibrary}), but this fake could not parse it — per the contract, that is a
+ * partial failure and must not throw, the file is simply absent from the result.
  */
 final class FakeMediaProbe implements MediaProbeInterface
 {
     /** @var \SplObjectStorage<MediaFile, MediaInfo> */
     private \SplObjectStorage $known;
+
+    /** @var \SplObjectStorage<MediaFile, true> */
+    private \SplObjectStorage $issued;
 
     private ?string $identity = 'fake-prober-identity';
 
@@ -57,11 +63,23 @@ final class FakeMediaProbe implements MediaProbeInterface
     public function __construct()
     {
         $this->known = new \SplObjectStorage();
+        $this->issued = new \SplObjectStorage();
     }
 
     public function registerResult(MediaFile $file, MediaInfo $info): void
     {
         $this->known[$file] = $info;
+        $this->issued[$file] = true;
+    }
+
+    /**
+     * Registers $file as a legitimately issued handle that this fake nonetheless fails to
+     * parse, e.g. to simulate a corrupt file. Unlike an unregistered handle, this must not
+     * make {@see self::probeAll()} reject the whole call.
+     */
+    public function registerFailure(MediaFile $file): void
+    {
+        $this->issued[$file] = true;
     }
 
     public function setIdentity(string $identity): void
@@ -72,6 +90,11 @@ final class FakeMediaProbe implements MediaProbeInterface
     public function setUnavailable(): void
     {
         $this->unavailable = true;
+    }
+
+    public function setAvailable(): void
+    {
+        $this->unavailable = false;
     }
 
     public function probe(MediaFile $file): MediaInfo
@@ -90,14 +113,16 @@ final class FakeMediaProbe implements MediaProbeInterface
         }
 
         foreach ($files as $file) {
-            if (!$this->known->offsetExists($file)) {
+            if (!$this->issued->offsetExists($file)) {
                 throw new MediaProbeFailedException(\sprintf('Handle for "%s" was not issued by this prober.', $file->relativePath));
             }
         }
 
         $result = [];
         foreach ($files as $file) {
-            $result[$file->relativePath] = $this->known[$file];
+            if ($this->known->offsetExists($file)) {
+                $result[$file->relativePath] = $this->known[$file];
+            }
         }
 
         if ($result === []) {

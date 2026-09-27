@@ -203,7 +203,7 @@ final class MediaDetailsTaskHandlerTest extends TestCase
         self::assertSame($seeded['files'], $stored['files']);
     }
 
-    public function testDoesNotCrashWhenWriteThrowsRuntimeException(): void
+    public function testPropagatesWriteFailureToTheCaller(): void
     {
         $anime = new AnimeId(7);
         $file = $this->makeFile('01.mkv', 1000, 1_700_000_000);
@@ -212,10 +212,14 @@ final class MediaDetailsTaskHandlerTest extends TestCase
         $this->library->willReturn($anime, [$file]);
         $this->store->failOnNextWrite();
 
-        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+        $this->expectException(\RuntimeException::class);
 
-        self::assertSame(1, $this->store->writeCallCount);
-        self::assertSame([], $this->store->read($anime));
+        try {
+            $this->handler->handle(new BackgroundTask('probe-files', $anime));
+        } finally {
+            self::assertSame(1, $this->store->writeCallCount);
+            self::assertSame([], $this->store->read($anime));
+        }
     }
 
     public function testProbesAndStoresNewFile(): void
@@ -231,9 +235,239 @@ final class MediaDetailsTaskHandlerTest extends TestCase
         self::assertSame(1, $this->prober->probeAllCallCount);
         $stored = $this->store->read($anime);
         self::assertSame(1, $stored['files_total']);
-        self::assertArrayHasKey('01.mkv', $stored['files']);
-        self::assertSame('fake-prober-identity', $stored['files']['01.mkv']['probe_identity']);
-        self::assertSame(1, $stored['files']['01.mkv']['track_count']);
+        self::assertSame([
+            'handle_size' => 1000,
+            'handle_mtime' => 1_700_000_000,
+            'probe_identity' => 'fake-prober-identity',
+            'size' => 1000,
+            'container' => 'matroska,webm',
+            'duration' => 120.0,
+            'bit_rate' => 4000,
+            'track_count' => 1,
+            'video' => [[
+                'index' => 0,
+                'codec' => 'h264',
+                'profile' => 'High',
+                'width' => 1920,
+                'height' => 1080,
+                'pixel_format' => 'yuv420p',
+                'frame_rate' => 23.976,
+                'bit_rate' => null,
+            ]],
+            'audio' => [],
+            'subtitles' => [],
+            'other' => [],
+        ], $stored['files']['01.mkv']);
+    }
+
+    public function testSecondRunOnUnchangedFilesIsANoOp(): void
+    {
+        $anime = new AnimeId(9);
+        $file = $this->makeFile('01.mkv', 1000, 1_700_000_000);
+        $info = $this->makeInfo();
+        $this->prober->registerResult($file, $info);
+        $this->library->willReturn($anime, [$file]);
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        self::assertSame(1, $this->store->writeCallCount);
+
+        // Same file list, same stored payload -- the payload used here is exactly what the
+        // first run produced, not a hand-written seed, so a wrong key in buildFileEntry()
+        // would surface here as a spurious reprobe/rewrite instead of passing silently.
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        self::assertSame(1, $this->store->writeCallCount);
+    }
+
+    public function testReprobesFileWhoseSizeOrMtimeChanged(): void
+    {
+        $anime = new AnimeId(10);
+        $changedFile = $this->makeFile('01.mkv', 2000, 1_700_000_500);
+        $this->store->seed($anime, [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 1,
+            'files' => [
+                '01.mkv' => [
+                    'handle_size' => 1000,
+                    'handle_mtime' => 1_700_000_000,
+                    'probe_identity' => 'fake-prober-identity',
+                    'size' => 1000,
+                    'container' => 'matroska,webm',
+                    'duration' => 50.0,
+                    'bit_rate' => null,
+                    'track_count' => 0,
+                    'video' => [],
+                    'audio' => [],
+                    'subtitles' => [],
+                    'other' => [],
+                ],
+            ],
+        ]);
+        $this->library->willReturn($anime, [$changedFile]);
+        $this->prober->registerResult($changedFile, $this->makeInfo());
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        $stored = $this->store->read($anime);
+        self::assertSame(2000, $stored['files']['01.mkv']['handle_size']);
+        self::assertSame(1_700_000_500, $stored['files']['01.mkv']['handle_mtime']);
+    }
+
+    public function testReprobesWhenProberIdentityChanges(): void
+    {
+        $anime = new AnimeId(11);
+        $file = $this->makeFile('01.mkv', 1000, 1_700_000_000);
+        $this->store->seed($anime, [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 1,
+            'files' => [
+                '01.mkv' => [
+                    'handle_size' => 1000,
+                    'handle_mtime' => 1_700_000_000,
+                    'probe_identity' => 'probe-engine-v1',
+                    'size' => 1000,
+                    'container' => 'matroska,webm',
+                    'duration' => 100.0,
+                    'bit_rate' => null,
+                    'track_count' => 0,
+                    'video' => [],
+                    'audio' => [],
+                    'subtitles' => [],
+                    'other' => [],
+                ],
+            ],
+        ]);
+        $this->library->willReturn($anime, [$file]);
+        $this->prober->setIdentity('probe-engine-v2');
+        $this->prober->registerResult($file, $this->makeInfo(probeIdentity: 'probe-engine-v2'));
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        $stored = $this->store->read($anime);
+        self::assertSame('probe-engine-v2', $stored['files']['01.mkv']['probe_identity']);
+    }
+
+    public function testPartialProbeFailureDoesNotBlockOtherFilesAndDropsTheStaleEntry(): void
+    {
+        $anime = new AnimeId(12);
+        // Stored as a small, old file; on disk it is now a different size -- a stale
+        // description of a file that no longer looks like this one at all.
+        $unparseable = $this->makeFile('bad.mkv', 999, 1_700_000_999);
+        $probed = $this->makeFile('good.mkv', 1000, 1_700_000_000);
+        $this->store->seed($anime, [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 1,
+            'files' => [
+                'bad.mkv' => [
+                    'handle_size' => 500,
+                    'handle_mtime' => 1_600_000_000,
+                    'probe_identity' => 'fake-prober-identity',
+                    'size' => 500,
+                    'container' => 'matroska,webm',
+                    'duration' => 10.0,
+                    'bit_rate' => null,
+                    'track_count' => 0,
+                    'video' => [],
+                    'audio' => [],
+                    'subtitles' => [],
+                    'other' => [],
+                ],
+            ],
+        ]);
+        $this->library->willReturn($anime, [$unparseable, $probed]);
+        $this->prober->registerFailure($unparseable);
+        $this->prober->registerResult($probed, $this->makeInfo());
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        $stored = $this->store->read($anime);
+        self::assertArrayHasKey('good.mkv', $stored['files']);
+        self::assertArrayNotHasKey('bad.mkv', $stored['files']);
+        self::assertSame(2, $stored['files_total']);
+    }
+
+    public function testDropsEntryWhenReprobeOfSoleDivergentFileFailsEntirely(): void
+    {
+        $anime = new AnimeId(13);
+        $file = $this->makeFile('01.mkv', 2000, 1_700_000_500);
+        $this->store->seed($anime, [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 1,
+            'files' => [
+                '01.mkv' => [
+                    'handle_size' => 1000,
+                    'handle_mtime' => 1_700_000_000,
+                    'probe_identity' => 'fake-prober-identity',
+                    'size' => 1000,
+                    'container' => 'matroska,webm',
+                    'duration' => 50.0,
+                    'bit_rate' => null,
+                    'track_count' => 0,
+                    'video' => [],
+                    'audio' => [],
+                    'subtitles' => [],
+                    'other' => [],
+                ],
+            ],
+        ]);
+        $this->library->willReturn($anime, [$file]);
+        $this->prober->registerFailure($file);
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        self::assertSame(1, $this->prober->probeAllCallCount);
+        $stored = $this->store->read($anime);
+        self::assertArrayNotHasKey('01.mkv', $stored['files']);
+        self::assertSame(1, $stored['files_total']);
+    }
+
+    public function testClearsProberUnavailableMarkOnceTheProberRecoversWithNoFileChanges(): void
+    {
+        $anime = new AnimeId(14);
+        $file = $this->makeFile('01.mkv', 1000, 1_700_000_000);
+        $this->store->seed($anime, [
+            'generated_at' => '2026-01-01T00:00:00+00:00',
+            'files_total' => 1,
+            'files' => [
+                '01.mkv' => [
+                    'handle_size' => 1000,
+                    'handle_mtime' => 1_700_000_000,
+                    'probe_identity' => 'fake-prober-identity',
+                    'size' => 1000,
+                    'container' => 'matroska,webm',
+                    'duration' => 100.0,
+                    'bit_rate' => null,
+                    'track_count' => 0,
+                    'video' => [],
+                    'audio' => [],
+                    'subtitles' => [],
+                    'other' => [],
+                ],
+            ],
+        ]);
+        $this->library->willReturn($anime, [$file]);
+        $this->prober->setUnavailable();
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        $afterOutage = $this->store->read($anime);
+        self::assertArrayHasKey('prober_unavailable_at', $afterOutage);
+
+        // Prober is back, and the file is unchanged, so there is nothing to reprobe --
+        // but the outage mark must not survive a run where the prober actually answered.
+        $this->prober->setAvailable();
+
+        $this->handler->handle(new BackgroundTask('probe-files', $anime));
+
+        $stored = $this->store->read($anime);
+        self::assertArrayNotHasKey('prober_unavailable_at', $stored);
+        self::assertSame($afterOutage['files'], $stored['files']);
     }
 
     private function makeFile(string $relativePath, int $sizeBytes, int $modifiedAt): MediaFile
@@ -241,7 +475,7 @@ final class MediaDetailsTaskHandlerTest extends TestCase
         return new MediaFile($relativePath, $relativePath, $sizeBytes, (new \DateTimeImmutable())->setTimestamp($modifiedAt));
     }
 
-    private function makeInfo(): MediaInfo
+    private function makeInfo(string $probeIdentity = 'fake-prober-identity'): MediaInfo
     {
         return new MediaInfo(
             containerFormat: 'matroska,webm',
@@ -253,7 +487,7 @@ final class MediaDetailsTaskHandlerTest extends TestCase
             audio: [],
             subtitles: [],
             otherTracks: [],
-            probeIdentity: 'fake-prober-identity',
+            probeIdentity: $probeIdentity,
         );
     }
 }
