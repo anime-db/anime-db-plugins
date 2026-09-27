@@ -67,6 +67,7 @@
                 <li>
                     <span>{{ 'widget.summary.audio_tracks_label'|trans({}, 'animedb-media-details') }}:</span>
                     {{ audio_tracks.shown|join(', ') }}{% if audio_tracks.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': audio_tracks.moreCount}, 'animedb-media-details') }}{% endif %}
+                    {% if audio_tracks.partial %}<em>({{ 'widget.summary.not_all_files'|trans({}, 'animedb-media-details') }})</em>{% endif %}
                 </li>
             {% endif %}
             {% if audio_languages is not null %}
