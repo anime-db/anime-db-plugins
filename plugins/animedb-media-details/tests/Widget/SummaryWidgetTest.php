@@ -322,6 +322,39 @@ final class SummaryWidgetTest extends TestCase
         self::assertSame(2, substr_count($html, 'not present in every file'));
     }
 
+    public function testRenderShowsSizeInGigabytesUsingFullTranslationKey(): void
+    {
+        // Locks down two things a mutation run flagged: the unit must actually be picked by
+        // order of magnitude (not a constant), and the resolved key must be the full
+        // domain-qualified key (`widget.summary.size_unit_gb`), not a bare `gb` suffix -- the
+        // stub `trans` filter falls back to echoing an unknown key verbatim, so a stripped
+        // prefix would silently render "gb" instead of failing loudly.
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 1,
+            'files' => ['a.mkv' => $this->fileEntry(['handle_size' => 1_610_612_736])], // 1.5 GiB
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringContainsString('1.50 GB', $html);
+    }
+
+    public function testRenderShowsSizeInBytesWithoutFractionalPart(): void
+    {
+        $store = new FakePluginDataStore();
+        $store->seed(new AnimeId(1), [
+            'files_total' => 1,
+            'files' => ['a.mkv' => $this->fileEntry(['handle_size' => 512])],
+        ]);
+        $widget = $this->buildWidget($store, new FakeBackgroundTaskQueue(), new FakeMediaProbe());
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringContainsString('512 B', $html);
+    }
+
     public function testRenderEscapesUntrustedMetadataFromFileTags(): void
     {
         // codec/language/etc. come straight from tags embedded in the media file itself --
