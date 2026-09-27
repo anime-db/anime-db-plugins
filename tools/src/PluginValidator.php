@@ -45,9 +45,14 @@ use Symfony\Component\Yaml\Yaml;
  *   catalog events, see {@see PluginType}) are both treated as code plugins: a `src/`
  *   directory is required, every class declared under `src/**.php` must sit in the
  *   namespace PSR-4 derives from the plugin id, and every `*.php` file in the plugin must
- *   be syntactically valid (`php -l`). `local` has no `type`-specific contract requirement
- *   beyond that (it declares neither `features` nor `locales`), so it falls back to the
- *   same code-plugin checks as `integration`.
+ *   be syntactically valid (`php -l`). `local` may declare `features` and `locales` the
+ *   same as `integration`; the only `type`-specific difference, per
+ *   {@see ManifestValidator::validateFeaturesOrLocales()}, is that `local` rejects the
+ *   `filler`, `sync` and `search` feature keys (the `ManifestValidator` class's
+ *   `LOCAL_DISALLOWED_FEATURE_KEYS` constant). `locales` is optional for both only at the
+ *   contract level; this validator additionally requires or forbids it depending on shipped
+ *   catalogs (see below). Otherwise `local` falls back to the same code-plugin
+ *   checks as `integration`.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
  *   against), while a `translations/` directory and a non-empty manifest `locales` list are
@@ -101,7 +106,8 @@ use Symfony\Component\Yaml\Yaml;
  * to the number of leaf keys in its own catalog (the same union used for the `name`/`description`
  * check above); the field is rejected outright for `integration`/`local`, mirroring how the shared
  * {@see ManifestValidator} contract itself gates its own known fields per type (e.g. `features` is
- * required for `integration` but rejected for `translation`/`local`). This field has no
+ * required for `integration`, restricted — the `filler`/`sync`/`search` keys are disallowed — for
+ * `local`, and rejected outright for `translation`). This field has no
  * counterpart in that contract — it is validated only here, by this monorepo's own tooling.
  *
  * A `translation` plugin's `translations/native/<locale>.json` files, if present, are checked
