@@ -60,12 +60,15 @@ use Twig\Environment;
  * an empty `files` map must show the neutral "unavailable" message, not queue a task the prober
  * cannot run:
  *
- * 1. the payload carries a "prober unavailable" mark;
- * 2. the payload has no files at all, and `files_total` does not say otherwise either — the
- *    cold-start case, queues the first probe;
- * 3. `files` is empty but `files_total` is not — every file the event subscriber saw failed to
- *    probe; shown as a neutral message, no task queued, since nothing changed since the last
- *    attempt and probing again would just repeat the same failure;
+ * 1. the payload carries a "prober unavailable" mark — re-checked with a cheap
+ *    {@see \AnimeDb\PluginContracts\Media\MediaProbeInterface::probeIdentity()} call right
+ *    here, so a prober that came back does not leave the record stuck forever;
+ * 2. the payload is empty — the cold-start case, queues the first probe;
+ * 3. `files` is empty but the payload is not —
+ *    {@see \AnimeDb\Plugins\AnimedbMediaDetails\BackgroundTask\MediaDetailsTaskHandler} already
+ *    ran at least once and found either nothing to parse (`files_total > 0`, "parse failed") or
+ *    no files at all (`files_total === 0`, "no files"); shown as a neutral message, no task
+ *    queued, since nothing changed since that attempt and probing again would just repeat it;
  * 4/5. `files` is non-empty — the summary is shown either way, a divergent
  *    {@see \AnimeDb\PluginContracts\Media\MediaProbeInterface::probeIdentity()} additionally
  *    queues a refresh.
@@ -110,20 +113,37 @@ final class SummaryWidget implements EntryWidgetInterface
         $payload = $this->store->read($anime);
 
         if (isset($payload['prober_unavailable_at'])) {
-            return $this->twig->render(self::TEMPLATE, ['state' => 'unavailable']);
+            // The mark only ever meant "unavailable as of the last background run" — it is
+            // cheap to re-check right here, the same call already made a few lines down for
+            // the ready path, so a prober that has since come back does not leave the record
+            // stuck showing "unavailable" until its files happen to change.
+            try {
+                $this->prober->probeIdentity();
+            } catch (MediaProbeUnavailableException) {
+                return $this->twig->render(self::TEMPLATE, ['state' => 'unavailable']);
+            }
+
+            $this->tasks->submit(new BackgroundTask(self::TASK_NAME, $anime));
+
+            return WidgetPendingUpdate::mark($this->twig->render(self::TEMPLATE, ['state' => 'pending']));
         }
 
         $filesTotal = \is_int($payload['files_total'] ?? null) ? $payload['files_total'] : 0;
         $files = $this->filterFileEntries($payload['files'] ?? null);
 
         if ($files === []) {
-            if ($filesTotal <= 0) {
+            if ($payload === []) {
+                // Never probed at all: queue the very first attempt.
                 $this->tasks->submit(new BackgroundTask(self::TASK_NAME, $anime));
 
                 return WidgetPendingUpdate::mark($this->twig->render(self::TEMPLATE, ['state' => 'pending']));
             }
 
-            return $this->twig->render(self::TEMPLATE, ['state' => 'parse_failed']);
+            // Already probed at least once (see MediaDetailsTaskHandler), so this is a
+            // settled result, not a cold start — never re-queue on every render for it.
+            return $this->twig->render(self::TEMPLATE, [
+                'state' => $filesTotal > 0 ? 'parse_failed' : 'no_files',
+            ]);
         }
 
         try {
@@ -201,10 +221,12 @@ final class SummaryWidget implements EntryWidgetInterface
         /** @var list<string> $audioLanguages */
         $audioLanguages = [];
         $filesWithAudio = 0;
+        $filesWithKnownAudioLanguage = 0;
 
         /** @var list<string> $subtitleLanguages */
         $subtitleLanguages = [];
         $filesWithSubtitles = 0;
+        $filesWithKnownSubtitleLanguage = 0;
 
         foreach ($files as $file) {
             $sizeBytes += \is_int($file['handle_size'] ?? null) ? $file['handle_size'] : 0;
@@ -237,20 +259,30 @@ final class SummaryWidget implements EntryWidgetInterface
             if ($audio !== []) {
                 ++$filesWithAudio;
             }
+            $hasKnownAudioLanguage = false;
             foreach ($audio as $track) {
                 if (\is_string($track['language'] ?? null)) {
                     $audioLanguages[] = $track['language'];
+                    $hasKnownAudioLanguage = true;
                 }
+            }
+            if ($hasKnownAudioLanguage) {
+                ++$filesWithKnownAudioLanguage;
             }
 
             $subtitles = $this->filterFileEntries($file['subtitles'] ?? null);
             if ($subtitles !== []) {
                 ++$filesWithSubtitles;
             }
+            $hasKnownSubtitleLanguage = false;
             foreach ($subtitles as $track) {
                 if (\is_string($track['language'] ?? null)) {
                     $subtitleLanguages[] = $track['language'];
+                    $hasKnownSubtitleLanguage = true;
                 }
+            }
+            if ($hasKnownSubtitleLanguage) {
+                ++$filesWithKnownSubtitleLanguage;
             }
         }
 
@@ -258,21 +290,24 @@ final class SummaryWidget implements EntryWidgetInterface
             'files_total' => $filesTotal,
             'unparsed_count' => max(0, $filesTotal - $knownCount),
             'size_formatted' => $this->formatBytes($sizeBytes),
+            'size_partial' => $knownCount < $filesTotal,
             'duration_formatted' => $durationKnownCount > 0 ? $this->formatDuration($durationSum) : null,
-            'duration_partial' => $durationKnownCount > 0 && $durationKnownCount < $knownCount,
+            'duration_partial' => $durationKnownCount > 0 && $durationKnownCount < $filesTotal,
             'video_codec' => $videoCodecs === [] ? null : $this->buildValueDisplay($videoCodecs),
             'video_resolution' => $videoResolutions === [] ? null : $this->buildValueDisplay($videoResolutions),
             'video_frame_rate' => $videoFrameRates === [] ? null : $this->buildValueDisplay($videoFrameRates),
             'audio_tracks' => $filesWithAudio === 0
                 ? null
                 : $this->buildValueDisplay(array_map(strval(...), $audioTrackCounts)),
-            'audio_languages' => $audioLanguages === [] ? null : [
+            'audio_languages' => $filesWithAudio === 0 ? null : [
                 ...$this->buildValueDisplay($audioLanguages),
-                'partial' => $filesWithAudio < $knownCount,
+                'unknown' => $audioLanguages === [],
+                'partial' => $filesWithKnownAudioLanguage < $knownCount,
             ],
-            'subtitle_languages' => $subtitleLanguages === [] ? null : [
+            'subtitle_languages' => $filesWithSubtitles === 0 ? null : [
                 ...$this->buildValueDisplay($subtitleLanguages),
-                'partial' => $filesWithSubtitles < $knownCount,
+                'unknown' => $subtitleLanguages === [],
+                'partial' => $filesWithKnownSubtitleLanguage < $knownCount,
             ],
         ];
     }

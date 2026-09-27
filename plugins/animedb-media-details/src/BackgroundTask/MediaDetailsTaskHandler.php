@@ -83,10 +83,23 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
         try {
             $files = $this->library->listFiles($task->anime);
         } catch (StorageUnavailableException) {
+            // A payload already exists: keep it as-is rather than overwrite established
+            // data with a guess just because this run could not reach storage.
+            if ($payload === []) {
+                $this->writeNoFilesFound($task->anime);
+            }
+
             return;
         }
 
         if ($files === []) {
+            // Same reasoning as above: only record a terminal "confirmed empty" state on
+            // a first-ever run. A record that already has data keeps it, since an empty
+            // listing here may just as well be a transient storage glitch.
+            if ($payload === []) {
+                $this->writeNoFilesFound($task->anime);
+            }
+
             return;
         }
 
@@ -277,6 +290,21 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
             'type' => $track->type,
             'codec' => $track->codec,
         ];
+    }
+
+    /**
+     * Records that this run found nothing to store — either the record genuinely has no
+     * files, or storage could not be reached — so the widget stops treating the record as
+     * never-yet-probed and submitting a new task on every render. Only ever called when no
+     * payload existed before, so there is nothing to erase.
+     */
+    private function writeNoFilesFound(AnimeId $anime): void
+    {
+        $this->store->write($anime, [
+            'generated_at' => $this->now(),
+            'files_total' => 0,
+            'files' => [],
+        ]);
     }
 
     /**

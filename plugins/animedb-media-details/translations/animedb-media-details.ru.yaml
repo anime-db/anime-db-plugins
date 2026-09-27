@@ -11,6 +11,7 @@ widget:
         pending: 'Характеристики файлов собираются…'
         unavailable: 'Характеристики файлов недоступны.'
         parse_failed: 'Не удалось получить характеристики ни одного файла.'
+        no_files: 'В этой записи нет файлов.'
         files_count: 'Файлов: %count%'
         files_unparsed: 'Не разобрано: %count%'
         size_label: Размер
@@ -23,3 +24,4 @@ widget:
         subtitle_languages_label: Субтитры
         not_all_files: не у всех файлов
         more_values: 'и ещё %count%'
+        language_unknown: язык не указан
