@@ -104,6 +104,8 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
         [$toProbe, $hasDivergence] = $this->findDivergence($files, $existingFiles, $currentProbeIdentity);
 
         if (!$hasDivergence) {
+            $this->clearProberUnavailableMark($task->anime, $payload);
+
             return;
         }
 
@@ -116,8 +118,9 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
 
                 return;
             } catch (MediaProbeFailedException) {
-                // None of the divergent files could be parsed this round; fall back to
-                // whatever was stored for them, same as an empty probeAll() result.
+                // Per MediaProbeInterface::probeAll(), this is thrown only when none of
+                // the given files could be parsed; a partial failure never reaches this
+                // catch, it is simply absent from a returned, non-empty $probed.
                 $probed = [];
             }
         }
@@ -126,8 +129,22 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
         foreach ($files as $file) {
             if (isset($probed[$file->relativePath])) {
                 $newFiles[$file->relativePath] = $this->buildFileEntry($file, $probed[$file->relativePath]);
-            } elseif (isset($existingFiles[$file->relativePath]) && \is_array($existingFiles[$file->relativePath])) {
-                $newFiles[$file->relativePath] = $existingFiles[$file->relativePath];
+
+                continue;
+            }
+
+            $existing = $existingFiles[$file->relativePath] ?? null;
+            if (
+                \is_array($existing)
+                && ($existing['handle_size'] ?? null) === $file->sizeBytes
+                && ($existing['handle_mtime'] ?? null) === $file->modifiedAt->getTimestamp()
+            ) {
+                // Unchanged since it was last stored, and this run had no reason to
+                // reprobe it (it wasn't part of $toProbe). Carrying it forward as-is is
+                // safe only because handle_size/handle_mtime confirm it still describes
+                // the same file; a stale entry for a file that diverged but failed to
+                // reprobe must not be presented as current data.
+                $newFiles[$file->relativePath] = $existing;
             }
         }
 
@@ -137,7 +154,7 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
             'files' => $newFiles,
         ];
 
-        $this->tryWrite($task->anime, $newPayload);
+        $this->store->write($task->anime, $newPayload);
     }
 
     /**
@@ -269,21 +286,21 @@ final class MediaDetailsTaskHandler implements BackgroundTaskHandlerInterface
     {
         $payload['prober_unavailable_at'] = $this->now();
 
-        $this->tryWrite($anime, $payload);
+        $this->store->write($anime, $payload);
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<string, mixed> $payload
      */
-    private function tryWrite(AnimeId $anime, array $data): void
+    private function clearProberUnavailableMark(AnimeId $anime, array $payload): void
     {
-        try {
-            $this->store->write($anime, $data);
-        } catch (\RuntimeException) {
-            // A core-side write conflict is an application-level class this plugin cannot
-            // reference or catch by type; the next AnimeFilesChangedEvent or task run
-            // retries the write, so a single lost write here is not fatal.
+        if (!isset($payload['prober_unavailable_at'])) {
+            return;
         }
+
+        unset($payload['prober_unavailable_at']);
+
+        $this->store->write($anime, $payload);
     }
 
     private function now(): string
