@@ -8,3 +8,18 @@ widget:
     summary:
         title: Характеристики файлов
         description: Показывает контейнер, дорожки и субтитры, собранные из файлов записи.
+        pending: 'Характеристики файлов собираются…'
+        unavailable: 'Характеристики файлов недоступны.'
+        parse_failed: 'Не удалось получить характеристики ни одного файла.'
+        files_count: 'Файлов: %count%'
+        files_unparsed: 'Не разобрано: %count%'
+        size_label: Размер
+        duration_label: Длительность
+        video_codec_label: Видеокодек
+        video_resolution_label: Разрешение
+        video_frame_rate_label: Частота кадров
+        audio_tracks_label: Звуковых дорожек
+        audio_languages_label: Языки звука
+        subtitle_languages_label: Субтитры
+        not_all_files: не у всех файлов
+        more_values: 'и ещё %count%'

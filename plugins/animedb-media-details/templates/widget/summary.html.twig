@@ -1,0 +1,83 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://www.gnu.org/licenses/>.
+ #}
+{# Raw fragment, rendered by SummaryWidget::render(). One record-level summary — never a
+ # per-file list, see the SummaryWidget class docblock. #}
+{% if state == 'pending' %}
+    <p>{{ 'widget.summary.pending'|trans({}, 'animedb-media-details') }}</p>
+{% elseif state == 'unavailable' %}
+    <p>{{ 'widget.summary.unavailable'|trans({}, 'animedb-media-details') }}</p>
+{% elseif state == 'parse_failed' %}
+    <p>{{ 'widget.summary.parse_failed'|trans({}, 'animedb-media-details') }}</p>
+{% else %}
+    <div class="animedb-media-details-summary">
+        <p><strong>{{ 'widget.summary.files_count'|trans({'%count%': files_total}, 'animedb-media-details') }}</strong></p>
+        {% if unparsed_count > 0 %}
+            <p>{{ 'widget.summary.files_unparsed'|trans({'%count%': unparsed_count}, 'animedb-media-details') }}</p>
+        {% endif %}
+        <ul>
+            <li><span>{{ 'widget.summary.size_label'|trans({}, 'animedb-media-details') }}:</span> {{ size_formatted }}</li>
+            {% if duration_formatted is not null %}
+                <li>
+                    <span>{{ 'widget.summary.duration_label'|trans({}, 'animedb-media-details') }}:</span> {{ duration_formatted }}
+                    {% if duration_partial %}<em>({{ 'widget.summary.not_all_files'|trans({}, 'animedb-media-details') }})</em>{% endif %}
+                </li>
+            {% endif %}
+            {% if video_codec is not null %}
+                <li>
+                    <span>{{ 'widget.summary.video_codec_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ video_codec.shown|join(', ') }}{% if video_codec.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': video_codec.moreCount}, 'animedb-media-details') }}{% endif %}
+                </li>
+            {% endif %}
+            {% if video_resolution is not null %}
+                <li>
+                    <span>{{ 'widget.summary.video_resolution_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ video_resolution.shown|join(', ') }}{% if video_resolution.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': video_resolution.moreCount}, 'animedb-media-details') }}{% endif %}
+                </li>
+            {% endif %}
+            {% if video_frame_rate is not null %}
+                <li>
+                    <span>{{ 'widget.summary.video_frame_rate_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ video_frame_rate.shown|join(', ') }}{% if video_frame_rate.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': video_frame_rate.moreCount}, 'animedb-media-details') }}{% endif %}
+                </li>
+            {% endif %}
+            {% if audio_tracks is not null %}
+                <li>
+                    <span>{{ 'widget.summary.audio_tracks_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ audio_tracks.shown|join(', ') }}{% if audio_tracks.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': audio_tracks.moreCount}, 'animedb-media-details') }}{% endif %}
+                </li>
+            {% endif %}
+            {% if audio_languages is not null %}
+                <li>
+                    <span>{{ 'widget.summary.audio_languages_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ audio_languages.shown|join(', ') }}{% if audio_languages.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': audio_languages.moreCount}, 'animedb-media-details') }}{% endif %}
+                    {% if audio_languages.partial %}<em>({{ 'widget.summary.not_all_files'|trans({}, 'animedb-media-details') }})</em>{% endif %}
+                </li>
+            {% endif %}
+            {% if subtitle_languages is not null %}
+                <li>
+                    <span>{{ 'widget.summary.subtitle_languages_label'|trans({}, 'animedb-media-details') }}:</span>
+                    {{ subtitle_languages.shown|join(', ') }}{% if subtitle_languages.moreCount > 0 %} {{ 'widget.summary.more_values'|trans({'%count%': subtitle_languages.moreCount}, 'animedb-media-details') }}{% endif %}
+                    {% if subtitle_languages.partial %}<em>({{ 'widget.summary.not_all_files'|trans({}, 'animedb-media-details') }})</em>{% endif %}
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+{% endif %}

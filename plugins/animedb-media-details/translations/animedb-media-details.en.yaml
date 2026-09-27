@@ -8,3 +8,18 @@ widget:
     summary:
         title: Media details
         description: Shows container, track and subtitle details collected from the record's files.
+        pending: 'Collecting file details…'
+        unavailable: 'File details are unavailable.'
+        parse_failed: 'Could not read details for any file.'
+        files_count: 'Files: %count%'
+        files_unparsed: 'Not parsed: %count%'
+        size_label: Size
+        duration_label: Duration
+        video_codec_label: Video codec
+        video_resolution_label: Resolution
+        video_frame_rate_label: Frame rate
+        audio_tracks_label: Audio tracks
+        audio_languages_label: Audio languages
+        subtitle_languages_label: Subtitles
+        not_all_files: not present in every file
+        more_values: 'and %count% more'
