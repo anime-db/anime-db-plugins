@@ -268,6 +268,26 @@ final class PluginValidatorTest extends TestCase
         self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
     }
 
+    public function testNewlyWhitelistedOfficialPluginIdIsAllowedToUseReservedVendor(): void
+    {
+        $manifest = $this->validManifest('animedb-media-details');
+        $pluginDir = $this->createPluginDir('animedb-media-details', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
+    public function testUnrelatedReservedVendorIdIsStillRejected(): void
+    {
+        $manifest = $this->validManifest('animedb-media-details-fake');
+        $pluginDir = $this->createPluginDir('animedb-media-details-fake', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
     public function testSymlinkToFileOutsidePluginIsNotRead(): void
     {
         $manifest = $this->validManifest('vendor-name');
