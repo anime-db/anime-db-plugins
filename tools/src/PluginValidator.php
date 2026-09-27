@@ -48,11 +48,11 @@ use Symfony\Component\Yaml\Yaml;
  *   be syntactically valid (`php -l`). `local` may declare `features` and `locales` the
  *   same as `integration`; the only `type`-specific difference, per
  *   {@see ManifestValidator::validateFeaturesOrLocales()}, is that `local` rejects the
- *   `filler`, `sync` and `search` feature keys (that method's `LOCAL_DISALLOWED_FEATURE_KEYS`
- *   constant). `locales` is optional for both only at the contract level; this validator
- *   additionally requires or forbids it depending on shipped catalogs (see below). Otherwise
- *   `local` falls back to the same code-plugin checks as
- *   `integration`.
+ *   `filler`, `sync` and `search` feature keys (the `ManifestValidator` class's
+ *   `LOCAL_DISALLOWED_FEATURE_KEYS` constant). `locales` is optional for both only at the
+ *   contract level; this validator additionally requires or forbids it depending on shipped
+ *   catalogs (see below). Otherwise `local` falls back to the same code-plugin
+ *   checks as `integration`.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
  *   against), while a `translations/` directory and a non-empty manifest `locales` list are
