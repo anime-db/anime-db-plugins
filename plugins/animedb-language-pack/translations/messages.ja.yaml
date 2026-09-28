@@ -114,6 +114,7 @@ storage_type:
 
 plugin_type:
     integration: 連携
+    local: ローカル
     translation: 翻訳
 
 production_status:

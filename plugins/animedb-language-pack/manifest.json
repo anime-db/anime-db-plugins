@@ -1,11 +1,11 @@
 {
     "id": "animedb-language-pack",
     "name": "Language Pack",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "type": "translation",
     "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
     "author": "AnimeDB",
-    "translation_keys_count": 368,
+    "translation_keys_count": 369,
     "locales": [
         "de",
         "ja"
