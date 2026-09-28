@@ -47,7 +47,7 @@ jobs:
       # Креды зеркал (JSON по id зеркала). Пусто/не задано → push-mirror-registry.php no-op.
       MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: master
 
@@ -63,7 +63,7 @@ jobs:
         run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('composer.json') }}

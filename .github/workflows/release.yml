@@ -50,7 +50,7 @@ jobs:
       # Не задан/пуст → push-mirror-assets.php no-op (зеркала — опциональная инфра).
       MIRROR_CREDS: ${{ secrets.MIRROR_CREDS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # Полная история + теги нужны генерации release notes: выбор предыдущего
           # тега плагина (pick-prev) и git log по диапазону предыдущий-тег..HEAD.
@@ -70,7 +70,7 @@ jobs:
         run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('composer.json') }}
