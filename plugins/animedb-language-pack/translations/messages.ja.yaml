@@ -132,6 +132,7 @@ settings:
     sync_review_badge: '要確認: %count%'
     proxy_link: プロキシサーバー
     language_label: 表示言語
+    language_plugin_translation_note: プラグインのインターフェースはそれぞれの作者が翻訳しています。アプリに組み込まれた言語以外では、プラグインの一部の画面が未翻訳のままになることがあります。
     search_reindex_heading: 検索インデックス
     search_reindex_button: 再インデックス
     search_reindex_success: 検索インデックスを再構築しました。
@@ -195,8 +196,12 @@ settings_plugins:
     id_column: ID
     version_column: バージョン
     type_column: 種類
+    languages_column: 言語
+    translation_coverage_column: 翻訳カバー率
     actions_column: 操作
     settings_link: 設定
+    missing_fallback_locale: このプラグインには現在の表示言語もその代替言語も含まれていないため、インターフェースに未加工の翻訳キーが表示されます。
+    translation_coverage_badge: '%locale%: アプリのインターフェース文字列 %total% 件中 %covered% 件を翻訳済み'
     remove_button: 削除
     remove_success: 'プラグイン「%pluginId%」を削除しました。カタログに蓄積されたデータは保持され、再インストール時に再び使用されます。'
     install_heading: ZIP からインストール
@@ -218,13 +223,19 @@ settings_market:
     back_link: ← 設定
     heading: プラグインマーケット
     empty: マーケットにはまだプラグインがありません。
+    incompatible_plugins_summary: 現在のアプリのバージョンでは利用できないプラグインがあります。アプリを更新すると利用できるようになる場合があります。
     name_column: 名前
     description_column: 説明
     type_column: 種類
     version_column: バージョン
+    locales_column: 言語
+    translation_coverage_column: 翻訳カバー率
     actions_column: 操作
     already_installed: インストール済み
     incompatible_core: '「%requiredCore%」と互換性のあるコアバージョンが必要です。'
+    locale_missing_warning: このプラグインのインターフェースはアプリの現在の言語には対応していません。
+    locale_missing_fallback_warning: このプラグインはアプリの現在の言語にも、その代替言語にも対応していません。翻訳されたテキストの代わりに、未加工のテキストキーが表示されます。
+    translation_coverage_badge: 'アプリのインターフェース文字列の%percent%%を翻訳済み'
     install_button: インストール
     install_success: 'プラグイン「%pluginId%」をインストールしました。'
     update_button: 更新
@@ -369,6 +380,7 @@ anime_detail:
     fill_from_source_button: ソースから取得
     fill_source_label: ソース
     error_fill_not_found: ソースではこの作品に一致するものが見つかりませんでした。
+    error_fill_image_rejected: 取得元から返された画像を保存できませんでした。
 
 anime_new:
     title: 新規作品 — AnimeDB
