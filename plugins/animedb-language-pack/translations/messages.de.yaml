@@ -114,6 +114,7 @@ storage_type:
 
 plugin_type:
     integration: Integration
+    local: Lokal
     translation: Übersetzung
 
 production_status:
