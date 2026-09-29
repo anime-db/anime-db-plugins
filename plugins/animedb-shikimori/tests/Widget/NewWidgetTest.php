@@ -27,12 +27,14 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Widget;
 
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
 use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use AnimeDb\Plugins\AnimedbShikimori\Tests\Widget\Fixture\StubTwigFactory;
 use AnimeDb\Plugins\AnimedbShikimori\Widget\NewWidget;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class NewWidgetTest extends TestCase
 {
@@ -104,5 +106,23 @@ final class NewWidgetTest extends TestCase
         $html = $widget->render();
 
         self::assertStringContainsString('Anonymous Fallback', $html);
+    }
+
+    public function testBuildItemMapsAnimeFieldsIntoWidgetListItemProperties(): void
+    {
+        $anime = [
+            'id' => '42',
+            'name' => 'Cowboy Bebop',
+            'airedOn' => ['date' => '1998-04-03'],
+            'poster' => ['originalUrl' => 'https://shikimori.io/poster/42.jpg'],
+        ];
+
+        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime);
+
+        self::assertInstanceOf(WidgetListItem::class, $item);
+        self::assertSame('https://shikimori.io/poster/42.jpg', $item->thumbnail);
+        self::assertSame('Cowboy Bebop', $item->title);
+        self::assertSame('1998-04-03', $item->subtitle);
+        self::assertSame('https://shikimori.io/animes/42', $item->url);
     }
 }

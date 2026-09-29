@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbShikimori\Widget;
 
 use AnimeDb\PluginContracts\Widget\CatalogWidgetInterface;
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
@@ -108,7 +109,7 @@ final class NewWidget implements CatalogWidgetInterface
     /**
      * @param array<string, mixed> $variables
      *
-     * @return list<array{thumbnail: ?string, title: string, subtitle: ?string, url: string}>
+     * @return list<WidgetListItem>
      */
     private function fetchItems(array $variables, ?string $bearer): array
     {
@@ -128,10 +129,8 @@ final class NewWidget implements CatalogWidgetInterface
 
     /**
      * @param mixed $anime a single `Query.animes[]` element
-     *
-     * @return array{thumbnail: ?string, title: string, subtitle: ?string, url: string}|null
      */
-    private static function buildItem(mixed $anime): ?array
+    private static function buildItem(mixed $anime): ?WidgetListItem
     {
         if (!\is_array($anime) || !isset($anime['id'])) {
             return null;
@@ -142,11 +141,11 @@ final class NewWidget implements CatalogWidgetInterface
             return null;
         }
 
-        return [
-            'thumbnail' => \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
-            'title' => $title,
-            'subtitle' => \is_string($anime['airedOn']['date'] ?? null) ? $anime['airedOn']['date'] : null,
-            'url' => self::DEFAULT_ENDPOINT.'/animes/'.$anime['id'],
-        ];
+        return new WidgetListItem(
+            \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
+            $title,
+            \is_string($anime['airedOn']['date'] ?? null) ? $anime['airedOn']['date'] : null,
+            self::DEFAULT_ENDPOINT.'/animes/'.$anime['id'],
+        );
     }
 }

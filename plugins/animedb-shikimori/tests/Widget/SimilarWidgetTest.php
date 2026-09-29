@@ -30,10 +30,12 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Widget;
 use AnimeDb\PluginContracts\Catalog\AnimeView;
 use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use AnimeDb\Plugins\AnimedbShikimori\Tests\Widget\Fixture\StubTwigFactory;
 use AnimeDb\Plugins\AnimedbShikimori\Widget\SimilarWidget;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class SimilarWidgetTest extends TestCase
 {
@@ -114,6 +116,23 @@ final class SimilarWidgetTest extends TestCase
         $html = $widget->render(new AnimeId(1));
 
         self::assertStringNotContainsString('No id', $html);
+    }
+
+    public function testBuildItemMapsAnimeFieldsIntoWidgetListItemProperties(): void
+    {
+        $anime = [
+            'id' => 205,
+            'name' => 'Samurai Champloo',
+            'image' => ['original' => '/system/animes/original/205.jpg'],
+        ];
+
+        $item = (new ReflectionMethod(SimilarWidget::class, 'buildItem'))->invoke(null, $anime);
+
+        self::assertInstanceOf(WidgetListItem::class, $item);
+        self::assertSame('https://shikimori.io/system/animes/original/205.jpg', $item->thumbnail);
+        self::assertSame('Samurai Champloo', $item->title);
+        self::assertNull($item->subtitle);
+        self::assertSame('https://shikimori.io/animes/205', $item->url);
     }
 
     private function buildWidget(ShikimoriRestClient $restClient, ?string $externalId): SimilarWidget

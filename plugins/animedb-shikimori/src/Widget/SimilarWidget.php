@@ -30,6 +30,7 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Widget;
 use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\EntryWidgetInterface;
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use Twig\Environment;
@@ -79,7 +80,7 @@ final class SimilarWidget implements EntryWidgetInterface
     }
 
     /**
-     * @return list<array{thumbnail: ?string, title: string, subtitle: null, url: string}>
+     * @return list<WidgetListItem>
      */
     private function fetchItems(string $externalId): array
     {
@@ -96,10 +97,8 @@ final class SimilarWidget implements EntryWidgetInterface
 
     /**
      * @param mixed $anime a single element of `GET /api/animes/:id/similar`'s response
-     *
-     * @return array{thumbnail: ?string, title: string, subtitle: null, url: string}|null
      */
-    private static function buildItem(mixed $anime): ?array
+    private static function buildItem(mixed $anime): ?WidgetListItem
     {
         if (!\is_array($anime) || !isset($anime['id'])) {
             return null;
@@ -112,11 +111,11 @@ final class SimilarWidget implements EntryWidgetInterface
 
         $thumbnailPath = $anime['image']['original'] ?? null;
 
-        return [
-            'thumbnail' => \is_string($thumbnailPath) && $thumbnailPath !== '' ? self::DEFAULT_ENDPOINT.$thumbnailPath : null,
-            'title' => $title,
-            'subtitle' => null,
-            'url' => self::DEFAULT_ENDPOINT.'/animes/'.$anime['id'],
-        ];
+        return new WidgetListItem(
+            \is_string($thumbnailPath) && $thumbnailPath !== '' ? self::DEFAULT_ENDPOINT.$thumbnailPath : null,
+            $title,
+            null,
+            self::DEFAULT_ENDPOINT.'/animes/'.$anime['id'],
+        );
     }
 }
