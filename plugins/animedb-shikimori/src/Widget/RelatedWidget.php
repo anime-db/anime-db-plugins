@@ -106,18 +106,21 @@ final class RelatedWidget implements EntryWidgetInterface
         $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
         $related = \is_array($animes[0]['related'] ?? null) ? $animes[0]['related'] : [];
 
-        $items = [];
+        $entries = [];
         foreach ($related as $relation) {
             $anime = \is_array($relation) ? ($relation['anime'] ?? null) : null;
             $item = self::buildItem($anime);
             if ($item !== null) {
-                $items[] = $item;
+                $entries[] = [
+                    'item' => $item,
+                    'airedOn' => \is_string($anime['airedOn']['date'] ?? null) ? $anime['airedOn']['date'] : null,
+                ];
             }
         }
 
-        usort($items, static fn (WidgetListItem $a, WidgetListItem $b): int => self::compareByAiredOn($a->subtitle, $b->subtitle));
+        usort($entries, static fn (array $a, array $b): int => self::compareByAiredOn($a['airedOn'], $b['airedOn']));
 
-        return $items;
+        return array_column($entries, 'item');
     }
 
     /**
@@ -144,6 +147,11 @@ final class RelatedWidget implements EntryWidgetInterface
         );
     }
 
+    /**
+     * Compares raw `airedOn.date` values, deliberately kept independent of
+     * {@see WidgetListItem::$subtitle} — the latter is a display string and must stay free
+     * to change format (or gain extra text) without silently breaking sort order.
+     */
     private static function compareByAiredOn(?string $a, ?string $b): int
     {
         return match (true) {
