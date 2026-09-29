@@ -30,10 +30,12 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Tests\Widget;
 use AnimeDb\PluginContracts\Catalog\AnimeView;
 use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Tests\Widget\Fixture\StubTwigFactory;
 use AnimeDb\Plugins\AnimedbShikimori\Widget\RelatedWidget;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class RelatedWidgetTest extends TestCase
 {
@@ -125,6 +127,24 @@ final class RelatedWidgetTest extends TestCase
         self::assertNotFalse($noDatePosition);
         self::assertLessThan($newerPosition, $oldestPosition);
         self::assertLessThan($noDatePosition, $newerPosition);
+    }
+
+    public function testBuildItemMapsAnimeFieldsIntoWidgetListItemProperties(): void
+    {
+        $anime = [
+            'id' => 5,
+            'name' => 'Cowboy Bebop: Tengoku no Tobira',
+            'airedOn' => ['date' => '2001-09-01'],
+            'poster' => ['originalUrl' => 'https://shikimori.io/poster/5.jpg'],
+        ];
+
+        $item = (new ReflectionMethod(RelatedWidget::class, 'buildItem'))->invoke(null, $anime);
+
+        self::assertInstanceOf(WidgetListItem::class, $item);
+        self::assertSame('https://shikimori.io/poster/5.jpg', $item->thumbnail);
+        self::assertSame('Cowboy Bebop: Tengoku no Tobira', $item->title);
+        self::assertSame('2001-09-01', $item->subtitle);
+        self::assertSame('https://shikimori.io/animes/5', $item->url);
     }
 
     private function buildWidget(GraphQlClient $client, ?string $externalId): RelatedWidget

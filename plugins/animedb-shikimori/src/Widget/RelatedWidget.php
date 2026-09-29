@@ -30,6 +30,7 @@ namespace AnimeDb\Plugins\AnimedbShikimori\Widget;
 use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\EntryWidgetInterface;
+use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use Twig\Environment;
@@ -97,7 +98,7 @@ final class RelatedWidget implements EntryWidgetInterface
     }
 
     /**
-     * @return list<array{thumbnail: ?string, title: string, subtitle: ?string, url: string}>
+     * @return list<WidgetListItem>
      */
     private function fetchItems(string $externalId): array
     {
@@ -105,31 +106,24 @@ final class RelatedWidget implements EntryWidgetInterface
         $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
         $related = \is_array($animes[0]['related'] ?? null) ? $animes[0]['related'] : [];
 
-        $entries = [];
+        $items = [];
         foreach ($related as $relation) {
             $anime = \is_array($relation) ? ($relation['anime'] ?? null) : null;
-            $entry = self::buildEntry($anime);
-            if ($entry !== null) {
-                $entries[] = $entry;
+            $item = self::buildItem($anime);
+            if ($item !== null) {
+                $items[] = $item;
             }
         }
 
-        usort($entries, static fn (array $a, array $b): int => self::compareByAiredOn($a['sortDate'], $b['sortDate']));
+        usort($items, static fn (WidgetListItem $a, WidgetListItem $b): int => self::compareByAiredOn($a->subtitle, $b->subtitle));
 
-        return array_map(static fn (array $entry): array => [
-            'thumbnail' => $entry['thumbnail'],
-            'title' => $entry['title'],
-            'subtitle' => $entry['sortDate'],
-            'url' => $entry['url'],
-        ], $entries);
+        return $items;
     }
 
     /**
      * @param mixed $anime a single `Anime.related[].anime` element, or null for a manga relation
-     *
-     * @return array{thumbnail: ?string, title: string, url: string, sortDate: ?string}|null
      */
-    private static function buildEntry(mixed $anime): ?array
+    private static function buildItem(mixed $anime): ?WidgetListItem
     {
         if (!\is_array($anime) || !isset($anime['id'])) {
             return null;
@@ -142,12 +136,12 @@ final class RelatedWidget implements EntryWidgetInterface
 
         $id = (string) $anime['id'];
 
-        return [
-            'thumbnail' => \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
-            'title' => $title,
-            'url' => self::DEFAULT_ENDPOINT.'/animes/'.$id,
-            'sortDate' => \is_string($anime['airedOn']['date'] ?? null) ? $anime['airedOn']['date'] : null,
-        ];
+        return new WidgetListItem(
+            \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
+            $title,
+            \is_string($anime['airedOn']['date'] ?? null) ? $anime['airedOn']['date'] : null,
+            self::DEFAULT_ENDPOINT.'/animes/'.$id,
+        );
     }
 
     private static function compareByAiredOn(?string $a, ?string $b): int
