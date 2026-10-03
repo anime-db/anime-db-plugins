@@ -358,9 +358,10 @@ final class MalFiller implements FillerInterface
     /**
      * Converts MyAnimeList's `average_episode_duration` (seconds) to whole minutes, rounded to
      * the nearest minute (`round()`, half away from zero — e.g. 1470 seconds, 24.5 minutes,
-     * rounds up to 25). `0` carries no duration information (MyAnimeList's placeholder for a
-     * title that has not aired yet), so it maps to `null` rather than a misleading zero,
-     * mirroring the `episodesCount` zero guard above.
+     * rounds up to 25). Any positive number of seconds yields at least 1 minute, since the
+     * application rejects a non-positive duration. `0` carries no duration information
+     * (MyAnimeList's placeholder for a title that has not aired yet), so it maps to `null`
+     * rather than a misleading zero, mirroring the `episodesCount` zero guard above.
      *
      * @param array<string, mixed> $anime
      */
@@ -368,6 +369,8 @@ final class MalFiller implements FillerInterface
     {
         $seconds = $anime['average_episode_duration'] ?? null;
 
-        return \is_int($seconds) && $seconds > 0 ? (int) round($seconds / self::SECONDS_PER_MINUTE) : null;
+        return \is_int($seconds) && $seconds > 0
+            ? max(1, (int) round($seconds / self::SECONDS_PER_MINUTE))
+            : null;
     }
 }

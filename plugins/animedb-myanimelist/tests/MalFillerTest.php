@@ -337,6 +337,35 @@ final class MalFillerTest extends TestCase
         self::assertSame(25, $this->buildFiller($client)->findById('3455')->durationMinutes);
     }
 
+    /**
+     * `average_episode_duration` under 30 seconds (short promos, CMs, teasers that MyAnimeList
+     * carries as regular entries) rounds down to 0 minutes, which the application rejects as an
+     * invalid duration. Any positive number of seconds must therefore floor to at least 1 minute.
+     *
+     * @dataProvider provideShortAverageEpisodeDurations
+     */
+    public function testFindByIdFloorsShortAverageEpisodeDurationToOneMinute(int $seconds, int $expectedMinutes): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['average_episode_duration'] = $seconds;
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        self::assertSame($expectedMinutes, $this->buildFiller($client)->findById('3455')->durationMinutes);
+    }
+
+    /**
+     * @return iterable<string, array{int, int}>
+     */
+    public static function provideShortAverageEpisodeDurations(): iterable
+    {
+        yield '20 seconds rounds to 0 but floors to 1 minute' => [20, 1];
+        yield '29 seconds rounds to 0 but floors to 1 minute' => [29, 1];
+        yield '30 seconds rounds to 1 minute' => [30, 1];
+        yield '90 seconds rounds up to 2 minutes' => [90, 2];
+    }
+
     public function testFindByIdTreatsZeroAverageEpisodeDurationAsUnknown(): void
     {
         $client = $this->createMock(MalApiClient::class);
