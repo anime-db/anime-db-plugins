@@ -461,7 +461,6 @@ final class MalApiClientTest extends TestCase
     {
         yield 'server error' => [500];
         yield 'not found' => [404];
-        yield 'rate limited' => [429];
     }
 
     /**
@@ -478,10 +477,46 @@ final class MalApiClientTest extends TestCase
         $client->updateListStatus('a-bearer-token', '123', 'watching', null);
     }
 
-    public function testUpdateListStatusDoesNotRetryOn429(): void
+    public function testUpdateListStatusRetriesOn429ThenSucceeds(): void
+    {
+        $capturedBodies = [];
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturnCallback(
+            function (string $content) use (&$capturedBodies): StreamInterface {
+                $capturedBodies[] = $content;
+
+                $stream = $this->createMock(StreamInterface::class);
+                $stream->method('__toString')->willReturn($content);
+
+                return $stream;
+            },
+        );
+
+        $responses = [
+            $this->jsonResponse(429, [], ['Retry-After' => '1']),
+            $this->jsonResponse(200, ['status' => 'watching']),
+        ];
+        $call = 0;
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::exactly(2))
+            ->method('sendRequest')
+            ->willReturnCallback(static function () use (&$call, $responses): ResponseInterface {
+                return $responses[$call++];
+            });
+
+        $client = $this->buildClient($httpClient, null, $streamFactory);
+        $result = $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+
+        self::assertSame(['status' => 'watching'], $result);
+        self::assertCount(2, $capturedBodies);
+        self::assertSame($capturedBodies[0], $capturedBodies[1]);
+    }
+
+    public function testUpdateListStatusExhaustingTheRetryBudgetOn429ThrowsMalRequestException(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);
-        $httpClient->expects(self::once())
+        $httpClient->expects(self::exactly(6))
             ->method('sendRequest')
             ->willReturn($this->jsonResponse(429, [], ['Retry-After' => '1']));
 
