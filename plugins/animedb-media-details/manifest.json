@@ -1,7 +1,7 @@
 {
     "id": "animedb-media-details",
     "name": "Media details",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "type": "local",
     "description": "Официальный плагин AnimeDB: характеристики файлов записи (контейнер, дорожки, субтитры).",
     "author": "AnimeDB",
@@ -15,6 +15,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",
-        "plugin-contracts": "^0.24"
+        "plugin-contracts": "^0.25"
     }
 }
