@@ -1,0 +1,17 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+oauth_result:
+    page_title: Авторизация MyAnimeList
+    heading:
+        success: Готово
+        failure: Авторизация не завершена
+    message:
+        cancelled: Авторизация была отменена или не завершилась. Можно закрыть эту вкладку и попробовать снова из приложения.
+        failed: Не удалось завершить авторизацию в MyAnimeList. Попробуйте снова из приложения.
+        success: Авторизация завершена. Можно закрыть эту вкладку и вернуться в приложение.
+    warning:
+        probe_failed: Токен сохранён, но проверочный запрос к MyAnimeList не выполнился. Синхронизация повторит попытку позже.
