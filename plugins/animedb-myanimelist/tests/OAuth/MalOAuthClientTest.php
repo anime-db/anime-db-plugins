@@ -30,7 +30,6 @@ namespace AnimeDb\Plugins\AnimedbMyanimelist\Tests\OAuth;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
-use AnimeDb\Plugins\AnimedbMyanimelist\Http\UserAgent;
 use AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthClient;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface;
@@ -86,12 +85,12 @@ final class MalOAuthClientTest extends TestCase
     public function testTokenRequestHeadersCarryTheFillerFormattedUserAgent(): void
     {
         $manifest = $this->createMock(OwnManifestInterface::class);
-        $manifest->method('id')->willReturn('animedb-myanimelist');
-        $manifest->method('version')->willReturn('0.3.0');
+        $manifest->method('id')->willReturn('test-vendor-plugin');
+        $manifest->method('version')->willReturn('9.9.9-test');
         $client = $this->buildClient($manifest);
 
         self::assertSame(
-            ['User-Agent' => UserAgent::forManifest($manifest)],
+            ['User-Agent' => 'AnimeDB test-vendor-plugin/9.9.9-test (+https://anime-db.org/)'],
             $this->invoke($client, 'tokenRequestHeaders'),
         );
     }

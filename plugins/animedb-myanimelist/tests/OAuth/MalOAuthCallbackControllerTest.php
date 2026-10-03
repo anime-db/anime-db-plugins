@@ -82,7 +82,8 @@ final class MalOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/myanimelist', 'GET', ['code' => 'the-code', 'state' => 'the-state']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('Done', (string) $response->getContent());
+        self::assertStringContainsString('Authorization complete. You can close this tab and return to the app.', (string) $response->getContent());
+        self::assertStringNotContainsString('not completed', (string) $response->getContent());
         self::assertStringNotContainsString('did not succeed', (string) $response->getContent());
     }
 
@@ -98,7 +99,8 @@ final class MalOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/myanimelist', 'GET', ['code' => 'the-code', 'state' => 'the-state']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('Done', (string) $response->getContent());
+        self::assertStringContainsString('Authorization complete. You can close this tab and return to the app.', (string) $response->getContent());
+        self::assertStringNotContainsString('not completed', (string) $response->getContent());
         self::assertStringContainsString('did not succeed', (string) $response->getContent());
     }
 
@@ -124,7 +126,8 @@ final class MalOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/myanimelist', 'GET', ['code' => 'the-code', 'state' => 'the-state']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('not completed', (string) $response->getContent());
+        self::assertStringContainsString('Could not complete MyAnimeList authorization', (string) $response->getContent());
+        self::assertStringNotContainsString('was cancelled', (string) $response->getContent());
     }
 
     public function testTransportFailureDuringHandleCallbackIsShownAsAFriendlyPage(): void
@@ -139,6 +142,7 @@ final class MalOAuthCallbackControllerTest extends TestCase
         $response = $controller(Request::create('/oauth/myanimelist', 'GET', ['code' => 'the-code', 'state' => 'the-state']));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('not completed', (string) $response->getContent());
+        self::assertStringContainsString('Could not complete MyAnimeList authorization', (string) $response->getContent());
+        self::assertStringNotContainsString('was cancelled', (string) $response->getContent());
     }
 }

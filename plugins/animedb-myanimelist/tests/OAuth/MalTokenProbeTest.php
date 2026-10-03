@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\AnimedbMyanimelist\Tests\OAuth;
 
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalTokenProbe;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -38,15 +39,28 @@ use Psr\Http\Message\ResponseInterface;
 
 final class MalTokenProbeTest extends TestCase
 {
-    public function testReturnsTrueOnA2xxUsersMeResponse(): void
+    /**
+     * @return iterable<string, array{int, bool}>
+     */
+    public static function statusCodeBoundaryProvider(): iterable
+    {
+        yield 'just below the range is a failure' => [199, false];
+        yield 'range start is a success' => [200, true];
+        yield 'mid-range is a success' => [204, true];
+        yield 'range end is still a success' => [299, true];
+        yield 'just above the range is a failure' => [300, false];
+    }
+
+    #[DataProvider('statusCodeBoundaryProvider')]
+    public function testChecksTheStatusCodeAgainstTheHalfOpenSuccessRange(int $statusCode, bool $expected): void
     {
         $response = $this->createMock(ResponseInterface::class);
-        $response->method('getStatusCode')->willReturn(200);
+        $response->method('getStatusCode')->willReturn($statusCode);
 
         $httpClient = $this->createMock(ClientInterface::class);
         $httpClient->method('sendRequest')->willReturn($response);
 
-        self::assertTrue($this->buildProbe($httpClient)->check('some-token'));
+        self::assertSame($expected, $this->buildProbe($httpClient)->check('some-token'));
     }
 
     public function testReturnsFalseOnANon2xxResponseWithoutThrowing(): void
@@ -94,14 +108,14 @@ final class MalTokenProbeTest extends TestCase
         $httpClient->method('sendRequest')->willReturn($response);
 
         $manifest = $this->createMock(OwnManifestInterface::class);
-        $manifest->method('id')->willReturn('animedb-myanimelist');
-        $manifest->method('version')->willReturn('0.3.0');
+        $manifest->method('id')->willReturn('test-vendor-plugin');
+        $manifest->method('version')->willReturn('9.9.9-test');
 
         $probe = new MalTokenProbe($httpClient, $requestFactory, $manifest);
 
         self::assertTrue($probe->check('the-access-token'));
         self::assertSame('Bearer the-access-token', $capturedHeaders['Authorization']);
-        self::assertSame('AnimeDB animedb-myanimelist/0.3.0 (+https://anime-db.org/)', $capturedHeaders['User-Agent']);
+        self::assertSame('AnimeDB test-vendor-plugin/9.9.9-test (+https://anime-db.org/)', $capturedHeaders['User-Agent']);
     }
 
     private function buildProbe(ClientInterface $httpClient): MalTokenProbe
