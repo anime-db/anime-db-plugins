@@ -41,7 +41,7 @@ final class SynopsisCleaner
     /** @var list<string> */
     private const TRAILING_NOTICE_PATTERNS = [
         '/\s*\[Written by MAL Rewrite\]\s*$/',
-        '/\s*\(Source:[^)]*\)\s*$/',
+        '/\s*\(Source:(?:[^()]|\([^()]*\))*\)\s*$/',
     ];
 
     public static function clean(string $raw): string

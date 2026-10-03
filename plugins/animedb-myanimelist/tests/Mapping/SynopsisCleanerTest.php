@@ -60,6 +60,11 @@ final class SynopsisCleanerTest extends TestCase
             'He shouts [NO!] and runs away.',
         ];
 
+        yield '(Source: ...) tail with one level of nested parentheses is stripped' => [
+            "A story about friendship.\n\n(Source: Wikipedia (Japanese))",
+            'A story about friendship.',
+        ];
+
         yield 'empty string stays empty' => ['', ''];
     }
 
