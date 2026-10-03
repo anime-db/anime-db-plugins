@@ -28,8 +28,15 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbMyanimelist\Tests;
 
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
+use AnimeDb\PluginContracts\Model\AnimeName;
+use AnimeDb\PluginContracts\Model\AnimeType;
+use AnimeDb\PluginContracts\Model\Demographic;
+use AnimeDb\PluginContracts\Model\GenreCode;
+use AnimeDb\PluginContracts\Model\NameRole;
+use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\MalFiller;
 use PHPUnit\Framework\TestCase;
 
@@ -169,6 +176,259 @@ final class MalFillerTest extends TestCase
         );
     }
 
+    /**
+     * `$externalId` is attacker-controlled (a stored id, or whatever a caller passes), and is
+     * interpolated into the request path — so a value that is not a bare positive integer must
+     * be rejected before a request is ever made, rather than reach {@see MalApiClient::get()}
+     * and rewrite the path/query (e.g. a `../` segment or a second `?`).
+     *
+     * @dataProvider provideMalformedExternalIds
+     */
+    public function testFindByIdReturnsNullForMalformedExternalIdWithoutHttpCall(string $externalId): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::never())->method('get');
+
+        self::assertNull($this->buildFiller($client)->findById($externalId));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMalformedExternalIds(): iterable
+    {
+        yield 'path traversal' => ['1/../../users/@me'];
+        yield 'extra query string' => ['1?fields=foo'];
+        yield 'fragment' => ['1#frag'];
+        yield 'empty' => [''];
+        yield 'zero' => ['0'];
+        yield 'negative' => ['-1'];
+        yield 'leading zero' => ['01'];
+        yield 'non-numeric' => ['abc'];
+    }
+
+    public function testFindByIdReturnsNullWhenApiRespondsNotFound(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willThrowException(new NotFoundHttpException('MyAnimeList API responded with HTTP 404.'));
+
+        self::assertNull($this->buildFiller($client)->findById('3455'));
+    }
+
+    public function testFindByIdReturnsNullWhenTitleIsMissingOrEmpty(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(['id' => 3455]);
+
+        self::assertNull($this->buildFiller($client)->findById('3455'));
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(['id' => 3455, 'title' => '']);
+
+        self::assertNull($this->buildFiller($client)->findById('3455'));
+    }
+
+    /**
+     * Uses a real captured card ({@see self::cardFixture()}) rather than a handwritten array:
+     * `alternative_titles` and `synopsis` are exactly the fields
+     * {@see MalFiller::buildAlternativeNames()}/`buildDescriptions()` map, and this fixture also
+     * carries the `Ecchi` 18+ genre MAL's taxonomy mixes in among ordinary ones, next to `Harem`
+     * and `School` (themes) and `Shounen` (demographic) — none of the contract's dictionaries
+     * has a case for an 18+ rating, so {@see \AnimeDb\Plugins\AnimedbMyanimelist\Mapping\GenreMapper}
+     * drops it rather than failing the whole lookup.
+     */
+    public function testFindByIdMapsFullCard(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())
+            ->method('get')
+            ->with('/anime/3455', self::callback(static function (array $query): bool {
+                $fields = explode(',', $query['fields'] ?? '');
+                foreach ([
+                    'alternative_titles', 'synopsis', 'genres', 'media_type', 'start_date',
+                    'end_date', 'num_episodes', 'average_episode_duration', 'studios',
+                    'main_picture', 'pictures',
+                ] as $field) {
+                    if (!\in_array($field, $fields, true)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }))
+            ->willReturn(self::cardFixture('card_3455.json'));
+
+        $data = $this->buildFiller($client)->findById('3455');
+
+        self::assertNotNull($data);
+        self::assertSame('To LOVE-Ru', $data->title);
+        self::assertEquals([
+            new AnimeName('To LOVEる -とらぶる-', 'ja', NameRole::Official),
+            new AnimeName('To Love Ru', 'en', NameRole::Official),
+            new AnimeName('Toraburu', null, NameRole::Synonym),
+            new AnimeName('Love Trouble', null, NameRole::Synonym),
+        ], $data->alternativeNames);
+        self::assertIsArray($data->descriptions);
+        self::assertSame(['en'], array_keys($data->descriptions));
+        self::assertStringEndsWith('defy the laws of physics.', $data->descriptions['en']);
+        self::assertStringNotContainsString('[Written by MAL Rewrite]', $data->descriptions['en']);
+        self::assertSame([GenreCode::Comedy, GenreCode::Romance, GenreCode::SciFi], $data->genres);
+        self::assertSame([ThemeCode::Harem, ThemeCode::School], $data->themes);
+        self::assertSame(Demographic::Shounen, $data->demographic);
+        self::assertSame(['Xebec'], $data->studios);
+        self::assertSame(AnimeType::Tv, $data->type);
+        self::assertEquals(new \DateTimeImmutable('2008-04-04'), $data->datePremiere);
+        self::assertEquals(new \DateTimeImmutable('2008-09-26'), $data->dateEnd);
+        self::assertSame(25, $data->durationMinutes);
+        self::assertSame(26, $data->episodesCount);
+        self::assertSame('https://cdn.myanimelist.net/images/anime/1292/147431l.jpg', $data->cover);
+        self::assertNotNull($data->images);
+        self::assertCount(11, $data->images);
+        self::assertSame('https://cdn.myanimelist.net/images/anime/10/20614l.jpg', $data->images[0]);
+        self::assertNull($data->countries);
+    }
+
+    public function testFindByIdCompletesAPartialEndDateToTheLastDayOfItsPeriod(): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['end_date'] = '2008-09';
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        $data = $this->buildFiller($client)->findById('3455');
+
+        self::assertEquals(new \DateTimeImmutable('2008-04-04'), $data->datePremiere);
+        self::assertEquals(new \DateTimeImmutable('2008-09-30'), $data->dateEnd);
+    }
+
+    /**
+     * `end_date` is only `2008` (year-only, completed to `2008-12-31` by {@see
+     * \AnimeDb\Plugins\AnimedbMyanimelist\Mapping\DateParser}), while `start_date` is a fully
+     * dated `2009-01-10` from a later season of the same card — a real mismatch rather than a
+     * contrived one, since MyAnimeList lets these two fields come from different editorial
+     * passes. The rounded `dateEnd` lands before `datePremiere`, so the guard must drop
+     * `dateEnd` and keep `datePremiere`, instead of handing the host a card it rejects outright.
+     */
+    public function testFindByIdDropsDateEndWhenRoundingPutsItBeforeDatePremiere(): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['start_date'] = '2009-01-10';
+        $fixture['end_date'] = '2008';
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        $data = $this->buildFiller($client)->findById('3455');
+
+        self::assertEquals(new \DateTimeImmutable('2009-01-10'), $data->datePremiere);
+        self::assertNull($data->dateEnd);
+    }
+
+    public function testFindByIdConvertsAverageEpisodeDurationFromSecondsToMinutes(): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['average_episode_duration'] = 1470;
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        // 1470 seconds = 24.5 minutes, rounded to the nearest minute (half away from zero).
+        self::assertSame(25, $this->buildFiller($client)->findById('3455')->durationMinutes);
+    }
+
+    /**
+     * `average_episode_duration` under 30 seconds (short promos, CMs, teasers that MyAnimeList
+     * carries as regular entries) rounds down to 0 minutes, which the application rejects as an
+     * invalid duration. Any positive number of seconds must therefore floor to at least 1 minute.
+     *
+     * @dataProvider provideShortAverageEpisodeDurations
+     */
+    public function testFindByIdFloorsShortAverageEpisodeDurationToOneMinute(int $seconds, int $expectedMinutes): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['average_episode_duration'] = $seconds;
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        self::assertSame($expectedMinutes, $this->buildFiller($client)->findById('3455')->durationMinutes);
+    }
+
+    /**
+     * @return iterable<string, array{int, int}>
+     */
+    public static function provideShortAverageEpisodeDurations(): iterable
+    {
+        yield '20 seconds rounds to 0 but floors to 1 minute' => [20, 1];
+        yield '29 seconds rounds to 0 but floors to 1 minute' => [29, 1];
+        yield '30 seconds rounds to 1 minute' => [30, 1];
+        yield '90 seconds rounds up to 2 minutes' => [90, 2];
+    }
+
+    public function testFindByIdTreatsZeroAverageEpisodeDurationAsUnknown(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(self::cardFixture('card_59068.json'));
+
+        self::assertNull($this->buildFiller($client)->findById('59068')->durationMinutes);
+    }
+
+    public function testFindByIdTreatsZeroEpisodesAsUnknown(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(self::cardFixture('card_59068.json'));
+
+        self::assertNull($this->buildFiller($client)->findById('59068')->episodesCount);
+    }
+
+    public function testFindByIdDropsTypeForUnknownMediaType(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(self::cardFixture('card_63143.json'));
+
+        self::assertNull($this->buildFiller($client)->findById('63143')->type);
+    }
+
+    public function testFindByIdSendsRequestWithoutAuthorizationBearer(): void
+    {
+        $capturedBearer = 'not-called';
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())
+            ->method('get')
+            ->willReturnCallback(function (string $path, array $query = [], ?callable $onHeartbeat = null, ?string $bearer = null) use (&$capturedBearer): array {
+                $capturedBearer = $bearer;
+
+                return self::cardFixture('card_3455.json');
+            });
+
+        $this->buildFiller($client)->findById('3455');
+
+        self::assertNull($capturedBearer);
+    }
+
+    public function testGetFillableFieldsMatchesExactlyWhatFindByIdFills(): void
+    {
+        $filler = $this->buildFiller($this->createMock(MalApiClient::class));
+
+        self::assertSame([
+            'title',
+            'alternativeNames',
+            'descriptions',
+            'genres',
+            'themes',
+            'demographic',
+            'studios',
+            'type',
+            'datePremiere',
+            'dateEnd',
+            'durationMinutes',
+            'episodesCount',
+            'cover',
+            'images',
+        ], $filler->getFillableFields());
+    }
+
     public function testResolveExternalIdMatchesMyAnimeListDomainsAndPaths(): void
     {
         $filler = $this->buildFiller($this->createMock(MalApiClient::class));
@@ -197,6 +457,20 @@ final class MalFillerTest extends TestCase
     private static function narutoSearchFixture(): array
     {
         $json = file_get_contents(__DIR__.'/Fixture/search_naruto.json');
+        \assert($json !== false);
+
+        /** @var array<string, mixed> $fixture */
+        $fixture = json_decode($json, true, 512, \JSON_THROW_ON_ERROR);
+
+        return $fixture;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function cardFixture(string $file): array
+    {
+        $json = file_get_contents(__DIR__.'/Fixture/'.$file);
         \assert($json !== false);
 
         /** @var array<string, mixed> $fixture */

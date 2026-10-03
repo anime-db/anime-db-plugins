@@ -1,12 +1,12 @@
 {
     "id": "animedb-myanimelist",
     "name": "MyAnimeList",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "type": "integration",
-    "description": "Официальный плагин-источник MyAnimeList: поиск аниме и распознавание ссылок.",
+    "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
     "author": "AnimeDB",
     "features": {
-        "filler": false,
+        "filler": true,
         "sync": false,
         "related": false,
         "similar": false,
