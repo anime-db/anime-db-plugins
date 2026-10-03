@@ -1,0 +1,20 @@
+{
+    "id": "animedb-myanimelist",
+    "name": "MyAnimeList",
+    "version": "0.1.0",
+    "type": "integration",
+    "description": "Официальный плагин-источник MyAnimeList: поиск аниме и распознавание ссылок.",
+    "author": "AnimeDB",
+    "features": {
+        "filler": false,
+        "sync": false,
+        "related": false,
+        "similar": false,
+        "new": false
+    },
+    "require": {
+        "core": ">=0.0.1",
+        "php": ">=8.5",
+        "plugin-contracts": "^0.25"
+    }
+}

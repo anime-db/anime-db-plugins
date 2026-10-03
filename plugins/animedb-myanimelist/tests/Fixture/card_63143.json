@@ -1,0 +1,69 @@
+{
+    "id": 63143,
+    "title": "Chainsaw Man: Shikaku-hen",
+    "main_picture": {
+        "medium": "https://cdn.myanimelist.net/images/anime/1432/154522.jpg",
+        "large": "https://cdn.myanimelist.net/images/anime/1432/154522l.jpg"
+    },
+    "alternative_titles": {
+        "synonyms": [
+            "CSM"
+        ],
+        "en": "Chainsaw Man: Assassins Arc",
+        "ja": "チェンソーマン刺客篇"
+    },
+    "synopsis": "Sequel to Chainsaw Man Movie: Reze-hen.",
+    "media_type": "unknown",
+    "status": "not_yet_aired",
+    "genres": [
+        {
+            "id": 1,
+            "name": "Action"
+        },
+        {
+            "id": 10,
+            "name": "Fantasy"
+        },
+        {
+            "id": 58,
+            "name": "Gore"
+        },
+        {
+            "id": 27,
+            "name": "Shounen"
+        },
+        {
+            "id": 82,
+            "name": "Urban Fantasy"
+        }
+    ],
+    "num_episodes": 0,
+    "average_episode_duration": 0,
+    "studios": [
+        {
+            "id": 569,
+            "name": "MAPPA"
+        }
+    ],
+    "pictures": [
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/1432/154522.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1432/154522l.jpg"
+        }
+    ],
+    "related_anime": [
+        {
+            "node": {
+                "id": 57555,
+                "title": "Chainsaw Man Movie: Reze-hen",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1763/150638.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1763/150638l.jpg"
+                }
+            },
+            "relation_type": "prequel",
+            "relation_type_formatted": "Prequel"
+        }
+    ],
+    "recommendations": []
+}
