@@ -47,14 +47,29 @@ final class MalIdResolverTest extends TestCase
         self::assertSame('20', MalIdResolver::resolve(['https://myanimelist.net/anime.php?id=20']));
     }
 
-    public function testResolvesIdFromASubdomain(): void
+    public function testResolvesIdFromTheWwwSubdomain(): void
     {
-        self::assertSame('20', MalIdResolver::resolve(['https://cdn.myanimelist.net/anime/20/Naruto']));
+        self::assertSame('20', MalIdResolver::resolve(['https://www.myanimelist.net/anime/20']));
     }
 
     public function testReturnsNullForAMangaUrl(): void
     {
         self::assertNull(MalIdResolver::resolve(['https://myanimelist.net/manga/20']));
+    }
+
+    public function testReturnsNullForAnImageCdnUrl(): void
+    {
+        self::assertNull(MalIdResolver::resolve(['https://cdn.myanimelist.net/images/anime/13/17405.jpg']));
+    }
+
+    public function testReturnsNullWhenAnimePathIsNotAtTheStart(): void
+    {
+        self::assertNull(MalIdResolver::resolve(['https://myanimelist.net/manga/1/x/anime/5']));
+    }
+
+    public function testReturnsNullForAnimePhpWithAnArrayIdParameter(): void
+    {
+        self::assertNull(MalIdResolver::resolve(['https://myanimelist.net/anime.php?id[]=1']));
     }
 
     public function testReturnsNullWhenNoUrlMatchesMyAnimeListDomain(): void

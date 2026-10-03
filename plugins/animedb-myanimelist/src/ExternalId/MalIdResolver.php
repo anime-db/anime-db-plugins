@@ -28,11 +28,12 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbMyanimelist\ExternalId;
 
 /**
- * Matches the `myanimelist.net` domain (including subdomains) and extracts the numeric anime
- * id from either of two URL shapes: the current `/anime/{id}` (optionally followed by
- * `/<slug>`), and the legacy query-string form `/anime.php?id={id}` still found in older
- * catalog records. A `/manga/{id}` URL (or any other path) is deliberately not recognized —
- * only anime ids are this plugin's concern.
+ * Matches the `myanimelist.net`/`www.myanimelist.net` host and extracts the numeric anime id
+ * from either of two URL shapes: the current `/anime/{id}` (optionally followed by `/<slug>`),
+ * and the legacy query-string form `/anime.php?id={id}` still found in older catalog records.
+ * A `/manga/{id}` URL, an `assets`/`images` CDN path, or any other path is deliberately not
+ * recognized — only anime ids are this plugin's concern, and other `myanimelist.net`
+ * subdomains (e.g. the image CDN) do not serve anime pages at those paths.
  *
  * Used by {@see \AnimeDb\Plugins\AnimedbMyanimelist\MalFiller}, which implements
  * `ExternalIdResolutionInterface` through `SearchByPluginInterface` — extracted here instead
@@ -55,16 +56,16 @@ final class MalIdResolver
             }
 
             $host = parse_url($url, \PHP_URL_HOST);
-            if (!is_string($host) || preg_match('/(^|\.)myanimelist\.net$/i', $host) !== 1) {
+            if (!is_string($host) || preg_match('/^(www\.)?myanimelist\.net$/i', $host) !== 1) {
                 continue;
             }
 
             $path = parse_url($url, \PHP_URL_PATH);
-            if (is_string($path) && preg_match('#/anime/(\d+)(?:/|$)#', $path, $matches) === 1) {
+            if (is_string($path) && preg_match('#^/anime/(\d+)(?:/|$)#', $path, $matches) === 1) {
                 return $matches[1];
             }
 
-            if (is_string($path) && preg_match('#/anime\.php$#', $path) === 1) {
+            if (is_string($path) && preg_match('#^/anime\.php$#', $path) === 1) {
                 $query = parse_url($url, \PHP_URL_QUERY);
                 if (is_string($query)) {
                     parse_str($query, $params);
