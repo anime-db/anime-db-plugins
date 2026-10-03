@@ -1,5 +1,5 @@
 {
-    "sequence": 41,
+    "sequence": 42,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -154,7 +154,7 @@
             "manifest": {
                 "id": "animedb-shikimori",
                 "name": "Shikimori",
-                "version": "0.9.5",
+                "version": "0.9.6",
                 "type": "integration",
                 "description": "Официальный плагин-источник Shikimori: поиск и заполнение карточек аниме.",
                 "author": "AnimeDB",
@@ -172,10 +172,20 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.24"
+                    "plugin-contracts": "^0.25"
                 }
             },
             "versions": [
+                {
+                    "version": "0.9.6",
+                    "core": ">=0.0.1",
+                    "sha256": "cea30561b43a680f38e9a7afad0751185d37c81fb0b5941cb8b293c2f5238c24",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.25"
+                },
                 {
                     "version": "0.9.5",
                     "core": ">=0.0.1",
