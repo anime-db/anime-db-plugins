@@ -241,6 +241,24 @@ final class MalApiClientTest extends TestCase
         $client->fetchAnimeListPage('a-bearer-token', 10, 5);
     }
 
+    public function testFetchAnimeListPageSendsBearerAuthorizationHeaderAndNoClientIdHeader(): void
+    {
+        $headers = [];
+        $request = $this->fluentRequestCapturingHeadersInto($headers);
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+        $client->fetchAnimeListPage('a-bearer-token', 0, 5);
+
+        self::assertSame('Bearer a-bearer-token', $headers['Authorization'] ?? null);
+        self::assertArrayNotHasKey('X-MAL-CLIENT-ID', $headers);
+    }
+
     public function testFetchAnimeListPageWithPagingNextButNoItemsHasNoNextPage(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);
@@ -343,13 +361,42 @@ final class MalApiClientTest extends TestCase
             ->with('PATCH', 'https://api.myanimelist.net/v2/anime/123/my_list_status')
             ->willReturn($this->fluentRequest());
 
+        $responseBody = ['status' => 'completed', 'num_episodes_watched' => 12, 'updated_at' => '2026-01-01T00:00:00+00:00'];
         $httpClient = $this->createMock(ClientInterface::class);
-        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['status' => 'watching']));
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, $responseBody));
 
         $client = $this->buildClient($httpClient, $requestFactory);
         $result = $client->updateListStatus('a-bearer-token', '123', 'watching', null);
 
-        self::assertSame(['status' => 'watching'], $result);
+        self::assertSame($responseBody, $result);
+    }
+
+    public function testUpdateListStatusRejectsInvalidAnimeIdWithoutSendingRequest(): void
+    {
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::never())->method('createRequest');
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::never())->method('sendRequest');
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $client->updateListStatus('a-bearer-token', '1/../x', 'watching', null);
+    }
+
+    public function testUpdateListStatusRejectsEmptyAnimeIdWithoutSendingRequest(): void
+    {
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::never())->method('createRequest');
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::never())->method('sendRequest');
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $client->updateListStatus('a-bearer-token', '', 'watching', null);
     }
 
     public function testUpdateListStatusBodyCarriesStatusAndIsRewatchingFalseWithoutEpisodesWhenNull(): void
@@ -370,6 +417,10 @@ final class MalApiClientTest extends TestCase
 
         self::assertSame('Bearer a-bearer-token', $headers['Authorization'] ?? null);
         self::assertSame('application/x-www-form-urlencoded', $headers['Content-Type'] ?? null);
+        self::assertSame(
+            \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', self::STUB_MANIFEST_ID, self::STUB_MANIFEST_VERSION),
+            $headers['User-Agent'] ?? null,
+        );
 
         parse_str($capturedBody ?? '', $parsed);
         self::assertSame('watching', $parsed['status'] ?? null);
@@ -400,6 +451,54 @@ final class MalApiClientTest extends TestCase
         $client = $this->buildClient($httpClient);
 
         $this->expectException(UnauthorizedHttpException::class);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+    }
+
+    /**
+     * @return iterable<string, array{int}>
+     */
+    public static function provideNonSuccessNonUnauthorizedStatuses(): iterable
+    {
+        yield 'server error' => [500];
+        yield 'not found' => [404];
+        yield 'rate limited' => [429];
+    }
+
+    /**
+     * @dataProvider provideNonSuccessNonUnauthorizedStatuses
+     */
+    public function testUpdateListStatusNonSuccessStatusThrowsMalRequestException(int $status): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse($status, []));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(MalRequestException::class);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+    }
+
+    public function testUpdateListStatusDoesNotRetryOn429(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())
+            ->method('sendRequest')
+            ->willReturn($this->jsonResponse(429, [], ['Retry-After' => '1']));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(MalRequestException::class);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+    }
+
+    public function testUpdateListStatusTransportFailureThrowsMalRequestException(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willThrowException($this->createMock(ClientExceptionInterface::class));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(MalRequestException::class);
         $client->updateListStatus('a-bearer-token', '123', 'watching', null);
     }
 

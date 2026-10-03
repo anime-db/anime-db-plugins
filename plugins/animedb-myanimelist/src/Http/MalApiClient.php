@@ -230,12 +230,20 @@ class MalApiClient
      *                              `my_list_status` object directly, with `updated_at` and
      *                              `num_episodes_watched` among its fields
      *
+     * @throws \InvalidArgumentException $animeId is not a bare positive integer — rejected here
+     *                                    rather than left to the caller, since a value such as
+     *                                    `1/../x` or `1?x=y` would otherwise change the path or
+     *                                    query of an authorized request
      * @throws UnauthorizedHttpException the request got HTTP 401 back
      * @throws MalRequestException       transport failure, another non-2xx/non-401 status, or
      *                                   invalid JSON
      */
     public function updateListStatus(string $bearer, string $animeId, string $status, ?int $watchedEpisodes): array
     {
+        if (preg_match('/^[1-9]\d*$/', $animeId) !== 1) {
+            throw new \InvalidArgumentException(\sprintf('Invalid MyAnimeList anime id "%s".', $animeId));
+        }
+
         $body = [
             'status' => $status,
             'is_rewatching' => 'false',
