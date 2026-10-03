@@ -1,0 +1,243 @@
+{
+    "id": 3455,
+    "title": "To LOVE-Ru",
+    "main_picture": {
+        "medium": "https://cdn.myanimelist.net/images/anime/1292/147431.jpg",
+        "large": "https://cdn.myanimelist.net/images/anime/1292/147431l.jpg"
+    },
+    "alternative_titles": {
+        "synonyms": [
+            "Toraburu",
+            "Love Trouble"
+        ],
+        "en": "To Love Ru",
+        "ja": "To LOVEる -とらぶる-"
+    },
+    "start_date": "2008-04-04",
+    "end_date": "2008-09-26",
+    "synopsis": "Timid 16-year-old Rito Yuuki has yet to profess his love to Haruna Sairenji—a classmate and object of his infatuation since junior high. Sadly, his situation becomes even more challenging when one night, a mysterious, stark-naked girl crash-lands right on top of a bathing Rito.\n\nTo add to the confusion, Rito discovers that the girl, Lala Satalin Deviluke, is the crown princess of an alien empire and has run away from her home. Despite her position as the heiress to the most dominant power in the entire galaxy, Lala is surprisingly more than willing to marry the decidedly average Rito in order to avoid an unwanted political marriage.\n\nTo LOVE-Ru depicts Rito's daily struggles with the bizarre chaos that begins upon the arrival of Lala. With an evergrowing legion of swooning beauties that continuously foil his attempted confessions to Haruna, To LOVE-Ru  is a romantic comedy full of slapstick humor, sexy girls, and outlandishly lewd moments that defy the laws of physics.\n\n[Written by MAL Rewrite]",
+    "media_type": "tv",
+    "status": "finished_airing",
+    "genres": [
+        {
+            "id": 4,
+            "name": "Comedy"
+        },
+        {
+            "id": 9,
+            "name": "Ecchi"
+        },
+        {
+            "id": 35,
+            "name": "Harem"
+        },
+        {
+            "id": 22,
+            "name": "Romance"
+        },
+        {
+            "id": 23,
+            "name": "School"
+        },
+        {
+            "id": 24,
+            "name": "Sci-Fi"
+        },
+        {
+            "id": 27,
+            "name": "Shounen"
+        }
+    ],
+    "num_episodes": 26,
+    "average_episode_duration": 1470,
+    "studios": [
+        {
+            "id": 27,
+            "name": "Xebec"
+        }
+    ],
+    "pictures": [
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/10/20614.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/10/20614l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/7/20615.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/7/20615l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/12/21546.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/12/21546l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/4/21547.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/4/21547l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/10/22379.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/10/22379l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/6/22492.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/6/22492l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/13/22544.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/13/22544l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/9/22546.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/9/22546l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/10/22547.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/10/22547l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/1311/121294.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1311/121294l.jpg"
+        },
+        {
+            "medium": "https://cdn.myanimelist.net/images/anime/1292/147431.jpg",
+            "large": "https://cdn.myanimelist.net/images/anime/1292/147431l.jpg"
+        }
+    ],
+    "related_anime": [
+        {
+            "node": {
+                "id": 5667,
+                "title": "To LOVE-Ru OVA",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/2/17923.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/2/17923l.webp"
+                }
+            },
+            "relation_type": "side_story",
+            "relation_type_formatted": "Side story"
+        },
+        {
+            "node": {
+                "id": 9181,
+                "title": "Motto To LOVE-Ru",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/4/59875.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/4/59875l.webp"
+                }
+            },
+            "relation_type": "sequel",
+            "relation_type_formatted": "Sequel"
+        }
+    ],
+    "recommendations": [
+        {
+            "node": {
+                "id": 2993,
+                "title": "Rosario to Vampire",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/12/75242.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/12/75242l.jpg"
+                }
+            },
+            "num_recommendations": 18
+        },
+        {
+            "node": {
+                "id": 11785,
+                "title": "Haiyore! Nyaruko-san",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/6/49081.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/6/49081l.jpg"
+                }
+            },
+            "num_recommendations": 18
+        },
+        {
+            "node": {
+                "id": 11617,
+                "title": "High School DxD",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1331/111940.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/1331/111940l.webp"
+                }
+            },
+            "num_recommendations": 16
+        },
+        {
+            "node": {
+                "id": 2104,
+                "title": "Seto no Hanayome",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1573/146854.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/1573/146854l.webp"
+                }
+            },
+            "num_recommendations": 13
+        },
+        {
+            "node": {
+                "id": 6166,
+                "title": "Asobi ni Iku yo!",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/7/75583.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/7/75583l.webp"
+                }
+            },
+            "num_recommendations": 10
+        },
+        {
+            "node": {
+                "id": 1293,
+                "title": "Urusei Yatsura",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/9/17573.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/9/17573l.jpg"
+                }
+            },
+            "num_recommendations": 10
+        },
+        {
+            "node": {
+                "id": 18897,
+                "title": "Nisekoi",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/13/75587.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/13/75587l.jpg"
+                }
+            },
+            "num_recommendations": 9
+        },
+        {
+            "node": {
+                "id": 30307,
+                "title": "Monster Musume no Iru Nichijou",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/9/75104.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/9/75104l.jpg"
+                }
+            },
+            "num_recommendations": 7
+        },
+        {
+            "node": {
+                "id": 195,
+                "title": "Onegai☆Teacher",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1371/138517.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1371/138517l.jpg"
+                }
+            },
+            "num_recommendations": 5
+        },
+        {
+            "node": {
+                "id": 68,
+                "title": "Black Cat",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1183/133280.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1183/133280l.jpg"
+                }
+            },
+            "num_recommendations": 4
+        }
+    ]
+}

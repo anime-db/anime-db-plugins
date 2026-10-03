@@ -1,0 +1,107 @@
+{
+    "data": [
+        {
+            "node": {
+                "id": 20,
+                "title": "Naruto",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1141/142503.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 1735,
+                "title": "Naruto: Shippuuden",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1565/111305.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1565/111305l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 13667,
+                "title": "Naruto: Shippuuden Movie 6 - Road to Ninja",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1620/94336.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1620/94336l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 16870,
+                "title": "The Last: Naruto the Movie",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1491/134498.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1491/134498l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 2472,
+                "title": "Naruto: Shippuuden Movie 1",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1703/134493.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1703/134493l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 28755,
+                "title": "Boruto: Naruto the Movie",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/4/78280.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/4/78280l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 4437,
+                "title": "Naruto: Shippuuden Movie 2 - Kizuna",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1484/134494.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1484/134494l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 442,
+                "title": "Naruto Movie 1: Dai Katsugeki!! Yuki Hime Ninpouchou Dattebayo!",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1231/134484.webp",
+                    "large": "https://cdn.myanimelist.net/images/anime/1231/134484l.webp"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 10589,
+                "title": "Naruto: Shippuuden Movie 5 - Blood Prison",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1500/134496.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1500/134496l.jpg"
+                }
+            }
+        },
+        {
+            "node": {
+                "id": 8246,
+                "title": "Naruto: Shippuuden Movie 4 - The Lost Tower",
+                "main_picture": {
+                    "medium": "https://cdn.myanimelist.net/images/anime/1479/116734.jpg",
+                    "large": "https://cdn.myanimelist.net/images/anime/1479/116734l.jpg"
+                }
+            }
+        }
+    ],
+    "paging": {
+        "next": "https://api.myanimelist.net/v2/anime?offset=10&limit=10&fields=id%2Ctitle&q=naruto"
+    }
+}
