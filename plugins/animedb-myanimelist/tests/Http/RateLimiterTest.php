@@ -83,11 +83,11 @@ final class RateLimiterTest extends TestCase
             $limiter->acquire();
         }
 
-        // 1 call is free (the initial bucket), the remaining 4 must each have been paced a
-        // full second apart — anything less would mean the limiter let a burst through past
-        // the 1 request/second default.
-        $expectedMinimumElapsed = $calls - 1;
-        self::assertGreaterThanOrEqual($expectedMinimumElapsed - 0.001, $elapsed());
+        // 1 call is free (the initial bucket), the remaining 4 must each have been paced
+        // exactly a full second apart — a looser or tighter pace (e.g. a limiter that lets a
+        // burst through, or one that over-throttles) would also move this value.
+        $expectedElapsed = $calls - 1;
+        self::assertEqualsWithDelta($expectedElapsed, $elapsed(), 0.001);
     }
 
     public function testAcquireIsAlsoBoundedByThePerMinuteBudget(): void
@@ -100,8 +100,11 @@ final class RateLimiterTest extends TestCase
             $limiter->acquire();
         }
 
-        self::assertGreaterThan(0, $sleepCalls());
-        self::assertGreaterThan(0.0, $elapsed());
+        // With maxPerMinute: 3, one token refills every 20 seconds; the 4th call must wait
+        // exactly that long — a formula that drops the `* 60` conversion (turning the
+        // per-minute budget into a de-facto per-second one) would also pass a loose ">0" check.
+        self::assertSame(1, $sleepCalls());
+        self::assertEqualsWithDelta(20.0, $elapsed(), 0.001);
     }
 
     public function testSleepDelegatesToInjectedSleeper(): void
