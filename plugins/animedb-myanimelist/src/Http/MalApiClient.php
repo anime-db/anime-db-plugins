@@ -32,16 +32,15 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 
 /**
  * Thin REST/JSON client for the MyAnimeList API v2, built solely on PSR-18/PSR-17
- * (`ClientInterface`, `RequestFactoryInterface`) — no Guzzle/league, no Symfony HTTP types
- * (those must not appear in a plugin bundle that ships without its own `vendor/`, see the
- * project's `.claude-docs/gotchas.md`). A `StreamFactoryInterface` is deliberately not
- * constructor-injected here: every call {@see self::get()} makes is a GET request with no
- * body, so there is nothing to build a stream for; a future POST-based call (OAuth token
- * exchange) takes its own `StreamFactoryInterface` dependency when it is written, rather than
- * this class carrying an unused one now.
+ * (`ClientInterface`, `RequestFactoryInterface`, `StreamFactoryInterface`) — no Guzzle/league,
+ * no Symfony HTTP types (those must not appear in a plugin bundle that ships without its own
+ * `vendor/`, see the project's `.claude-docs/gotchas.md`). `StreamFactoryInterface` is used
+ * only by the body-carrying write methods ({@see self::updateListStatus()}); {@see self::get()}
+ * never builds a body, every call it makes is a GET request with no body.
  *
  * The API's domain is fixed to {@see self::BASE_URL} — there is no per-plugin setting for it,
  * unlike Shikimori's `api_endpoint`: MyAnimeList has a single official endpoint, and there is
@@ -83,10 +82,14 @@ class MalApiClient
     private const HTTP_NOT_FOUND = 404;
     private const HTTP_SUCCESS_STATUS_MIN = 200;
     private const HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300;
+    private const LIST_STATUS_PATH_FORMAT = '/anime/%s/my_list_status';
+    private const ANIMELIST_PATH = '/users/@me/animelist';
+    private const ANIMELIST_FIELDS = 'list_status';
 
     public function __construct(
         private readonly ClientInterface $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
+        private readonly StreamFactoryInterface $streamFactory,
         private readonly RateLimiter $rateLimiter,
         private readonly OwnManifestInterface $ownManifest,
     ) {
@@ -163,6 +166,89 @@ class MalApiClient
     }
 
     /**
+     * Fetches one page of the authenticated user's anime list.
+     *
+     * The request is built from its own `$offset`/`$limit`; the URL the API returns in
+     * `paging.next` is never followed (the Bearer token must not end up going to whatever host
+     * happens to appear in that field) — only whether the `next` key is present is read, as the
+     * signal to keep paginating. An empty page (zero items) always means "no more pages", even
+     * when `paging.next` is present, to rule out an infinite loop. A page shorter than `$limit`
+     * is NOT by itself a stop signal: the API can filter items out after paginating, so a short
+     * page is not necessarily the last one.
+     *
+     * `nsfw=true` is mandatory, not optional: without it MyAnimeList silently drops 18+ titles
+     * from the list, which would otherwise look to the host like those titles were removed from
+     * the source.
+     *
+     * @return array{items: list<array<string, mixed>>, hasNext: bool} `items` are the page's
+     *                                                                  raw list entries
+     *                                                                  (`node`/`list_status`);
+     *                                                                  the `paging.next` URL
+     *                                                                  itself is never returned
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws MalRequestException       transport failure, another non-2xx/non-401 status,
+     *                                   invalid JSON, or the 429 retry budget was exhausted
+     */
+    public function fetchAnimeListPage(string $bearer, int $offset, int $limit): array
+    {
+        $data = $this->get(self::ANIMELIST_PATH, [
+            'fields' => self::ANIMELIST_FIELDS,
+            'limit' => $limit,
+            'offset' => $offset,
+            'nsfw' => 'true',
+        ], null, $bearer);
+
+        $items = \is_array($data['data'] ?? null) ? array_values($data['data']) : [];
+        $paging = \is_array($data['paging'] ?? null) ? $data['paging'] : [];
+
+        return [
+            'items' => $items,
+            'hasNext' => $items !== [] && \array_key_exists('next', $paging),
+        ];
+    }
+
+    /**
+     * Writes the authenticated user's watch status for a single title. `PATCH
+     * /anime/{anime_id}/my_list_status` is an upsert on MyAnimeList's side — the same request
+     * both adds a title not yet on the list and updates one that already is, so this method,
+     * unlike {@see \AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient}'s `user_rates`
+     * writes, never needs a find-or-create sequence.
+     *
+     * `is_rewatching` is always sent as `false` — a constant part of the request body, not a
+     * parameter — because the contract has no status a caller could derive a rewatch flag from.
+     * Leaving a stale `is_rewatching: true` on MyAnimeList would survive a `completed` push and
+     * make the next read come back as `watching` (see
+     * {@see \AnimeDb\Plugins\AnimedbMyanimelist\Mapping\SyncStatusMapper::fromMal()}), silently
+     * reverting the status this method was just asked to set.
+     *
+     * `num_watched_episodes` is included only when `$watchedEpisodes` is not null — even when
+     * it is `0` — the caller is responsible for that distinction (not reporting an episode
+     * count at all is different from reporting zero watched episodes).
+     *
+     * @return array<string, mixed> the decoded response body — MyAnimeList returns the updated
+     *                              `my_list_status` object directly, with `updated_at` and
+     *                              `num_episodes_watched` among its fields
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws MalRequestException       transport failure, another non-2xx/non-401 status, or
+     *                                   invalid JSON
+     */
+    public function updateListStatus(string $bearer, string $animeId, string $status, ?int $watchedEpisodes): array
+    {
+        $body = [
+            'status' => $status,
+            'is_rewatching' => 'false',
+        ];
+
+        if ($watchedEpisodes !== null) {
+            $body['num_watched_episodes'] = (string) $watchedEpisodes;
+        }
+
+        return $this->sendForm(\sprintf(self::LIST_STATUS_PATH_FORMAT, $animeId), $body, $bearer);
+    }
+
+    /**
      * @param array<string, scalar> $query
      */
     private function send(string $path, array $query, ?string $bearer): ResponseInterface
@@ -184,6 +270,47 @@ class MalApiClient
         } catch (ClientExceptionInterface $exception) {
             throw new MalRequestException('Failed to reach MyAnimeList API.', 0, $exception);
         }
+    }
+
+    /**
+     * Sends a `PATCH` request with an `application/x-www-form-urlencoded` body — used only by
+     * {@see self::updateListStatus()}. Unlike {@see self::get()}, this does not retry on HTTP
+     * 429: a list write happens once per user action, not in a scan loop, so there is no bulk
+     * import to protect from turning a rate-limit hit into a blank result — mirroring
+     * {@see \AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient::request()}'s write path,
+     * which does not retry on 429 either.
+     *
+     * @param array<string, string> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function sendForm(string $path, array $body, string $bearer): array
+    {
+        $this->rateLimiter->acquire();
+
+        $request = $this->requestFactory->createRequest('PATCH', self::BASE_URL.$path)
+            ->withHeader('User-Agent', UserAgent::forManifest($this->ownManifest))
+            ->withHeader('Authorization', 'Bearer '.$bearer)
+            ->withHeader('Content-Type', 'application/x-www-form-urlencoded')
+            ->withBody($this->streamFactory->createStream(http_build_query($body)));
+
+        try {
+            $response = $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $exception) {
+            throw new MalRequestException('Failed to reach MyAnimeList API.', 0, $exception);
+        }
+
+        $status = $response->getStatusCode();
+
+        if ($status === self::HTTP_UNAUTHORIZED) {
+            throw new UnauthorizedHttpException('MyAnimeList API responded with HTTP 401.');
+        }
+
+        if ($status < self::HTTP_SUCCESS_STATUS_MIN || $status >= self::HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE) {
+            throw new MalRequestException(\sprintf('MyAnimeList API responded with HTTP %d.', $status));
+        }
+
+        return self::decodeBody($response);
     }
 
     /**

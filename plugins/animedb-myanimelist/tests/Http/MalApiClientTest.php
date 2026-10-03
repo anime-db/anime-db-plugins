@@ -39,6 +39,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
 
 final class MalApiClientTest extends TestCase
@@ -222,6 +223,186 @@ final class MalApiClientTest extends TestCase
         );
     }
 
+    public function testFetchAnimeListPageRequestsNsfwFieldsOffsetAndLimit(): void
+    {
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with(
+                'GET',
+                'https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status&limit=5&offset=10&nsfw=true',
+            )
+            ->willReturn($this->fluentRequest());
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => []]));
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+        $client->fetchAnimeListPage('a-bearer-token', 10, 5);
+    }
+
+    public function testFetchAnimeListPageWithPagingNextButNoItemsHasNoNextPage(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [
+            'data' => [],
+            'paging' => ['next' => 'https://api.myanimelist.net/v2/users/@me/animelist?offset=5'],
+        ]));
+
+        $client = $this->buildClient($httpClient);
+
+        $page = $client->fetchAnimeListPage('a-bearer-token', 0, 5);
+
+        self::assertSame([], $page['items']);
+        self::assertFalse($page['hasNext']);
+    }
+
+    public function testFetchAnimeListPageWithPagingNextAndItemsHasNextPage(): void
+    {
+        $item = ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']];
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [
+            'data' => [$item],
+            'paging' => ['next' => 'https://api.myanimelist.net/v2/users/@me/animelist?offset=5'],
+        ]));
+
+        $client = $this->buildClient($httpClient);
+
+        $page = $client->fetchAnimeListPage('a-bearer-token', 0, 5);
+
+        self::assertSame([$item], $page['items']);
+        self::assertTrue($page['hasNext']);
+    }
+
+    public function testFetchAnimeListPageWithoutPagingNextHasNoNextPage(): void
+    {
+        $item = ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']];
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['data' => [$item]]));
+
+        $client = $this->buildClient($httpClient);
+
+        $page = $client->fetchAnimeListPage('a-bearer-token', 0, 5);
+
+        self::assertFalse($page['hasNext']);
+    }
+
+    public function testFetchAnimeListPageShorterThanLimitWithPagingNextStillHasNextPage(): void
+    {
+        $item = ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']];
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [
+            // One item, far short of the requested limit of 50 — a short page must not by
+            // itself be read as "no more pages" (see class doc on fetchAnimeListPage()).
+            'data' => [$item],
+            'paging' => ['next' => 'https://api.myanimelist.net/v2/users/@me/animelist?offset=50'],
+        ]));
+
+        $client = $this->buildClient($httpClient);
+
+        $page = $client->fetchAnimeListPage('a-bearer-token', 0, 50);
+
+        self::assertTrue($page['hasNext']);
+    }
+
+    public function testFetchAnimeListPageNeverFollowsPagingNextUrlToAForeignHost(): void
+    {
+        $item = ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']];
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('GET', self::stringStartsWith('https://api.myanimelist.net/v2/users/@me/animelist?'))
+            ->willReturn($this->fluentRequest());
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())
+            ->method('sendRequest')
+            ->willReturn($this->jsonResponse(200, [
+                'data' => [$item],
+                'paging' => ['next' => 'https://attacker.example/users/@me/animelist?offset=5'],
+            ]));
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+        $page = $client->fetchAnimeListPage('a-bearer-token', 0, 5);
+
+        self::assertTrue($page['hasNext']);
+        self::assertArrayNotHasKey('next', $page);
+        $encoded = json_encode($page, \JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString('attacker.example', $encoded);
+    }
+
+    public function testUpdateListStatusSendsPatchToMyListStatusPath(): void
+    {
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('PATCH', 'https://api.myanimelist.net/v2/anime/123/my_list_status')
+            ->willReturn($this->fluentRequest());
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['status' => 'watching']));
+
+        $client = $this->buildClient($httpClient, $requestFactory);
+        $result = $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+
+        self::assertSame(['status' => 'watching'], $result);
+    }
+
+    public function testUpdateListStatusBodyCarriesStatusAndIsRewatchingFalseWithoutEpisodesWhenNull(): void
+    {
+        $capturedBody = null;
+        $streamFactory = $this->stubStreamFactoryCapturingBodyInto($capturedBody);
+
+        $headers = [];
+        $request = $this->fluentRequestCapturingHeadersInto($headers);
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->method('createRequest')->willReturn($request);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['status' => 'watching']));
+
+        $client = $this->buildClient($httpClient, $requestFactory, $streamFactory);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+
+        self::assertSame('Bearer a-bearer-token', $headers['Authorization'] ?? null);
+        self::assertSame('application/x-www-form-urlencoded', $headers['Content-Type'] ?? null);
+
+        parse_str($capturedBody ?? '', $parsed);
+        self::assertSame('watching', $parsed['status'] ?? null);
+        self::assertSame('false', $parsed['is_rewatching'] ?? null);
+        self::assertArrayNotHasKey('num_watched_episodes', $parsed);
+    }
+
+    public function testUpdateListStatusBodyIncludesZeroWatchedEpisodes(): void
+    {
+        $capturedBody = null;
+        $streamFactory = $this->stubStreamFactoryCapturingBodyInto($capturedBody);
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, ['status' => 'watching']));
+
+        $client = $this->buildClient($httpClient, null, $streamFactory);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', 0);
+
+        parse_str($capturedBody ?? '', $parsed);
+        self::assertSame('0', $parsed['num_watched_episodes'] ?? null);
+    }
+
+    public function testUpdateListStatus401ResponseThrowsUnauthorizedHttpException(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(401, []));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(UnauthorizedHttpException::class);
+        $client->updateListStatus('a-bearer-token', '123', 'watching', null);
+    }
+
     /**
      * @param array<string, mixed>  $body
      * @param array<string, string> $headers
@@ -262,6 +443,7 @@ final class MalApiClientTest extends TestCase
                 return $request;
             },
         );
+        $request->method('withBody')->willReturnSelf();
 
         return $request;
     }
@@ -270,18 +452,60 @@ final class MalApiClientTest extends TestCase
     {
         $request = $this->createMock(RequestInterface::class);
         $request->method('withHeader')->willReturnSelf();
+        $request->method('withBody')->willReturnSelf();
 
         return $request;
     }
 
-    private function buildClient(ClientInterface $httpClient, ?RequestFactoryInterface $requestFactory = null): MalApiClient
-    {
+    private function buildClient(
+        ClientInterface $httpClient,
+        ?RequestFactoryInterface $requestFactory = null,
+        ?StreamFactoryInterface $streamFactory = null,
+    ): MalApiClient {
         if ($requestFactory === null) {
             $requestFactory = $this->createMock(RequestFactoryInterface::class);
             $requestFactory->method('createRequest')->willReturn($this->fluentRequest());
         }
 
-        return new MalApiClient($httpClient, $requestFactory, $this->noSleepRateLimiter(), $this->stubOwnManifest());
+        return new MalApiClient(
+            $httpClient,
+            $requestFactory,
+            $streamFactory ?? $this->stubStreamFactory(),
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+    }
+
+    private function stubStreamFactory(): StreamFactoryInterface
+    {
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturnCallback(
+            function (string $content): StreamInterface {
+                $stream = $this->createMock(StreamInterface::class);
+                $stream->method('__toString')->willReturn($content);
+
+                return $stream;
+            },
+        );
+
+        return $streamFactory;
+    }
+
+    private function stubStreamFactoryCapturingBodyInto(?string &$capturedBody): StreamFactoryInterface
+    {
+        $streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $streamFactory->method('createStream')->willReturnCallback(
+            function (string $content) use (&$capturedBody): StreamInterface {
+                $capturedBody = $content;
+
+                $stream = $this->createMock(StreamInterface::class);
+                $stream->method('__toString')->willReturn($content);
+
+                return $stream;
+            },
+        );
+
+        return $streamFactory;
     }
 
     private function stubOwnManifest(): OwnManifestInterface
