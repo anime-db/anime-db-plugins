@@ -80,6 +80,7 @@ class MalApiClient
     private const DEFAULT_RETRY_AFTER_SECONDS = 1.0;
     private const HTTP_TOO_MANY_REQUESTS = 429;
     private const HTTP_UNAUTHORIZED = 401;
+    private const HTTP_NOT_FOUND = 404;
     private const HTTP_SUCCESS_STATUS_MIN = 200;
     private const HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300;
 
@@ -109,8 +110,11 @@ class MalApiClient
      *
      * @throws UnauthorizedHttpException the request got HTTP 401 back (only relevant when
      *                                   $bearer was passed)
-     * @throws MalRequestException       transport failure, another non-2xx status, invalid JSON,
-     *                                   or the 429 retry budget was exhausted
+     * @throws NotFoundHttpException     the request got HTTP 404 back — the requested resource
+     *                                   does not exist
+     * @throws MalRequestException       transport failure, another non-2xx/non-401/non-404
+     *                                   status, invalid JSON, or the 429 retry budget was
+     *                                   exhausted
      */
     public function get(string $path, array $query = [], ?callable $onHeartbeat = null, ?string $bearer = null): array
     {
@@ -144,6 +148,10 @@ class MalApiClient
 
             if ($status === self::HTTP_UNAUTHORIZED) {
                 throw new UnauthorizedHttpException('MyAnimeList API responded with HTTP 401.');
+            }
+
+            if ($status === self::HTTP_NOT_FOUND) {
+                throw new NotFoundHttpException('MyAnimeList API responded with HTTP 404.');
             }
 
             if ($status < self::HTTP_SUCCESS_STATUS_MIN || $status >= self::HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE) {

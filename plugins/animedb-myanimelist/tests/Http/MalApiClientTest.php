@@ -30,6 +30,7 @@ namespace AnimeDb\Plugins\AnimedbMyanimelist\Tests\Http;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalRequestException;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\RateLimiter;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\UnauthorizedHttpException;
 use PHPUnit\Framework\TestCase;
@@ -97,6 +98,17 @@ final class MalApiClientTest extends TestCase
 
         $this->expectException(UnauthorizedHttpException::class);
         $client->get('/anime', ['q' => 'naruto'], null, 'a-bearer-token');
+    }
+
+    public function test404ResponseThrowsNotFoundHttpException(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(404, []));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(NotFoundHttpException::class);
+        $client->get('/anime/999999999', []);
     }
 
     public function testRetriesAfter429ThenSucceeds(): void

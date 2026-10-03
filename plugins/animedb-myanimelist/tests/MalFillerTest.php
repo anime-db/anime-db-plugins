@@ -36,6 +36,7 @@ use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\MalFiller;
 use PHPUnit\Framework\TestCase;
 
@@ -175,6 +176,45 @@ final class MalFillerTest extends TestCase
         );
     }
 
+    /**
+     * `$externalId` is attacker-controlled (a stored id, or whatever a caller passes), and is
+     * interpolated into the request path — so a value that is not a bare positive integer must
+     * be rejected before a request is ever made, rather than reach {@see MalApiClient::get()}
+     * and rewrite the path/query (e.g. a `../` segment or a second `?`).
+     *
+     * @dataProvider provideMalformedExternalIds
+     */
+    public function testFindByIdReturnsNullForMalformedExternalIdWithoutHttpCall(string $externalId): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::never())->method('get');
+
+        self::assertNull($this->buildFiller($client)->findById($externalId));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function provideMalformedExternalIds(): iterable
+    {
+        yield 'path traversal' => ['1/../../users/@me'];
+        yield 'extra query string' => ['1?fields=foo'];
+        yield 'fragment' => ['1#frag'];
+        yield 'empty' => [''];
+        yield 'zero' => ['0'];
+        yield 'negative' => ['-1'];
+        yield 'leading zero' => ['01'];
+        yield 'non-numeric' => ['abc'];
+    }
+
+    public function testFindByIdReturnsNullWhenApiRespondsNotFound(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willThrowException(new NotFoundHttpException('MyAnimeList API responded with HTTP 404.'));
+
+        self::assertNull($this->buildFiller($client)->findById('3455'));
+    }
+
     public function testFindByIdReturnsNullWhenTitleIsMissingOrEmpty(): void
     {
         $client = $this->createMock(MalApiClient::class);
@@ -200,7 +240,23 @@ final class MalFillerTest extends TestCase
     public function testFindByIdMapsFullCard(): void
     {
         $client = $this->createMock(MalApiClient::class);
-        $client->method('get')->willReturn(self::cardFixture('card_3455.json'));
+        $client->expects(self::once())
+            ->method('get')
+            ->with('/anime/3455', self::callback(static function (array $query): bool {
+                $fields = explode(',', $query['fields'] ?? '');
+                foreach ([
+                    'alternative_titles', 'synopsis', 'genres', 'media_type', 'start_date',
+                    'end_date', 'num_episodes', 'average_episode_duration', 'studios',
+                    'main_picture', 'pictures',
+                ] as $field) {
+                    if (!\in_array($field, $fields, true)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }))
+            ->willReturn(self::cardFixture('card_3455.json'));
 
         $data = $this->buildFiller($client)->findById('3455');
 

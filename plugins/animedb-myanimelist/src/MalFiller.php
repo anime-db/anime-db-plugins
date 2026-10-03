@@ -35,6 +35,7 @@ use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\Plugins\AnimedbMyanimelist\ExternalId\MalIdResolver;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\AnimeTypeMapper;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\DateParser;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\GenreMapper;
@@ -156,12 +157,30 @@ final class MalFiller implements FillerInterface
      * header — {@see MalApiClient::get()}'s `$bearer` is deliberately left unset, see the class
      * doc).
      *
+     * `$externalId` is attacker-controlled (it comes from a record's stored id or from
+     * {@see resolveExternalId()}, but also from whatever a caller passes directly) and is
+     * interpolated into the request path below, so it is restricted to a bare positive integer
+     * before it ever reaches {@see MalApiClient::get()} — anything else (path segments,
+     * a second `?query`, a `#fragment`) is rejected without making a request.
+     *
+     * A 404 from the API (an id MyAnimeList does not have) is caught and mapped to `null`
+     * — "not found" — same contract as {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::findById()}'s
+     * empty result, see {@see NotFoundHttpException}.
+     *
      * `countries` is deliberately left unset: the card endpoint has no field for production
      * country.
      */
     public function findById(string $externalId): ?PluginAnimeData
     {
-        $anime = $this->client->get('/anime/'.$externalId, ['fields' => self::CARD_FIELDS]);
+        if (preg_match('/^[1-9]\d*$/', $externalId) !== 1) {
+            return null;
+        }
+
+        try {
+            $anime = $this->client->get('/anime/'.$externalId, ['fields' => self::CARD_FIELDS]);
+        } catch (NotFoundHttpException) {
+            return null;
+        }
 
         $title = $anime['title'] ?? null;
         if (!\is_string($title) || $title === '') {

@@ -28,15 +28,13 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbMyanimelist\Http;
 
 /**
- * The MyAnimeList API is unreachable or misbehaving: transport failure, a non-2xx/non-401/
- * non-404 HTTP status, invalid JSON in the response body, or the 429 retry/backoff budget was
- * exhausted.
+ * Thrown by {@see MalApiClient} when a request gets HTTP 404 back from MyAnimeList: the
+ * requested resource (e.g. an anime id) does not exist.
  *
- * Deliberately distinct from {@see NotFoundHttpException}, which
- * {@see \AnimeDb\Plugins\AnimedbMyanimelist\MalFiller::findById()} maps to a `null` result, so
- * the host can tell "the source has no such record" apart from "the source is down" and react
- * to each differently.
+ * Kept as its own type (not a subclass of {@see MalRequestException}, see that class's doc)
+ * so a caller such as {@see \AnimeDb\Plugins\AnimedbMyanimelist\MalFiller::findById()} can
+ * catch "not found" apart from a hard failure and map it to its own `null` result.
  */
-final class MalRequestException extends \RuntimeException
+final class NotFoundHttpException extends \RuntimeException
 {
 }
