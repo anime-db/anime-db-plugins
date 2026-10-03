@@ -59,11 +59,11 @@ final class MalOAuthDisconnectController
         try {
             $submittedToken = $request->request->getString('_token');
         } catch (\Throwable) {
-            return $this->renderFragment('Invalid form submission, please reload the page and try again.');
+            return $this->renderFragment('settings.error.invalid_form');
         }
 
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(SettingsFields::OAUTH_DISCONNECT_CSRF_TOKEN_ID, $submittedToken))) {
-            return $this->renderFragment('Invalid CSRF token, please reload the page and try again.');
+            return $this->renderFragment('settings.error.invalid_csrf');
         }
 
         $this->oauth->disconnect();
@@ -71,6 +71,9 @@ final class MalOAuthDisconnectController
         return $this->renderFragment(null);
     }
 
+    /**
+     * @param ?string $error a `settings.error.*` translation key, resolved by the template
+     */
     private function renderFragment(?string $error): Response
     {
         try {

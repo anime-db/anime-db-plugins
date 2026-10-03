@@ -66,14 +66,29 @@ final class MalOAuthDisconnectControllerTest extends TestCase
         $response = $controller(self::postRequest('wrong-token'));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-        self::assertStringContainsString('Invalid CSRF token', (string) $response->getContent());
+        self::assertStringContainsString('Invalid CSRF token, please reload the page and try again.', (string) $response->getContent());
+    }
+
+    public function testInvalidFormSubmissionIsRejectedWithoutDisconnecting(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->expects(self::never())->method('disconnect');
+        $oauth->method('accessToken')->willReturn('still-there');
+
+        $controller = $this->makeController($oauth);
+        $request = Request::create('/plugins/animedb-myanimelist/oauth/disconnect', 'POST', ['_token' => ['not-a-string']]);
+
+        $response = $controller($request);
+
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        self::assertStringContainsString('Invalid form submission, please reload the page and try again.', (string) $response->getContent());
     }
 
     private function makeController(MalOAuthClient $oauth): MalOAuthDisconnectController
     {
         $csrfTokenManager = $this->createMock(CsrfTokenManagerInterface::class);
         $csrfTokenManager->method('isTokenValid')
-            ->willReturnCallback(static fn (CsrfToken $token): bool => $token->getValue() === self::VALID_TOKEN);
+            ->willReturnCallback(static fn (CsrfToken $token): bool => $token->getId() === 'animedb_myanimelist_oauth_disconnect' && $token->getValue() === self::VALID_TOKEN);
 
         return new MalOAuthDisconnectController($oauth, $csrfTokenManager, StubTwigFactory::create());
     }

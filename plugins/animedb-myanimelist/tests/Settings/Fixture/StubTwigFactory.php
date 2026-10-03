@@ -43,7 +43,10 @@ use Twig\TwigFunction;
  *
  * The `trans` stub resolves against {@see self::CATALOG}, kept in lockstep with
  * `translations/animedb-myanimelist.en.yaml` (the source-of-truth English strings), so tests
- * can assert on the same display text as before i18n rather than on raw translation keys.
+ * can assert on the same display text as before i18n rather than on raw translation keys. A key
+ * missing from the catalog throws instead of falling back to the key itself, so a controller
+ * that passes a raw literal instead of a translation key fails the test loudly rather than
+ * silently rendering text that happens to look the same.
  */
 final class StubTwigFactory
 {
@@ -57,6 +60,8 @@ final class StubTwigFactory
         'settings.account.reauthorize_link' => 'Re-authorize',
         'settings.account.disconnect_button' => 'Disconnect',
         'settings.account.authorize_link' => 'Authorize',
+        'settings.error.invalid_form' => 'Invalid form submission, please reload the page and try again.',
+        'settings.error.invalid_csrf' => 'Invalid CSRF token, please reload the page and try again.',
         'oauth_result.page_title' => 'MyAnimeList authorization',
         'oauth_result.heading.success' => 'Done',
         'oauth_result.heading.failure' => 'Authorization not completed',
@@ -78,7 +83,8 @@ final class StubTwigFactory
         $twig = new Environment($loader);
         $twig->addFunction(new TwigFunction('csrf_token', static fn (string $tokenId): string => 'stub-csrf-token-for-'.$tokenId));
         $twig->addFunction(new TwigFunction('path', static fn (string $routeName): string => '/'.$routeName));
-        $twig->addFilter(new TwigFilter('trans', static fn (string $key, array $params = [], ?string $domain = null): string => self::CATALOG[$key] ?? $key));
+        $twig->addFilter(new TwigFilter('trans', static fn (string $key, array $params = [], ?string $domain = null): string => self::CATALOG[$key]
+            ?? throw new \OutOfBoundsException(\sprintf('No stub translation for key "%s", add it to %s::CATALOG.', $key, self::class))));
 
         return $twig;
     }
