@@ -17,3 +17,8 @@ animedb_myanimelist_oauth_callback:
     path: /oauth/myanimelist
     controller: AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthCallbackController
     methods: [GET]
+
+animedb_myanimelist_oauth_disconnect:
+    path: /plugins/animedb-myanimelist/oauth/disconnect
+    controller: AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthDisconnectController
+    methods: [POST]
