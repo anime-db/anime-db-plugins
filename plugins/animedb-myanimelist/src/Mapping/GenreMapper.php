@@ -1,0 +1,97 @@
+<?php
+
+/**
+ * AnimeDb package.
+ *
+ * @author    Peter Gribanov <info@peter-gribanov.ru>
+ * @copyright Copyright (c) 2026, Peter Gribanov
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ */
+
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+declare(strict_types=1);
+
+namespace AnimeDb\Plugins\AnimedbMyanimelist\Mapping;
+
+use AnimeDb\PluginContracts\Model\Demographic;
+use AnimeDb\PluginContracts\Model\GenreCode;
+use AnimeDb\PluginContracts\Model\ThemeCode;
+
+/**
+ * Routes MyAnimeList's flat `genres[]` into the contract's three disjoint axis enums.
+ *
+ * Adapted from {@see \AnimeDb\Plugins\AnimedbShikimori\Mapping\GenreMapper}: unlike Shikimori,
+ * MyAnimeList's `genres[]` carries no `kind` discriminator at all (genres/themes/demographics
+ * are separate MAL API fields — `explicit_genres`, `themes`, `demographics` — but this plugin
+ * only consumes the flat `genres[]` field actually present in its fixtures), so there is
+ * nothing to disagree with here. Each genre's English `name` is slugified and tried against all
+ * three contract enums in a fixed order (`GenreCode` → `ThemeCode` → `Demographic`) via
+ * `tryFrom()`, because the contract's own axis split already follows MAL's taxonomy. A name
+ * matching none of the three (MAL's 18+-rated genres — Hentai, Erotica, Ecchi — are
+ * intentionally absent from the contract, plus any future MAL addition not yet in the contract)
+ * is dropped rather than failing the whole lookup: `tryFrom()`, never `from()`, is used
+ * throughout for that reason.
+ */
+final class GenreMapper
+{
+    /**
+     * @param list<array{name?: mixed}> $genres raw `genres[]` entries from the MyAnimeList response
+     *
+     * @return array{genres: list<GenreCode>, themes: list<ThemeCode>, demographics: list<Demographic>}
+     */
+    public static function map(array $genres): array
+    {
+        $result = ['genres' => [], 'themes' => [], 'demographics' => []];
+
+        foreach ($genres as $genre) {
+            $name = $genre['name'] ?? null;
+            if (!\is_string($name) || $name === '') {
+                continue;
+            }
+
+            $slug = self::slugify($name);
+
+            $genreCode = GenreCode::tryFrom($slug);
+            if ($genreCode !== null) {
+                $result['genres'][] = $genreCode;
+                continue;
+            }
+
+            $themeCode = ThemeCode::tryFrom($slug);
+            if ($themeCode !== null) {
+                $result['themes'][] = $themeCode;
+                continue;
+            }
+
+            $demographic = Demographic::tryFrom($slug);
+            if ($demographic !== null) {
+                $result['demographics'][] = $demographic;
+            }
+        }
+
+        return $result;
+    }
+
+    private static function slugify(string $name): string
+    {
+        $slug = strtolower($name);
+        $slug = str_replace(['(', ')'], '', $slug);
+        $slug = preg_replace('/[^a-z0-9]+/', '-', $slug) ?? $slug;
+
+        return trim($slug, '-');
+    }
+}
