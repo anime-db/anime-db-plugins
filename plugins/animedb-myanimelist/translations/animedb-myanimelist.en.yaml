@@ -1,0 +1,17 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+oauth_result:
+    page_title: MyAnimeList authorization
+    heading:
+        success: Done
+        failure: Authorization not completed
+    message:
+        cancelled: Authorization was cancelled or did not complete. You can close this tab and try again from the app.
+        failed: Could not complete MyAnimeList authorization. Please try again from the app.
+        success: Authorization complete. You can close this tab and return to the app.
+    warning:
+        probe_failed: The token was saved, but a verification request to MyAnimeList did not succeed. Syncing will retry it later.

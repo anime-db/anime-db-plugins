@@ -1,7 +1,7 @@
 {
     "id": "animedb-myanimelist",
     "name": "MyAnimeList",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "type": "integration",
     "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
     "author": "AnimeDB",
@@ -12,6 +12,7 @@
         "similar": false,
         "new": false
     },
+    "locales": ["en", "ru"],
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",

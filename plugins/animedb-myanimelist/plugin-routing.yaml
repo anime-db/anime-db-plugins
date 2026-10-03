@@ -1,0 +1,19 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+#
+# This plugin's own routes. The host reads this file from the plugin's root (not `config/`).
+
+animedb_myanimelist_oauth_start:
+    path: /oauth/myanimelist/start
+    controller: AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthStartController
+    methods: [GET]
+
+# Must match this plugin's MyAnimeList application's registered `redirect_uri` byte-for-byte,
+# including the port: http://127.0.0.1:41813/oauth/myanimelist.
+animedb_myanimelist_oauth_callback:
+    path: /oauth/myanimelist
+    controller: AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthCallbackController
+    methods: [GET]
