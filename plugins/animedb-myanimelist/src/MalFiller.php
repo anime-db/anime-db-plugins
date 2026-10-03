@@ -108,7 +108,7 @@ final class MalFiller implements SearchByPluginInterface
         $candidates = [];
         foreach ($items as $item) {
             $node = \is_array($item) ? ($item['node'] ?? null) : null;
-            if (!\is_array($node) || !isset($node['id'])) {
+            if (!\is_array($node)) {
                 continue;
             }
 
@@ -117,7 +117,12 @@ final class MalFiller implements SearchByPluginInterface
                 continue;
             }
 
-            $candidates[] = new SearchByPluginCandidate($this->ownManifest->id(), $title, (string) $node['id']);
+            $id = $node['id'] ?? null;
+            if (!\is_int($id) || $id <= 0) {
+                continue;
+            }
+
+            $candidates[] = new SearchByPluginCandidate($this->ownManifest->id(), $title, (string) $id);
         }
 
         return $candidates;

@@ -139,6 +139,36 @@ final class MalFillerTest extends TestCase
         self::assertSame([], $this->buildFiller($client)->find('does not exist'));
     }
 
+    public function testFindSkipsItemsWithAMissingNodeOrAnInvalidTitleOrId(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(['data' => [
+            // no `node` at all.
+            ['foo' => 'bar'],
+            // `node` present but no `title`.
+            ['node' => ['id' => 1]],
+            // `title` is an empty string.
+            ['node' => ['id' => 2, 'title' => '']],
+            // `id` missing entirely.
+            ['node' => ['title' => 'No Id']],
+            // `id` is not an int: an array, a bool, a numeric string, zero, and a negative int.
+            ['node' => ['id' => ['nested'], 'title' => 'Array Id']],
+            ['node' => ['id' => true, 'title' => 'Bool Id']],
+            ['node' => ['id' => '3', 'title' => 'String Id']],
+            ['node' => ['id' => 0, 'title' => 'Zero Id']],
+            ['node' => ['id' => -1, 'title' => 'Negative Id']],
+            // the only valid item.
+            ['node' => ['id' => 4, 'title' => 'Valid']],
+        ]]);
+
+        $candidates = $this->buildFiller($client)->find('query');
+
+        self::assertEquals(
+            [new SearchByPluginCandidate(self::STUB_MANIFEST_ID, 'Valid', '4')],
+            $candidates,
+        );
+    }
+
     public function testResolveExternalIdMatchesMyAnimeListDomainsAndPaths(): void
     {
         $filler = $this->buildFiller($this->createMock(MalApiClient::class));
