@@ -1,0 +1,44 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://www.gnu.org/licenses/>.
+ #}
+{# Raw fragment, embedded by the host via `content|raw` — no `extends`, this is not a full page.
+ # Unlike Shikimori's settings page, this is only the account block: MyAnimeList's domain is
+ # fixed, so there is no endpoint field and no settings-save form here. #}
+<div id="animedb-myanimelist-settings">
+    <h3>{{ 'settings.account.heading'|trans({}, 'animedb-myanimelist') }}</h3>
+
+    {% if error %}
+        <p class="error">{{ error|trans({}, 'animedb-myanimelist') }}</p>
+    {% endif %}
+
+    {% if authorized %}
+        <p class="status status-authorized">{{ 'settings.account.status_authorized'|trans({}, 'animedb-myanimelist') }}</p>
+        {# Top-level navigation, not HTMX: the desktop shell only hands a top-level navigation
+         # to a vendor domain off to the system browser. #}
+        <a href="{{ path('animedb_myanimelist_oauth_start') }}">{{ 'settings.account.reauthorize_link'|trans({}, 'animedb-myanimelist') }}</a>
+        <form hx-post="{{ path('animedb_myanimelist_oauth_disconnect') }}" hx-target="#animedb-myanimelist-settings" hx-swap="outerHTML">
+            <input type="hidden" name="_token" value="{{ csrf_token('animedb_myanimelist_oauth_disconnect') }}">
+            <button type="submit">{{ 'settings.account.disconnect_button'|trans({}, 'animedb-myanimelist') }}</button>
+        </form>
+    {% else %}
+        <p class="status status-not-authorized">{{ 'settings.account.status_not_authorized'|trans({}, 'animedb-myanimelist') }}</p>
+        <a href="{{ path('animedb_myanimelist_oauth_start') }}">{{ 'settings.account.authorize_link'|trans({}, 'animedb-myanimelist') }}</a>
+    {% endif %}
+</div>

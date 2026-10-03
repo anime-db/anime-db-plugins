@@ -4,6 +4,18 @@
 # @copyright Copyright (c) 2026, Peter Gribanov
 # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
 
+settings:
+    account:
+        heading: MyAnimeList account
+        status_authorized: Authorized
+        status_not_authorized: Not authorized
+        reauthorize_link: Re-authorize
+        disconnect_button: Disconnect
+        authorize_link: Authorize
+    error:
+        invalid_form: Invalid form submission, please reload the page and try again.
+        invalid_csrf: Invalid CSRF token, please reload the page and try again.
+
 oauth_result:
     page_title: MyAnimeList authorization
     heading:

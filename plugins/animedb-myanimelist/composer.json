@@ -11,6 +11,7 @@
         "phpunit/phpunit": "^10.5",
         "symfony/http-kernel": "8.1.*",
         "symfony/http-foundation": "8.1.*",
+        "symfony/security-csrf": "8.1.*",
         "twig/twig": "^3.0"
     },
     "autoload": {
