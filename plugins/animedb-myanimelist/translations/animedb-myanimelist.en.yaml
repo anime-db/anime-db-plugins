@@ -16,6 +16,14 @@ settings:
         invalid_form: Invalid form submission, please reload the page and try again.
         invalid_csrf: Invalid CSRF token, please reload the page and try again.
 
+widget:
+    related:
+        title: Related anime
+        description: Shows sequels, prequels, adaptations, and other titles related by MyAnimeList's data.
+    similar:
+        title: Recommended anime
+        description: Shows anime the MyAnimeList community recommends alongside this title.
+
 oauth_result:
     page_title: MyAnimeList authorization
     heading:

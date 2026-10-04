@@ -16,6 +16,14 @@ settings:
         invalid_form: Некорректная отправка формы, обновите страницу и попробуйте снова.
         invalid_csrf: Недействительный CSRF-токен, обновите страницу и попробуйте снова.
 
+widget:
+    related:
+        title: Связанные аниме
+        description: Показывает сиквелы, приквелы, адаптации и другие тайтлы, связанные по данным MyAnimeList.
+    similar:
+        title: Рекомендуемые аниме
+        description: Показывает аниме, которые сообщество MyAnimeList рекомендует вместе с этим тайтлом.
+
 oauth_result:
     page_title: Авторизация MyAnimeList
     heading:
