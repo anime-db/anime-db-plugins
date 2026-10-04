@@ -19,10 +19,10 @@ settings:
 widget:
     related:
         title: Связанные аниме
-        description: Показывает сиквелы, приквелы, адаптации и другие тайтлы, связанные по данным MyAnimeList.
+        description: Показывает сиквелы, приквелы, адаптации и другие связанные аниме по данным MyAnimeList.
     similar:
         title: Рекомендуемые аниме
-        description: Показывает аниме, которые сообщество MyAnimeList рекомендует вместе с этим тайтлом.
+        description: Показывает аниме, которые сообщество MyAnimeList рекомендует вместе с этим аниме.
 
 oauth_result:
     page_title: Авторизация MyAnimeList
