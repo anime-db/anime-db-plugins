@@ -558,6 +558,36 @@ final class MalFillerTest extends TestCase
         self::assertSame(SyncStatus::Watching, $items[0]->status);
     }
 
+    /**
+     * Documents a known round-trip limitation (see README's "Пересмотр" section): a record
+     * that is `completed` + `is_rewatching=true` on MyAnimeList comes back from pull() as
+     * `SyncStatus::Watching` (the contract has no "completed and rewatching" status), and
+     * pushing that same item back sends `status=watching, is_rewatching=false` — moving the
+     * record on MyAnimeList from "Completed" to "Watching", not merely clearing the rewatch
+     * flag. {@see SyncItem} carries no field to recover the original `completed` status from.
+     */
+    public function testPushAfterPullOfARewatchedCompletedItemOverwritesStatusOnMal(): void
+    {
+        $pullClient = $this->createMock(MalApiClient::class);
+        $pullClient->method('fetchAnimeListPage')->willReturn([
+            'items' => [
+                ['node' => ['id' => 20, 'title' => 'Naruto'], 'list_status' => ['status' => 'completed', 'is_rewatching' => true]],
+            ],
+            'hasNext' => false,
+        ]);
+        $pulledItem = iterator_to_array($this->buildFiller($pullClient, $this->realAuthRetrier('the-token'))->pull())[0];
+
+        self::assertSame(SyncStatus::Watching, $pulledItem->status);
+
+        $pushClient = $this->createMock(MalApiClient::class);
+        $pushClient->expects(self::once())
+            ->method('updateListStatus')
+            ->with(self::anything(), '20', 'watching', $pulledItem->watchedEpisodes)
+            ->willReturn([]);
+
+        $this->buildFiller($pushClient, $this->realAuthRetrier('the-token'))->push($pulledItem);
+    }
+
     public function testPullSkipsItemsWithoutIdTitleOrUnknownStatus(): void
     {
         $client = $this->createMock(MalApiClient::class);
@@ -567,6 +597,9 @@ final class MalFillerTest extends TestCase
                 ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']],
                 ['node' => ['id' => 2, 'title' => 'Unknown Status'], 'list_status' => ['status' => 'bogus']],
                 ['node' => ['id' => 3, 'title' => 'No List Status']],
+                ['node' => ['id' => 0, 'title' => 'Zero Id'], 'list_status' => ['status' => 'watching']],
+                ['node' => ['id' => '1/../x', 'title' => 'Path-Like Id'], 'list_status' => ['status' => 'watching']],
+                ['node' => ['id' => 5, 'title' => ''], 'list_status' => ['status' => 'watching']],
                 ['node' => ['id' => 4, 'title' => 'Valid'], 'list_status' => ['status' => 'plan_to_watch']],
             ],
             'hasNext' => false,
@@ -591,7 +624,7 @@ final class MalFillerTest extends TestCase
         $client = $this->createMock(MalApiClient::class);
         $client->method('fetchAnimeListPage')->willReturnCallback(
             function (string $bearer, int $offset, int $limit) use (&$calls): array {
-                $calls[] = $offset;
+                $calls[] = [$offset, $limit];
 
                 // A single-item (short) page with `hasNext: true` must still be followed.
                 return \count($calls) === 1
@@ -606,9 +639,13 @@ final class MalFillerTest extends TestCase
 
         self::assertCount(1, $items);
         self::assertCount(2, $calls);
-        // The second page's offset must step by the page limit (100), not by the number of
-        // items actually received on the first page (one item) — see MalFiller::pull()'s doc.
-        self::assertSame([0, 100], $calls);
+        // The second page's offset must step by the limit actually sent on the first call, not
+        // by the number of items actually received on the first page (one item) — see
+        // MalFiller::pull()'s doc. Comparing against the sent `$limit` (rather than a hardcoded
+        // literal) catches a drift between the offset step and the page size constant.
+        self::assertSame(0, $calls[0][0]);
+        self::assertSame($calls[0][1], $calls[1][0], 'offset must advance by the limit actually sent');
+        self::assertSame($calls[0][1], $calls[1][1]);
     }
 
     public function testPullStopsWhenHasNextIsFalse(): void

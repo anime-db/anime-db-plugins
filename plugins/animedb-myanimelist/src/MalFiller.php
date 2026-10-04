@@ -341,7 +341,7 @@ final class MalFiller implements SyncInterface
         $title = $node['title'] ?? null;
 
         if (
-            (!\is_string($externalId) && !\is_int($externalId))
+            !self::isValidExternalId($externalId)
             || !\is_string($title) || $title === ''
             || $listStatus === null
             || !\is_string($listStatus['status'] ?? null)
@@ -357,6 +357,21 @@ final class MalFiller implements SyncInterface
         $watchedEpisodes = \is_int($listStatus['num_episodes_watched'] ?? null) ? $listStatus['num_episodes_watched'] : null;
 
         return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($listStatus['updated_at'] ?? null), $watchedEpisodes);
+    }
+
+    /**
+     * Mirrors the id rule {@see MalApiClient::updateListStatus()} enforces on push (a bare
+     * positive integer, as either PHP type) — an id {@see self::buildSyncItem()} let through
+     * here but push later rejects would land in the catalog on pull only to break that same
+     * record's next push.
+     */
+    private static function isValidExternalId(mixed $externalId): bool
+    {
+        if (\is_int($externalId)) {
+            return $externalId > 0;
+        }
+
+        return \is_string($externalId) && preg_match('/^[1-9]\d*$/', $externalId) === 1;
     }
 
     private static function parseDateTime(mixed $raw): ?\DateTimeImmutable
