@@ -32,8 +32,10 @@ use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\Tests\Widget\Fixture\StubTwigFactory;
 use AnimeDb\Plugins\AnimedbMyanimelist\Widget\SimilarWidget;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -100,6 +102,44 @@ final class SimilarWidgetTest extends TestCase
         self::assertStringNotContainsString('<li>', $html);
     }
 
+    public function testRenderReturnsEmptyListWhenApiRespondsWithNotFound(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willThrowException(new NotFoundHttpException('not found'));
+
+        $widget = $this->buildWidget($client, '3455');
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('<li>', $html);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidExternalIdProvider(): iterable
+    {
+        yield 'non-numeric' => ['abc'];
+        yield 'zero' => ['0'];
+        yield 'leading zero' => ['012'];
+        yield 'path traversal' => ['1/../x'];
+        yield 'query injection' => ['1?a=b'];
+        yield 'empty string' => [''];
+    }
+
+    #[DataProvider('invalidExternalIdProvider')]
+    public function testRenderReturnsEmptyListWithoutHttpRequestForInvalidExternalId(string $externalId): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::never())->method('get');
+
+        $widget = $this->buildWidget($client, $externalId);
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('<li>', $html);
+    }
+
     public function testRenderDoesNotWrapTheHostListHelperInAPluginSpecificElement(): void
     {
         $client = $this->createMock(MalApiClient::class);
@@ -151,6 +191,28 @@ final class SimilarWidgetTest extends TestCase
         self::assertSame('Rosario to Vampire', $item->title);
         self::assertNull($item->subtitle);
         self::assertSame('https://myanimelist.net/anime/2993', $item->url);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidNodeIdProvider(): iterable
+    {
+        yield 'id is an array' => [['id' => [1, 2]]];
+        yield 'id is a string with a path separator' => [['id' => '2993/../../login']];
+        yield 'id is zero' => [['id' => 0]];
+    }
+
+    #[DataProvider('invalidNodeIdProvider')]
+    public function testBuildItemReturnsNullWhenNodeIdIsNotAPositiveInteger(array $node): void
+    {
+        $recommendation = [
+            'node' => array_merge(['title' => 'Some Title'], $node),
+        ];
+
+        $item = (new ReflectionMethod(SimilarWidget::class, 'buildItem'))->invoke(null, $recommendation);
+
+        self::assertNull($item);
     }
 
     private function buildWidget(MalApiClient $client, ?string $externalId): SimilarWidget

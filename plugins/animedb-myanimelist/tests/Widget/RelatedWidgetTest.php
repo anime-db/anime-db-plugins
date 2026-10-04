@@ -32,8 +32,10 @@ use AnimeDb\PluginContracts\Catalog\CatalogReaderInterface;
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\Tests\Widget\Fixture\StubTwigFactory;
 use AnimeDb\Plugins\AnimedbMyanimelist\Widget\RelatedWidget;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
@@ -76,19 +78,72 @@ final class RelatedWidgetTest extends TestCase
 
     public function testRenderKeepsTheResponseOrderOfRelatedAnime(): void
     {
+        // Deliberately the opposite of every natural sort: the higher id, the
+        // alphabetically-later title and the alphabetically-later relation both come first, so a
+        // sort by id, title or relation_type_formatted would reorder this and fail the assertion.
+        $card = [
+            'related_anime' => [
+                [
+                    'node' => ['id' => 9181, 'title' => 'Z Sequel Title'],
+                    'relation_type_formatted' => 'Z Sequel',
+                ],
+                [
+                    'node' => ['id' => 5667, 'title' => 'A Side Story Title'],
+                    'relation_type_formatted' => 'A Side story',
+                ],
+            ],
+        ];
         $client = $this->createMock(MalApiClient::class);
-        $client->method('get')->willReturn(self::cardFixture('card_3455.json'));
+        $client->method('get')->willReturn($card);
 
         $widget = $this->buildWidget($client, '3455');
 
         $html = $widget->render(new AnimeId(1));
 
-        $sideStoryPosition = strpos($html, 'To LOVE-Ru OVA');
-        $sequelPosition = strpos($html, 'Motto To LOVE-Ru');
+        $firstPosition = strpos($html, 'Z Sequel Title');
+        $secondPosition = strpos($html, 'A Side Story Title');
 
-        self::assertNotFalse($sideStoryPosition);
-        self::assertNotFalse($sequelPosition);
-        self::assertLessThan($sequelPosition, $sideStoryPosition);
+        self::assertNotFalse($firstPosition);
+        self::assertNotFalse($secondPosition);
+        self::assertLessThan($secondPosition, $firstPosition);
+    }
+
+    public function testRenderReturnsEmptyListWhenApiRespondsWithNotFound(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willThrowException(new NotFoundHttpException('not found'));
+
+        $widget = $this->buildWidget($client, '3455');
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('<li>', $html);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidExternalIdProvider(): iterable
+    {
+        yield 'non-numeric' => ['abc'];
+        yield 'zero' => ['0'];
+        yield 'leading zero' => ['012'];
+        yield 'path traversal' => ['1/../x'];
+        yield 'query injection' => ['1?a=b'];
+        yield 'empty string' => [''];
+    }
+
+    #[DataProvider('invalidExternalIdProvider')]
+    public function testRenderReturnsEmptyListWithoutHttpRequestForInvalidExternalId(string $externalId): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::never())->method('get');
+
+        $widget = $this->buildWidget($client, $externalId);
+
+        $html = $widget->render(new AnimeId(1));
+
+        self::assertStringNotContainsString('<li>', $html);
     }
 
     public function testRenderDoesNotWrapTheHostListHelperInAPluginSpecificElement(): void
@@ -158,6 +213,28 @@ final class RelatedWidgetTest extends TestCase
         self::assertSame('To LOVE-Ru OVA', $item->title);
         self::assertSame('Side story', $item->subtitle);
         self::assertSame('https://myanimelist.net/anime/5667', $item->url);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidNodeIdProvider(): iterable
+    {
+        yield 'id is an array' => [['id' => [1, 2]]];
+        yield 'id is a string with a path separator' => [['id' => '5667/../../login']];
+        yield 'id is zero' => [['id' => 0]];
+    }
+
+    #[DataProvider('invalidNodeIdProvider')]
+    public function testBuildItemReturnsNullWhenNodeIdIsNotAPositiveInteger(array $node): void
+    {
+        $relation = [
+            'node' => array_merge(['title' => 'Some Title'], $node),
+        ];
+
+        $item = (new ReflectionMethod(RelatedWidget::class, 'buildItem'))->invoke(null, $relation);
+
+        self::assertNull($item);
     }
 
     private function buildWidget(MalApiClient $client, ?string $externalId): RelatedWidget

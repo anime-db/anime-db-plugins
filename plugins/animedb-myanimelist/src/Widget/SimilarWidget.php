@@ -33,6 +33,7 @@ use AnimeDb\PluginContracts\Widget\EntryWidgetInterface;
 use AnimeDb\PluginContracts\Widget\WidgetListItem;
 use AnimeDb\PluginContracts\Widget\WidgetMetadata;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use Twig\Environment;
 
 /**
@@ -91,7 +92,11 @@ final class SimilarWidget implements EntryWidgetInterface
             return [];
         }
 
-        $data = $this->client->get('/anime/'.$externalId, ['fields' => self::CARD_FIELDS]);
+        try {
+            $data = $this->client->get('/anime/'.$externalId, ['fields' => self::CARD_FIELDS]);
+        } catch (NotFoundHttpException) {
+            return [];
+        }
         $recommendations = \is_array($data['recommendations'] ?? null) ? $data['recommendations'] : [];
 
         $items = [];
@@ -111,7 +116,7 @@ final class SimilarWidget implements EntryWidgetInterface
     private static function buildItem(mixed $recommendation): ?WidgetListItem
     {
         $node = \is_array($recommendation) ? ($recommendation['node'] ?? null) : null;
-        if (!\is_array($node) || !isset($node['id'])) {
+        if (!\is_array($node) || !\is_int($node['id'] ?? null) || $node['id'] < 1) {
             return null;
         }
 
