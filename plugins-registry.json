@@ -1,5 +1,5 @@
 {
-    "sequence": 51,
+    "sequence": 52,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -164,7 +164,7 @@
             "manifest": {
                 "id": "animedb-myanimelist",
                 "name": "MyAnimeList",
-                "version": "0.5.0",
+                "version": "0.6.0",
                 "type": "integration",
                 "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
                 "author": "AnimeDB",
@@ -186,6 +186,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.6.0",
+                    "core": ">=0.0.1",
+                    "sha256": "e66752ef9be4ffef60f7f4193f362e17fba063f9fb7b750984ed2742431681e9",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.25"
+                },
                 {
                     "version": "0.5.0",
                     "core": ">=0.0.1",
