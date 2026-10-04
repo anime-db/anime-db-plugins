@@ -25,7 +25,7 @@ widget:
         description: Показывает аниме, которые сообщество MyAnimeList рекомендует вместе с этим аниме.
     new:
         title: Новинки
-        description: Показывает тайтлы текущего сезона по данным MyAnimeList.
+        description: Показывает аниме текущего сезона по данным MyAnimeList.
 
 oauth_result:
     page_title: Авторизация MyAnimeList
