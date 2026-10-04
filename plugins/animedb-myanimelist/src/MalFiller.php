@@ -27,12 +27,13 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbMyanimelist;
 
-use AnimeDb\PluginContracts\Filler\FillerInterface;
 use AnimeDb\PluginContracts\Filler\PluginAnimeData;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Model\AnimeName;
 use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
+use AnimeDb\PluginContracts\Sync\SyncInterface;
+use AnimeDb\PluginContracts\Sync\SyncItem;
 use AnimeDb\Plugins\AnimedbMyanimelist\ExternalId\MalIdResolver;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
@@ -40,24 +41,28 @@ use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\AnimeTypeMapper;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\DateParser;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\GenreMapper;
 use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\SynopsisCleaner;
+use AnimeDb\Plugins\AnimedbMyanimelist\Mapping\SyncStatusMapper;
+use AnimeDb\Plugins\AnimedbMyanimelist\Sync\MalAuthRetrier;
 
 /**
  * Источник MyAnimeList: поиск аниме по названию, распознавание id по уже прикреплённым к
  * записи ссылкам и заполнение карточки, через анонимные чтения MyAnimeList API v2
- * (`find()`/`resolveExternalId()`/`findById()`).
+ * (`find()`/`resolveExternalId()`/`findById()`), плюс синхронизация watch-листа пользователя
+ * (`push()`/`pull()`), использующая OAuth-токен из {@see MalAuthRetrier}.
  *
- * Единственный класс плагина, реализующий {@see FillerInterface}: следующая задача серии
- * расширяет именно его до `SyncInterface` (синхронизация watch-листа), а не добавляет второй
- * filler-совместимый класс на тот же id плагина — это дало бы коллизию тегов
- * `app.filler`/`app.sync` на хосте.
+ * Единственный filler-совместимый класс плагина (`SyncInterface extends FillerInterface`):
+ * второй такой класс на тот же id плагина дал бы коллизию тегов `app.filler`/`app.sync` на
+ * хосте, поэтому `push()`/`pull()` добавлены сюда же, а не в отдельный класс.
  *
  * `findById()` — адаптированная для полей MyAnimeList копия
- * {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::findById()}, а не общий код между
- * плагинами: оба плагина остаются независимыми друг от друга и от контракта.
+ * {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::findById()}, а `push()`/`pull()` —
+ * адаптированная копия {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::push()}/`pull()`,
+ * а не общий код между плагинами: оба плагина остаются независимыми друг от друга и от
+ * контракта.
  *
- * Тяжёлый HTTP вынесен в {@see MalApiClient}.
+ * Тяжёлый HTTP вынесен в {@see MalApiClient}; 401→refresh→retry — в {@see MalAuthRetrier}.
  */
-final class MalFiller implements FillerInterface
+final class MalFiller implements SyncInterface
 {
     /**
      * Minimum length of a search query `q`, in characters (not bytes — confirmed live against
@@ -90,8 +95,16 @@ final class MalFiller implements FillerInterface
 
     private const SECONDS_PER_MINUTE = 60;
 
+    /**
+     * Page size used by {@see self::pull()}. Not tied to any MyAnimeList-side limit in
+     * particular — see {@see MalApiClient::fetchAnimeListPage()} for the pagination contract
+     * this page size plugs into.
+     */
+    private const PULL_PAGE_LIMIT = 100;
+
     public function __construct(
         private readonly MalApiClient $client,
+        private readonly MalAuthRetrier $authRetrier,
         private readonly OwnManifestInterface $ownManifest,
     ) {
     }
@@ -239,6 +252,139 @@ final class MalFiller implements FillerInterface
             'cover',
             'images',
         ];
+    }
+
+    /**
+     * Sets $item's status and watched episode count on MyAnimeList via
+     * {@see MalApiClient::updateListStatus()} — `PATCH /anime/{id}/my_list_status` is an
+     * upsert on MyAnimeList's side, so unlike
+     * {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller::push()} this never needs a
+     * find-or-create sequence.
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function push(SyncItem $item): SyncItem
+    {
+        $status = SyncStatusMapper::toMal($item->status);
+
+        $response = $this->authRetrier->call(
+            fn (string $bearer): array => $this->client->updateListStatus($bearer, $item->externalId, $status, $item->watchedEpisodes),
+        );
+
+        // Prefer the source-confirmed `updated_at`/`num_episodes_watched` from the response
+        // (see SyncInterface::push()'s doc); fall back to what was actually sent when the
+        // response does not carry them.
+        $updatedAt = self::parseDateTime($response['updated_at'] ?? null);
+        $watchedEpisodes = \is_int($response['num_episodes_watched'] ?? null)
+            ? $response['num_episodes_watched']
+            : $item->watchedEpisodes;
+
+        return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+    }
+
+    /**
+     * Pulls the current user's watch list from MyAnimeList's `/users/@me/animelist`, page by
+     * page via {@see MalApiClient::fetchAnimeListPage()}.
+     *
+     * `SyncInterface::pull()` takes no heartbeat callback, so this method's own laziness is
+     * what stands in for one: implemented as a generator, it yields control back to the caller
+     * after every item (and issues its one HTTP request per page only when the caller asks for
+     * the next one), rather than fetching the whole list up front. The decision to keep
+     * paginating is taken entirely from {@see MalApiClient::fetchAnimeListPage()}'s `hasNext`
+     * (presence of `paging.next`, not page length) — this method does not re-derive it.
+     *
+     * @return iterable<SyncItem>
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function pull(): iterable
+    {
+        $offset = 0;
+
+        while (true) {
+            $page = $this->authRetrier->call(
+                fn (string $bearer): array => $this->client->fetchAnimeListPage($bearer, $offset, self::PULL_PAGE_LIMIT),
+            );
+
+            foreach ($page['items'] as $entry) {
+                $item = self::buildSyncItem($entry);
+                if ($item !== null) {
+                    yield $item;
+                }
+            }
+
+            if (!$page['hasNext']) {
+                return;
+            }
+
+            $offset += self::PULL_PAGE_LIMIT;
+        }
+    }
+
+    /**
+     * @param mixed $entry a single element of the `data` list returned by
+     *                     {@see MalApiClient::fetchAnimeListPage()} — a `node`/`list_status`
+     *                     pair
+     */
+    private static function buildSyncItem(mixed $entry): ?SyncItem
+    {
+        if (!\is_array($entry)) {
+            return null;
+        }
+
+        $node = \is_array($entry['node'] ?? null) ? $entry['node'] : [];
+        $listStatus = \is_array($entry['list_status'] ?? null) ? $entry['list_status'] : null;
+
+        $externalId = $node['id'] ?? null;
+        $title = $node['title'] ?? null;
+
+        if (
+            !self::isValidExternalId($externalId)
+            || !\is_string($title) || $title === ''
+            || $listStatus === null
+            || !\is_string($listStatus['status'] ?? null)
+        ) {
+            return null;
+        }
+
+        $status = SyncStatusMapper::fromMal($listStatus['status'], ($listStatus['is_rewatching'] ?? false) === true);
+        if ($status === null) {
+            return null;
+        }
+
+        $watchedEpisodes = \is_int($listStatus['num_episodes_watched'] ?? null) ? $listStatus['num_episodes_watched'] : null;
+
+        return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($listStatus['updated_at'] ?? null), $watchedEpisodes);
+    }
+
+    /**
+     * Mirrors the id rule {@see MalApiClient::updateListStatus()} enforces on push (a bare
+     * positive integer, as either PHP type) — an id {@see self::buildSyncItem()} let through
+     * here but push later rejects would land in the catalog on pull only to break that same
+     * record's next push.
+     */
+    private static function isValidExternalId(mixed $externalId): bool
+    {
+        if (\is_int($externalId)) {
+            return $externalId > 0;
+        }
+
+        return \is_string($externalId) && preg_match('/^[1-9]\d*$/', $externalId) === 1;
+    }
+
+    private static function parseDateTime(mixed $raw): ?\DateTimeImmutable
+    {
+        if (!\is_string($raw) || $raw === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($raw);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**
