@@ -42,8 +42,8 @@ use Twig\Environment;
  * `mylist` filter argument, so there is no cheap way to exclude titles already on the user's own
  * list — doing it client-side would mean fetching the user's whole list with a Bearer token on
  * every catalog render, which at this plugin's ~1 request/second rate limit would cost seconds
- * per page. This widget is therefore always anonymous and always shows the full season, same for
- * every user, with no `MalOAuthClient` dependency at all.
+ * per page. This widget is therefore always anonymous and always shows the same top slice of the
+ * season, same for every user, with no `MalOAuthClient` dependency at all.
  *
  * `{year}`/`{season}` are derived from the current date, not stored or configurable.
  * {@see self::SEASON_BY_MONTH} is the official MyAnimeList API v2 season-to-month mapping
@@ -55,7 +55,15 @@ final class NewWidget implements CatalogWidgetInterface
     private const TEMPLATE = '@AnimedbMyanimelist/widget/new.html.twig';
     private const DEFAULT_ENDPOINT = 'https://myanimelist.net';
     private const LIMIT = 20;
-    private const FIELDS = 'id,title,main_picture';
+    private const FIELDS = 'id,title,main_picture,start_season';
+
+    /**
+     * `/anime/season/{year}/{season}` accepts only these two values; neither is "newest", so a
+     * deterministic ranking by popularity is the closest available proxy — without `sort` the
+     * API's order for this endpoint is unspecified, and `$limit` below would otherwise cut an
+     * arbitrary 20 out of a season that usually holds well over a hundred titles.
+     */
+    private const SORT = 'anime_num_list_users';
 
     private const SEASON_BY_MONTH = [
         1 => 'winter', 2 => 'winter', 3 => 'winter',
@@ -94,6 +102,7 @@ final class NewWidget implements CatalogWidgetInterface
         [$year, $season] = $this->currentYearAndSeason();
 
         $data = $this->client->get(\sprintf('/anime/season/%d/%s', $year, $season), [
+            'sort' => self::SORT,
             'limit' => self::LIMIT,
             'fields' => self::FIELDS,
         ]);
@@ -102,7 +111,7 @@ final class NewWidget implements CatalogWidgetInterface
 
         $items = [];
         foreach ($animes as $anime) {
-            $item = self::buildItem($anime);
+            $item = self::buildItem($anime, $year, $season);
             if ($item !== null) {
                 $items[] = $item;
             }
@@ -122,12 +131,21 @@ final class NewWidget implements CatalogWidgetInterface
     }
 
     /**
+     * `/anime/season/{year}/{season}` also lists titles still airing from an earlier season
+     * (MyAnimeList's own seasonal page calls this "TV (Continuing)"); without this check a
+     * years-old long-running series would show up in a widget meant to list new titles.
+     *
      * @param mixed $anime a single `data[]` element
      */
-    private static function buildItem(mixed $anime): ?WidgetListItem
+    private static function buildItem(mixed $anime, int $year, string $season): ?WidgetListItem
     {
         $node = \is_array($anime) ? ($anime['node'] ?? null) : null;
         if (!\is_array($node) || !\is_int($node['id'] ?? null) || $node['id'] < 1) {
+            return null;
+        }
+
+        $startSeason = \is_array($node['start_season'] ?? null) ? $node['start_season'] : null;
+        if ($startSeason !== null && ($startSeason['year'] !== $year || $startSeason['season'] !== $season)) {
             return null;
         }
 

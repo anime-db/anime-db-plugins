@@ -68,7 +68,11 @@ final class NewWidgetTest extends TestCase
         $client = $this->createMock(MalApiClient::class);
         $client->expects(self::once())
             ->method('get')
-            ->with($expectedPath, ['limit' => 20, 'fields' => 'id,title,main_picture'])
+            ->with($expectedPath, [
+                'sort' => 'anime_num_list_users',
+                'limit' => 20,
+                'fields' => 'id,title,main_picture,start_season',
+            ])
             ->willReturn(['data' => []]);
 
         $widget = $this->buildWidget($client, $date);
@@ -149,16 +153,32 @@ final class NewWidgetTest extends TestCase
                     'medium' => 'https://cdn.myanimelist.net/images/anime/1141/142503.jpg',
                     'large' => 'https://cdn.myanimelist.net/images/anime/1141/142503l.jpg',
                 ],
+                'start_season' => ['year' => 2026, 'season' => 'spring'],
             ],
         ];
 
-        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime);
+        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime, 2026, 'spring');
 
         self::assertInstanceOf(WidgetListItem::class, $item);
         self::assertSame('https://cdn.myanimelist.net/images/anime/1141/142503l.jpg', $item->thumbnail);
         self::assertSame('Naruto', $item->title);
         self::assertNull($item->subtitle);
         self::assertSame('https://myanimelist.net/anime/20', $item->url);
+    }
+
+    public function testBuildItemReturnsNullWhenStartSeasonDoesNotMatchTheRequestedSeason(): void
+    {
+        $anime = [
+            'node' => [
+                'id' => 20,
+                'title' => 'A Long-Running Series',
+                'start_season' => ['year' => 2019, 'season' => 'fall'],
+            ],
+        ];
+
+        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime, 2026, 'spring');
+
+        self::assertNull($item);
     }
 
     /**
@@ -178,7 +198,7 @@ final class NewWidgetTest extends TestCase
             'node' => array_merge(['title' => 'Some Title'], $node),
         ];
 
-        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime);
+        $item = (new ReflectionMethod(NewWidget::class, 'buildItem'))->invoke(null, $anime, 2026, 'spring');
 
         self::assertNull($item);
     }
