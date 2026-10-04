@@ -23,6 +23,9 @@ widget:
     similar:
         title: Recommended anime
         description: Shows anime the MyAnimeList community recommends alongside this title.
+    new:
+        title: New releases
+        description: Shows the current season's anime titles from MyAnimeList's data.
 
 oauth_result:
     page_title: MyAnimeList authorization
