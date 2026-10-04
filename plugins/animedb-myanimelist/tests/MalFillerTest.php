@@ -35,9 +35,14 @@ use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
+use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncStatus;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
+use AnimeDb\Plugins\AnimedbMyanimelist\Http\UnauthorizedHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\MalFiller;
+use AnimeDb\Plugins\AnimedbMyanimelist\OAuth\MalOAuthClient;
+use AnimeDb\Plugins\AnimedbMyanimelist\Sync\MalAuthRetrier;
 use PHPUnit\Framework\TestCase;
 
 final class MalFillerTest extends TestCase
@@ -438,9 +443,251 @@ final class MalFillerTest extends TestCase
         self::assertNull($filler->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
     }
 
-    private function buildFiller(MalApiClient $client): MalFiller
+    public function testPushCallsUpdateListStatusExactlyOnceWithMappedStatusAndEpisodes(): void
     {
-        return new MalFiller($client, $this->stubOwnManifest());
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())
+            ->method('updateListStatus')
+            ->with('the-token', '20', 'completed', 13)
+            ->willReturn(['status' => 'completed', 'num_episodes_watched' => 13, 'updated_at' => '2026-08-10T12:05:00+00:00']);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
+
+        self::assertEquals(
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', new \DateTimeImmutable('2026-08-10T12:05:00+00:00'), 13),
+            $result,
+        );
+    }
+
+    /**
+     * `is_rewatching=false` is itself guaranteed by
+     * {@see MalApiClient::updateListStatus()} (covered in `MalApiClientTest`); this test
+     * guards the one-call invariant at the `push()` level — a retry, a find-or-create
+     * sequence, or any second write would multiply it.
+     */
+    public function testPushMakesExactlyOneWriteCall(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())->method('updateListStatus')->willReturn([]);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+        $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5));
+    }
+
+    public function testPushFallsBackToSentValuesWhenResponseOmitsConfirmation(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('updateListStatus')->willReturn(['status' => 'watching']);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5));
+
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5), $result);
+    }
+
+    public function testPushRetriesOnceAfterUnauthorizedThroughMalAuthRetrier(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturnOnConsecutiveCalls('expired-token', 'fresh-token');
+        $oauth->expects(self::once())->method('refreshAccessToken');
+
+        $calls = 0;
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::exactly(2))
+            ->method('updateListStatus')
+            ->willReturnCallback(function (string $bearer) use (&$calls): array {
+                ++$calls;
+                if ($calls === 1) {
+                    self::assertSame('expired-token', $bearer);
+
+                    throw new UnauthorizedHttpException('MyAnimeList API responded with HTTP 401.');
+                }
+
+                self::assertSame('fresh-token', $bearer);
+
+                return ['status' => 'watching', 'num_episodes_watched' => 5, 'updated_at' => '2026-08-10T12:00:00+00:00'];
+            });
+
+        $filler = $this->buildFiller($client, new MalAuthRetrier($oauth));
+
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 1));
+
+        self::assertSame(5, $result->watchedEpisodes);
+    }
+
+    public function testPullYieldsMappedItemsFromAPage(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturn([
+            'items' => [
+                [
+                    'node' => ['id' => 20, 'title' => 'Naruto'],
+                    'list_status' => ['status' => 'watching', 'num_episodes_watched' => 55, 'updated_at' => '2026-08-10T09:30:00+00:00'],
+                ],
+            ],
+            'hasNext' => false,
+        ]);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertEquals(
+            [new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T09:30:00+00:00'), 55)],
+            $items,
+        );
+    }
+
+    public function testPullMapsIsRewatchingTrueToWatchingRegardlessOfStatus(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturn([
+            'items' => [
+                ['node' => ['id' => 20, 'title' => 'Naruto'], 'list_status' => ['status' => 'completed', 'is_rewatching' => true]],
+            ],
+            'hasNext' => false,
+        ]);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertSame(SyncStatus::Watching, $items[0]->status);
+    }
+
+    public function testPullSkipsItemsWithoutIdTitleOrUnknownStatus(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturn([
+            'items' => [
+                ['node' => ['title' => 'No Id'], 'list_status' => ['status' => 'watching']],
+                ['node' => ['id' => 1], 'list_status' => ['status' => 'watching']],
+                ['node' => ['id' => 2, 'title' => 'Unknown Status'], 'list_status' => ['status' => 'bogus']],
+                ['node' => ['id' => 3, 'title' => 'No List Status']],
+                ['node' => ['id' => 4, 'title' => 'Valid'], 'list_status' => ['status' => 'plan_to_watch']],
+            ],
+            'hasNext' => false,
+        ]);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertEquals([new SyncItem('4', SyncStatus::Plan, 'Valid')], $items);
+    }
+
+    /**
+     * The next page must be requested only when {@see MalApiClient::fetchAnimeListPage()}
+     * reports `hasNext: true` (which itself is driven by the presence of `paging.next`, not
+     * by page length — see that class) — and a page shorter than the limit must not stop
+     * pull() on its own.
+     */
+    public function testPullRequestsNextPageWhenHasNextIsTrueEvenForAShortPage(): void
+    {
+        $calls = [];
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturnCallback(
+            function (string $bearer, int $offset, int $limit) use (&$calls): array {
+                $calls[] = $offset;
+
+                // A single-item (short) page with `hasNext: true` must still be followed.
+                return \count($calls) === 1
+                    ? ['items' => [['node' => ['id' => 1, 'title' => 'First'], 'list_status' => ['status' => 'watching']]], 'hasNext' => true]
+                    : ['items' => [], 'hasNext' => false];
+            },
+        );
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertCount(1, $items);
+        self::assertCount(2, $calls);
+        // The second page's offset must step by the page limit (100), not by the number of
+        // items actually received on the first page (one item) — see MalFiller::pull()'s doc.
+        self::assertSame([0, 100], $calls);
+    }
+
+    public function testPullStopsWhenHasNextIsFalse(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())->method('fetchAnimeListPage')->willReturn([
+            'items' => [['node' => ['id' => 1, 'title' => 'Only'], 'list_status' => ['status' => 'watching']]],
+            'hasNext' => false,
+        ]);
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        self::assertCount(1, iterator_to_array($filler->pull()));
+    }
+
+    public function testPullIsLazyAndOnlyFetchesPagesAsTheyAreConsumed(): void
+    {
+        $calls = 0;
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturnCallback(function () use (&$calls): array {
+            ++$calls;
+
+            return [
+                'items' => [['node' => ['id' => 1, 'title' => 'Filler'], 'list_status' => ['status' => 'watching']]],
+                'hasNext' => true,
+            ];
+        });
+
+        $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
+
+        $generator = $filler->pull();
+        self::assertSame(0, $calls, 'pull() must not issue any request before the caller starts iterating');
+
+        $generator->current();
+        self::assertSame(1, $calls, 'the first page is fetched once the caller asks for the first item');
+    }
+
+    public function testPullRetriesOnceAfterUnauthorizedThroughMalAuthRetrier(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturnOnConsecutiveCalls('expired-token', 'fresh-token');
+        $oauth->expects(self::once())->method('refreshAccessToken');
+
+        $calls = 0;
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::exactly(2))
+            ->method('fetchAnimeListPage')
+            ->willReturnCallback(function (string $bearer) use (&$calls): array {
+                ++$calls;
+                if ($calls === 1) {
+                    self::assertSame('expired-token', $bearer);
+
+                    throw new UnauthorizedHttpException('MyAnimeList API responded with HTTP 401.');
+                }
+
+                self::assertSame('fresh-token', $bearer);
+
+                return ['items' => [['node' => ['id' => 1, 'title' => 'Naruto'], 'list_status' => ['status' => 'watching']]], 'hasNext' => false];
+            });
+
+        $filler = $this->buildFiller($client, new MalAuthRetrier($oauth));
+
+        $items = iterator_to_array($filler->pull());
+
+        self::assertCount(1, $items);
+    }
+
+    private function realAuthRetrier(string $bearer): MalAuthRetrier
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturn($bearer);
+        $oauth->expects(self::never())->method('refreshAccessToken');
+
+        return new MalAuthRetrier($oauth);
+    }
+
+    private function buildFiller(MalApiClient $client, ?MalAuthRetrier $authRetrier = null): MalFiller
+    {
+        return new MalFiller($client, $authRetrier ?? $this->createMock(MalAuthRetrier::class), $this->stubOwnManifest());
     }
 
     private function stubOwnManifest(): OwnManifestInterface
