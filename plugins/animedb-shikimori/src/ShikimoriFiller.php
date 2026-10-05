@@ -34,6 +34,7 @@ use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncInterface;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\Plugins\AnimedbShikimori\ExternalId\ShikimoriIdResolver;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlRequestException;
@@ -60,7 +61,7 @@ use AnimeDb\Plugins\AnimedbShikimori\Sync\ShikimoriAuthRetrier;
  * Маппинг словарей жанров/тем/демографии не полагается на `genres[].kind` Shikimori — см. класс
  * {@see GenreMapper}. Маппинг статусов синка — {@see SyncStatusMapper}.
  */
-final class ShikimoriFiller implements SyncInterface
+final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 {
     private const SEARCH_LIMIT = 15;
     private const USER_RATES_PAGE_LIMIT = 50;
@@ -275,6 +276,29 @@ final class ShikimoriFiller implements SyncInterface
         $watchedEpisodes = \is_int($response['episodes'] ?? null) ? $response['episodes'] : $item->watchedEpisodes;
 
         return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+    }
+
+    /**
+     * Removes the user's list entry (`user_rate`) for $externalId; the title itself is untouched.
+     * Idempotent: when the title is not on the list, nothing is requested and nothing is thrown.
+     * No retries of its own beyond {@see ShikimoriAuthRetrier}'s token refresh.
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function remove(string $externalId): void
+    {
+        $rateId = $this->authRetrier->call(
+            fn (string $bearer): ?string => $this->restClient->findUserRateId($bearer, $this->resolveUserId($bearer), $externalId),
+        );
+
+        if ($rateId === null) {
+            return;
+        }
+
+        $this->authRetrier->call(
+            fn (string $bearer) => $this->restClient->deleteUserRate($bearer, $rateId),
+        );
     }
 
     /**

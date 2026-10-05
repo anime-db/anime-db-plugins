@@ -408,6 +408,56 @@ final class ShikimoriRestClientTest extends TestCase
         );
     }
 
+    public function testDeleteUserRateSendsDeleteAndAcceptsEmptyBody(): void
+    {
+        $request = $this->fluentRequest();
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('DELETE', 'https://shikimori.io/api/v2/user_rates/42')
+            ->willReturn($request);
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(204);
+        $response->method('getBody')->willReturn($this->stringStream(''));
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())->method('sendRequest')->willReturn($response);
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $client = new ShikimoriRestClient(
+            $httpClient,
+            $requestFactory,
+            $this->createMock(StreamFactoryInterface::class),
+            $settings,
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+
+        $client->deleteUserRate('a-token', '42');
+    }
+
+    public function testDeleteUserRateThrowsUnauthorizedOn401AndRestExceptionOn5xx(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturnOnConsecutiveCalls(
+            $this->jsonResponse(401, []),
+            $this->jsonResponse(503, []),
+        );
+        $client = $this->buildClient($httpClient);
+
+        try {
+            $client->deleteUserRate('a-token', '42');
+            self::fail('Expected UnauthorizedHttpException.');
+        } catch (UnauthorizedHttpException) {
+        }
+
+        $this->expectException(RestRequestException::class);
+        $client->deleteUserRate('a-token', '42');
+    }
+
     public function testTransportFailureThrowsRestRequestException(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);

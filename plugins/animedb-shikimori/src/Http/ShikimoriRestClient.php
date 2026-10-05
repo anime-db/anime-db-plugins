@@ -162,6 +162,17 @@ class ShikimoriRestClient
     }
 
     /**
+     * Deletes a `user_rate` by id (`DELETE /api/v2/user_rates/:id`, empty 204 response).
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws RestRequestException      transport failure or another non-2xx status
+     */
+    public function deleteUserRate(string $bearer, string $rateId): void
+    {
+        $this->request('DELETE', self::USER_RATES_PATH.'/'.rawurlencode($rateId), null, $bearer);
+    }
+
+    /**
      * Lists anime similar to $externalId, per Shikimori's public (unauthenticated)
      * `/api/animes/:id/similar` endpoint — this data is not exposed by the GraphQL schema.
      *
