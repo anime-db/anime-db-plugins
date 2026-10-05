@@ -34,6 +34,7 @@ use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncInterface;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\Plugins\AnimedbMyanimelist\ExternalId\MalIdResolver;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
@@ -62,7 +63,7 @@ use AnimeDb\Plugins\AnimedbMyanimelist\Sync\MalAuthRetrier;
  *
  * Тяжёлый HTTP вынесен в {@see MalApiClient}; 401→refresh→retry — в {@see MalAuthRetrier}.
  */
-final class MalFiller implements SyncInterface
+final class MalFiller implements SyncInterface, SyncRemovalInterface
 {
     /**
      * Minimum length of a search query `q`, in characters (not bytes — confirmed live against
@@ -281,6 +282,21 @@ final class MalFiller implements SyncInterface
             : $item->watchedEpisodes;
 
         return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+    }
+
+    /**
+     * Removes the title from the user's MyAnimeList list via
+     * {@see MalApiClient::deleteListStatus()}. Idempotent: a title that is not on the list
+     * returns normally. The user's list entry is removed, not the title itself.
+     *
+     * @throws \AnimeDb\PluginContracts\OAuth\ReauthRequiredException no OAuth session, or the
+     *                                                                session is confirmed dead
+     */
+    public function remove(string $externalId): void
+    {
+        $this->authRetrier->call(
+            fn (string $bearer) => $this->client->deleteListStatus($bearer, $externalId),
+        );
     }
 
     /**

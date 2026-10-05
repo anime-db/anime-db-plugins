@@ -90,6 +90,17 @@ final class MalApiClientTest extends TestCase
         $client->get('/anime', ['q' => 'naruto']);
     }
 
+    public function testEmptyBodyOnGetStillThrowsMalRequestException(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->rawResponse(200, ''));
+
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(MalRequestException::class);
+        $client->get('/anime', ['q' => 'naruto']);
+    }
+
     public function test401ResponseThrowsUnauthorizedHttpException(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);
@@ -371,6 +382,87 @@ final class MalApiClientTest extends TestCase
         self::assertSame($responseBody, $result);
     }
 
+    public function testDeleteListStatusSendsDeleteToMyListStatusPath(): void
+    {
+        $headers = [];
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('DELETE', 'https://api.myanimelist.net/v2/anime/123/my_list_status')
+            ->willReturn($this->fluentRequestCapturingHeadersInto($headers));
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())->method('sendRequest')->willReturn($this->rawResponse(200, ''));
+
+        $this->buildClient($httpClient, $requestFactory)->deleteListStatus('a-bearer-token', '123');
+
+        self::assertSame('Bearer a-bearer-token', $headers['Authorization'] ?? null);
+    }
+
+    public function testDeleteListStatusNotOnListIsNotAnError(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())->method('sendRequest')->willReturn($this->jsonResponse(404, []));
+
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', '123');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDeleteListStatusRetriesAfter429ThenSucceedsOnEmptyBody(): void
+    {
+        $responses = [
+            $this->jsonResponse(429, [], ['Retry-After' => '1']),
+            $this->rawResponse(204, ''),
+        ];
+        $call = 0;
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::exactly(2))
+            ->method('sendRequest')
+            ->willReturnCallback(static function () use (&$call, $responses): ResponseInterface {
+                return $responses[$call++];
+            });
+
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', '123');
+        $this->addToAssertionCount(1);
+    }
+
+    public function testDeleteListStatusUnauthorizedThrows(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(401, []));
+
+        $this->expectException(UnauthorizedHttpException::class);
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', '123');
+    }
+
+    public function testDeleteListStatusServerErrorThrowsWithoutRetry(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())->method('sendRequest')->willReturn($this->jsonResponse(503, []));
+
+        $this->expectException(MalRequestException::class);
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', '123');
+    }
+
+    public function testDeleteListStatusRejectsInvalidAnimeIdWithoutSendingRequest(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::never())->method('sendRequest');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', '1/../x');
+    }
+
+    public function testDeleteListStatusRejectsTrailingNewlineInAnimeId(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::never())->method('sendRequest');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->buildClient($httpClient)->deleteListStatus('a-bearer-token', "123\n");
+    }
+
     public function testUpdateListStatusRejectsInvalidAnimeIdWithoutSendingRequest(): void
     {
         $requestFactory = $this->createMock(RequestFactoryInterface::class);
@@ -383,6 +475,15 @@ final class MalApiClientTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $client->updateListStatus('a-bearer-token', '1/../x', 'watching', null);
+    }
+
+    public function testUpdateListStatusRejectsTrailingNewlineInAnimeId(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::never())->method('sendRequest');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->buildClient($httpClient)->updateListStatus('a-bearer-token', "123\n", 'watching', null);
     }
 
     public function testUpdateListStatusRejectsEmptyAnimeIdWithoutSendingRequest(): void
