@@ -91,6 +91,43 @@ class ShikimoriRestClient
      */
     public function findUserRateId(string $bearer, string $userId, string $targetId): ?string
     {
+        $first = $this->findFirstUserRate($bearer, $userId, $targetId);
+        $id = \is_array($first) ? ($first['id'] ?? null) : null;
+
+        return \is_string($id) || \is_int($id) ? (string) $id : null;
+    }
+
+    /**
+     * Like {@see findUserRateId()}, but returns the id only when the found record really is
+     * the anime `$targetId` (its own `target_id`/`target_type` are compared), so a response that
+     * ignored the filters can never point an irreversible call at another title.
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws RestRequestException      transport failure, another non-2xx status, or an
+     *                                   unparseable response body
+     */
+    public function findVerifiedUserRateId(string $bearer, string $userId, string $targetId): ?string
+    {
+        $first = $this->findFirstUserRate($bearer, $userId, $targetId);
+        if (!\is_array($first)) {
+            return null;
+        }
+
+        $foundTarget = $first['target_id'] ?? null;
+        if ((!\is_string($foundTarget) && !\is_int($foundTarget)) || (string) $foundTarget !== $targetId) {
+            return null;
+        }
+        if (($first['target_type'] ?? null) !== self::TARGET_TYPE_ANIME) {
+            return null;
+        }
+
+        $id = $first['id'] ?? null;
+
+        return \is_string($id) || \is_int($id) ? (string) $id : null;
+    }
+
+    private function findFirstUserRate(string $bearer, string $userId, string $targetId): mixed
+    {
         $query = http_build_query([
             'user_id' => $userId,
             'target_id' => $targetId,
@@ -98,10 +135,8 @@ class ShikimoriRestClient
         ]);
 
         $data = $this->request('GET', self::USER_RATES_PATH.'?'.$query, null, $bearer);
-        $first = \is_array($data) ? ($data[0] ?? null) : null;
-        $id = \is_array($first) ? ($first['id'] ?? null) : null;
 
-        return \is_string($id) || \is_int($id) ? (string) $id : null;
+        return \is_array($data) ? ($data[0] ?? null) : null;
     }
 
     /**

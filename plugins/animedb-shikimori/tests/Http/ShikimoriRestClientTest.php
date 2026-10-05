@@ -408,9 +408,19 @@ final class ShikimoriRestClientTest extends TestCase
         );
     }
 
-    public function testDeleteUserRateSendsDeleteAndAcceptsEmptyBody(): void
+    public function testDeleteUserRateSendsDeleteWithBearerAndNoBodyAndAcceptsEmptyBody(): void
     {
-        $request = $this->fluentRequest();
+        $headers = [];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(
+            function (string $name, string $value) use (&$headers, $request): RequestInterface {
+                $headers[$name] = $value;
+
+                return $request;
+            },
+        );
+        $request->expects(self::never())->method('withBody');
+
         $requestFactory = $this->createMock(RequestFactoryInterface::class);
         $requestFactory->expects(self::once())
             ->method('createRequest')
@@ -436,7 +446,28 @@ final class ShikimoriRestClientTest extends TestCase
             $this->stubOwnManifest(),
         );
 
-        $client->deleteUserRate('a-token', '42');
+        $client->deleteUserRate('delete-bearer-xyz', '42');
+
+        self::assertSame('Bearer delete-bearer-xyz', $headers['Authorization'] ?? null);
+    }
+
+    public function testFindVerifiedUserRateIdReturnsIdOnlyForMatchingAnimeTarget(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturnOnConsecutiveCalls(
+            $this->jsonResponse(200, [['id' => 42, 'target_id' => 20, 'target_type' => 'Anime']]),
+            $this->jsonResponse(200, [['id' => 43, 'target_id' => 99, 'target_type' => 'Anime']]),
+            $this->jsonResponse(200, [['id' => 44, 'target_id' => 20, 'target_type' => 'Manga']]),
+            $this->jsonResponse(200, [['id' => 45]]),
+            $this->jsonResponse(200, []),
+        );
+        $client = $this->buildClient($httpClient);
+
+        self::assertSame('42', $client->findVerifiedUserRateId('a-token', '1', '20'));
+        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
+        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
+        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
+        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
     }
 
     public function testDeleteUserRateThrowsUnauthorizedOn401AndRestExceptionOn5xx(): void

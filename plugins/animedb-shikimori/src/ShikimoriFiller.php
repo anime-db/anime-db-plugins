@@ -288,8 +288,14 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
      */
     public function remove(string $externalId): void
     {
+        // The delete is irreversible: only a numeric Shikimori id may reach the lookup (an
+        // empty filter value would be ignored by the API and match the whole list).
+        if (!ctype_digit($externalId)) {
+            return;
+        }
+
         $rateId = $this->authRetrier->call(
-            fn (string $bearer): ?string => $this->restClient->findUserRateId($bearer, $this->resolveUserId($bearer), $externalId),
+            fn (string $bearer): ?string => $this->restClient->findVerifiedUserRateId($bearer, $this->resolveUserId($bearer), $externalId),
         );
 
         if ($rateId === null) {
