@@ -37,6 +37,7 @@ use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\PluginContracts\OAuth\ReauthRequiredException;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\PluginContracts\Sync\SyncStatus;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
@@ -437,6 +438,30 @@ final class ShikimoriFillerTest extends TestCase
         $restClient->method('findVerifiedUserRateId')->willReturn(null);
         $restClient->expects(self::never())->method('deleteUserRate');
 
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
+    }
+
+    public function testFillerAdvertisesSyncRemovalCapability(): void
+    {
+        $filler = $this->buildFiller(
+            $this->createMock(GraphQlClient::class),
+            $this->createMock(ShikimoriRestClient::class),
+            $this->realAuthRetrier('the-token'),
+        );
+
+        self::assertInstanceOf(SyncRemovalInterface::class, $filler);
+    }
+
+    public function testRemoveThrowsAndDoesNotDeleteWhenFoundRecordIsNotTheTitle(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willThrowException(new RestRequestException('unexpected user_rates response'));
+        $restClient->expects(self::never())->method('deleteUserRate');
+
+        $this->expectException(RestRequestException::class);
         $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
     }
 

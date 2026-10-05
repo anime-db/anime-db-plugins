@@ -33,6 +33,7 @@ use AnimeDb\Plugins\AnimedbShikimori\Http\RateLimiter;
 use AnimeDb\Plugins\AnimedbShikimori\Http\RestRequestException;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -451,23 +452,41 @@ final class ShikimoriRestClientTest extends TestCase
         self::assertSame('Bearer delete-bearer-xyz', $headers['Authorization'] ?? null);
     }
 
-    public function testFindVerifiedUserRateIdReturnsIdOnlyForMatchingAnimeTarget(): void
+    public function testFindVerifiedUserRateIdReturnsIdForMatchingAnimeTargetAndNullForEmptyList(): void
     {
         $httpClient = $this->createMock(ClientInterface::class);
         $httpClient->method('sendRequest')->willReturnOnConsecutiveCalls(
             $this->jsonResponse(200, [['id' => 42, 'target_id' => 20, 'target_type' => 'Anime']]),
-            $this->jsonResponse(200, [['id' => 43, 'target_id' => 99, 'target_type' => 'Anime']]),
-            $this->jsonResponse(200, [['id' => 44, 'target_id' => 20, 'target_type' => 'Manga']]),
-            $this->jsonResponse(200, [['id' => 45]]),
             $this->jsonResponse(200, []),
         );
         $client = $this->buildClient($httpClient);
 
         self::assertSame('42', $client->findVerifiedUserRateId('a-token', '1', '20'));
         self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
-        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
-        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
-        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function mismatchedUserRateProvider(): iterable
+    {
+        yield 'other target_id' => [['id' => 43, 'target_id' => 99, 'target_type' => 'Anime']];
+        yield 'manga target' => [['id' => 44, 'target_id' => 20, 'target_type' => 'Manga']];
+        yield 'no target fields' => [['id' => 45]];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    #[DataProvider('mismatchedUserRateProvider')]
+    public function testFindVerifiedUserRateIdThrowsWhenFirstRecordIsNotTheRequestedAnime(array $record): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [$record]));
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(RestRequestException::class);
+        $client->findVerifiedUserRateId('a-token', '1', '20');
     }
 
     public function testDeleteUserRateThrowsUnauthorizedOn401AndRestExceptionOn5xx(): void
