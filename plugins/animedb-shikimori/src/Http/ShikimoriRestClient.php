@@ -91,6 +91,48 @@ class ShikimoriRestClient
      */
     public function findUserRateId(string $bearer, string $userId, string $targetId): ?string
     {
+        $first = $this->findFirstUserRate($bearer, $userId, $targetId);
+        $id = \is_array($first) ? ($first['id'] ?? null) : null;
+
+        return \is_string($id) || \is_int($id) ? (string) $id : null;
+    }
+
+    /**
+     * Like {@see findUserRateId()}, but returns the id only when the found record really is
+     * the anime `$targetId` (its own `target_id`/`target_type` are compared), so a response that
+     * ignored the filters can never point an irreversible call at another title.
+     *
+     * Null means the list is empty (the title is not on it). A non-empty response whose first
+     * record is not that anime is an error, never a "not on the list" answer.
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws RestRequestException      transport failure, another non-2xx status, an
+     *                                   unparseable response body, or a non-empty response
+     *                                   whose first record is not the requested anime
+     */
+    public function findVerifiedUserRateId(string $bearer, string $userId, string $targetId): ?string
+    {
+        $first = $this->findFirstUserRate($bearer, $userId, $targetId);
+        if ($first === null) {
+            return null;
+        }
+
+        $foundTarget = \is_array($first) ? ($first['target_id'] ?? null) : null;
+        $foundType = \is_array($first) ? ($first['target_type'] ?? null) : null;
+        if ((!\is_string($foundTarget) && !\is_int($foundTarget)) || (string) $foundTarget !== $targetId || $foundType !== self::TARGET_TYPE_ANIME) {
+            throw new RestRequestException('Shikimori returned an unexpected user_rates response');
+        }
+
+        $id = \is_array($first) ? ($first['id'] ?? null) : null;
+        if (!\is_string($id) && !\is_int($id)) {
+            throw new RestRequestException('Shikimori returned an unexpected user_rates response');
+        }
+
+        return (string) $id;
+    }
+
+    private function findFirstUserRate(string $bearer, string $userId, string $targetId): mixed
+    {
         $query = http_build_query([
             'user_id' => $userId,
             'target_id' => $targetId,
@@ -98,10 +140,8 @@ class ShikimoriRestClient
         ]);
 
         $data = $this->request('GET', self::USER_RATES_PATH.'?'.$query, null, $bearer);
-        $first = \is_array($data) ? ($data[0] ?? null) : null;
-        $id = \is_array($first) ? ($first['id'] ?? null) : null;
 
-        return \is_string($id) || \is_int($id) ? (string) $id : null;
+        return \is_array($data) ? ($data[0] ?? null) : null;
     }
 
     /**
@@ -159,6 +199,17 @@ class ShikimoriRestClient
         $data = $this->request('PATCH', self::USER_RATES_PATH.'/'.rawurlencode($rateId), ['user_rate' => $userRate], $bearer);
 
         return \is_array($data) ? $data : [];
+    }
+
+    /**
+     * Deletes a `user_rate` by id (`DELETE /api/v2/user_rates/:id`, empty 204 response).
+     *
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws RestRequestException      transport failure or another non-2xx status
+     */
+    public function deleteUserRate(string $bearer, string $rateId): void
+    {
+        $this->request('DELETE', self::USER_RATES_PATH.'/'.rawurlencode($rateId), null, $bearer);
     }
 
     /**

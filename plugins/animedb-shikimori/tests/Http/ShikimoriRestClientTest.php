@@ -33,6 +33,7 @@ use AnimeDb\Plugins\AnimedbShikimori\Http\RateLimiter;
 use AnimeDb\Plugins\AnimedbShikimori\Http\RestRequestException;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -406,6 +407,105 @@ final class ShikimoriRestClientTest extends TestCase
             \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', self::STUB_MANIFEST_ID, self::STUB_MANIFEST_VERSION),
             $headers['User-Agent'] ?? null,
         );
+    }
+
+    public function testDeleteUserRateSendsDeleteWithBearerAndNoBodyAndAcceptsEmptyBody(): void
+    {
+        $headers = [];
+        $request = $this->createMock(RequestInterface::class);
+        $request->method('withHeader')->willReturnCallback(
+            function (string $name, string $value) use (&$headers, $request): RequestInterface {
+                $headers[$name] = $value;
+
+                return $request;
+            },
+        );
+        $request->expects(self::never())->method('withBody');
+
+        $requestFactory = $this->createMock(RequestFactoryInterface::class);
+        $requestFactory->expects(self::once())
+            ->method('createRequest')
+            ->with('DELETE', 'https://shikimori.io/api/v2/user_rates/42')
+            ->willReturn($request);
+
+        $response = $this->createMock(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn(204);
+        $response->method('getBody')->willReturn($this->stringStream(''));
+
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->expects(self::once())->method('sendRequest')->willReturn($response);
+
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+
+        $client = new ShikimoriRestClient(
+            $httpClient,
+            $requestFactory,
+            $this->createMock(StreamFactoryInterface::class),
+            $settings,
+            $this->noSleepRateLimiter(),
+            $this->stubOwnManifest(),
+        );
+
+        $client->deleteUserRate('delete-bearer-xyz', '42');
+
+        self::assertSame('Bearer delete-bearer-xyz', $headers['Authorization'] ?? null);
+    }
+
+    public function testFindVerifiedUserRateIdReturnsIdForMatchingAnimeTargetAndNullForEmptyList(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturnOnConsecutiveCalls(
+            $this->jsonResponse(200, [['id' => 42, 'target_id' => 20, 'target_type' => 'Anime']]),
+            $this->jsonResponse(200, []),
+        );
+        $client = $this->buildClient($httpClient);
+
+        self::assertSame('42', $client->findVerifiedUserRateId('a-token', '1', '20'));
+        self::assertNull($client->findVerifiedUserRateId('a-token', '1', '20'));
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function mismatchedUserRateProvider(): iterable
+    {
+        yield 'other target_id' => [['id' => 43, 'target_id' => 99, 'target_type' => 'Anime']];
+        yield 'manga target' => [['id' => 44, 'target_id' => 20, 'target_type' => 'Manga']];
+        yield 'no target fields' => [['id' => 45]];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    #[DataProvider('mismatchedUserRateProvider')]
+    public function testFindVerifiedUserRateIdThrowsWhenFirstRecordIsNotTheRequestedAnime(array $record): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturn($this->jsonResponse(200, [$record]));
+        $client = $this->buildClient($httpClient);
+
+        $this->expectException(RestRequestException::class);
+        $client->findVerifiedUserRateId('a-token', '1', '20');
+    }
+
+    public function testDeleteUserRateThrowsUnauthorizedOn401AndRestExceptionOn5xx(): void
+    {
+        $httpClient = $this->createMock(ClientInterface::class);
+        $httpClient->method('sendRequest')->willReturnOnConsecutiveCalls(
+            $this->jsonResponse(401, []),
+            $this->jsonResponse(503, []),
+        );
+        $client = $this->buildClient($httpClient);
+
+        try {
+            $client->deleteUserRate('a-token', '42');
+            self::fail('Expected UnauthorizedHttpException.');
+        } catch (UnauthorizedHttpException) {
+        }
+
+        $this->expectException(RestRequestException::class);
+        $client->deleteUserRate('a-token', '42');
     }
 
     public function testTransportFailureThrowsRestRequestException(): void

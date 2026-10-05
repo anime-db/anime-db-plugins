@@ -34,14 +34,19 @@ use AnimeDb\PluginContracts\Model\Demographic;
 use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Model\ThemeCode;
+use AnimeDb\PluginContracts\OAuth\ReauthRequiredException;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\PluginContracts\Sync\SyncStatus;
 use AnimeDb\Plugins\AnimedbShikimori\Http\GraphQlClient;
 use AnimeDb\Plugins\AnimedbShikimori\Http\ShikimoriRestClient;
+use AnimeDb\Plugins\AnimedbShikimori\Http\RestRequestException;
+use AnimeDb\Plugins\AnimedbShikimori\Http\UnauthorizedHttpException;
 use AnimeDb\Plugins\AnimedbShikimori\OAuth\ShikimoriOAuthClient;
 use AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller;
 use AnimeDb\Plugins\AnimedbShikimori\Sync\ShikimoriAuthRetrier;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ShikimoriFillerTest extends TestCase
@@ -385,6 +390,138 @@ final class ShikimoriFillerTest extends TestCase
         $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
 
         self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
+    }
+
+    public function testRemoveDeletesTheFoundUserRateOnce(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->with('the-token', '7', '20')->willReturn('42');
+        $restClient->expects(self::once())->method('deleteUserRate')->with('the-token', '42');
+
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidExternalIds(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'letters' => ['abc'];
+        yield 'mixed' => ['20a'];
+        yield 'negative' => ['-5'];
+    }
+
+    #[DataProvider('invalidExternalIds')]
+    public function testRemoveIgnoresNonNumericExternalIdWithoutAnyRequest(string $externalId): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->expects(self::never())->method('query');
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->expects(self::never())->method('findVerifiedUserRateId');
+        $restClient->expects(self::never())->method('findUserRateId');
+        $restClient->expects(self::never())->method('deleteUserRate');
+
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove($externalId);
+    }
+
+    public function testRemoveIsIdempotentWhenTitleIsNotOnTheList(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willReturn(null);
+        $restClient->expects(self::never())->method('deleteUserRate');
+
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
+    }
+
+    public function testFillerAdvertisesSyncRemovalCapability(): void
+    {
+        $filler = $this->buildFiller(
+            $this->createMock(GraphQlClient::class),
+            $this->createMock(ShikimoriRestClient::class),
+            $this->realAuthRetrier('the-token'),
+        );
+
+        self::assertInstanceOf(SyncRemovalInterface::class, $filler);
+    }
+
+    public function testRemoveThrowsAndDoesNotDeleteWhenFoundRecordIsNotTheTitle(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willThrowException(new RestRequestException('unexpected user_rates response'));
+        $restClient->expects(self::never())->method('deleteUserRate');
+
+        $this->expectException(RestRequestException::class);
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
+    }
+
+    public function testRemoveRefreshesTokenAndRetriesDeleteOnUnauthorized(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willReturn('42');
+        $bearers = [];
+        $restClient->method('deleteUserRate')->willReturnCallback(function (string $bearer) use (&$bearers): void {
+            $bearers[] = $bearer;
+            if ($bearer === 'old-token') {
+                throw new UnauthorizedHttpException('HTTP 401');
+            }
+        });
+
+        $tokens = ['old-token', 'old-token', 'new-token'];
+        $oauth = $this->createMock(ShikimoriOAuthClient::class);
+        $oauth->method('accessToken')->willReturnCallback(static function () use (&$tokens): string {
+            return \count($tokens) > 1 ? array_shift($tokens) : $tokens[0];
+        });
+        $oauth->expects(self::once())->method('refreshAccessToken');
+
+        $this->buildFiller($client, $restClient, new ShikimoriAuthRetrier($oauth))->remove('20');
+
+        self::assertSame(['old-token', 'new-token'], $bearers);
+    }
+
+    public function testRemoveThrowsReauthRequiredWhenSessionIsDead(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willThrowException(new UnauthorizedHttpException('HTTP 401'));
+        $restClient->expects(self::never())->method('deleteUserRate');
+
+        $oauth = $this->createMock(ShikimoriOAuthClient::class);
+        $oauth->method('accessToken')->willReturn('old-token');
+        $oauth->method('refreshAccessToken')->willThrowException(new \LogicException('no refresh token'));
+        $oauth->expects(self::once())->method('disconnect');
+
+        $this->expectException(ReauthRequiredException::class);
+        $this->buildFiller($client, $restClient, new ShikimoriAuthRetrier($oauth))->remove('20');
+    }
+
+    public function testRemovePropagatesServerErrorFromDelete(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findVerifiedUserRateId')->willReturn('42');
+        $restClient->expects(self::once())->method('deleteUserRate')
+            ->willThrowException(new RestRequestException('HTTP 503'));
+
+        $this->expectException(RestRequestException::class);
+        $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))->remove('20');
     }
 
     public function testPullMapsUserRatesToSyncItemsIncludingRewatching(): void
