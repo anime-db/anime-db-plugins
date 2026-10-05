@@ -216,6 +216,45 @@ class MalApiClient
     }
 
     /**
+     * Removes a single title from the authenticated user's list: `DELETE
+     * /anime/{anime_id}/my_list_status`. Idempotent — HTTP 404 ("not on the list") is a normal
+     * outcome and returns quietly. HTTP 429 is backed off and retried like every other call
+     * ({@see self::sendWithRetry()}); 5xx and transport failures are not retried here. The
+     * success response may carry an empty body, which is not an error.
+     *
+     * @throws \InvalidArgumentException $animeId is not a bare positive integer (see
+     *                                    {@see self::updateListStatus()})
+     * @throws UnauthorizedHttpException the request got HTTP 401 back
+     * @throws MalRequestException       transport failure, another non-2xx/non-401/non-404
+     *                                   status, or the 429 retry budget was exhausted
+     */
+    public function deleteListStatus(string $bearer, string $animeId): void
+    {
+        if (preg_match('/^[1-9]\d*$/', $animeId) !== 1) {
+            throw new \InvalidArgumentException(\sprintf('Invalid MyAnimeList anime id "%s".', $animeId));
+        }
+
+        try {
+            $this->sendWithRetry(fn (): ResponseInterface => $this->sendDelete(\sprintf(self::LIST_STATUS_PATH_FORMAT, $animeId), $bearer), null, true);
+        } catch (NotFoundHttpException) {
+            // Not on the list: nothing to remove.
+        }
+    }
+
+    private function sendDelete(string $path, string $bearer): ResponseInterface
+    {
+        $request = $this->requestFactory->createRequest('DELETE', self::BASE_URL.$path)
+            ->withHeader('User-Agent', UserAgent::forManifest($this->ownManifest))
+            ->withHeader('Authorization', 'Bearer '.$bearer);
+
+        try {
+            return $this->httpClient->sendRequest($request);
+        } catch (ClientExceptionInterface $exception) {
+            throw new MalRequestException('Failed to reach MyAnimeList API.', 0, $exception);
+        }
+    }
+
+    /**
      * @param array<string, scalar> $query
      */
     private function send(string $path, array $query, ?string $bearer): ResponseInterface
@@ -343,8 +382,13 @@ class MalApiClient
      */
     private static function decodeBody(ResponseInterface $response): array
     {
+        $raw = (string) $response->getBody();
+        if (trim($raw) === '') {
+            return [];
+        }
+
         try {
-            $decoded = json_decode((string) $response->getBody(), true, 512, \JSON_THROW_ON_ERROR);
+            $decoded = json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
         } catch (\JsonException $exception) {
             throw new MalRequestException('MyAnimeList API returned invalid JSON.', 0, $exception);
         }
