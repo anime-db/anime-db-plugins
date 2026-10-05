@@ -34,8 +34,10 @@ use AnimeDb\PluginContracts\Model\Demographic;
 use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\PluginContracts\Model\ThemeCode;
+use AnimeDb\PluginContracts\OAuth\ReauthRequiredException;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncItem;
+use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\PluginContracts\Sync\SyncStatus;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
@@ -711,6 +713,81 @@ final class MalFillerTest extends TestCase
         $items = iterator_to_array($filler->pull());
 
         self::assertCount(1, $items);
+    }
+
+    public function testFillerImplementsSyncRemovalInterface(): void
+    {
+        self::assertInstanceOf(
+            SyncRemovalInterface::class,
+            $this->buildFiller($this->createMock(MalApiClient::class)),
+        );
+    }
+
+    public function testRemoveCallsDeleteListStatusExactlyOnceWithExternalId(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())->method('deleteListStatus')->with('the-token', '5114');
+
+        $this->buildFiller($client, $this->realAuthRetrier('the-token'))->remove('5114');
+    }
+
+    public function testRemoveRetriesOnceAfterUnauthorizedThroughMalAuthRetrier(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturnOnConsecutiveCalls('expired-token', 'fresh-token');
+        $oauth->expects(self::once())->method('refreshAccessToken');
+
+        $bearers = [];
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::exactly(2))
+            ->method('deleteListStatus')
+            ->willReturnCallback(function (string $bearer, string $id) use (&$bearers): void {
+                self::assertSame('5114', $id);
+                $bearers[] = $bearer;
+                if (\count($bearers) === 1) {
+                    throw new UnauthorizedHttpException('MyAnimeList API responded with HTTP 401.');
+                }
+            });
+
+        $this->buildFiller($client, new MalAuthRetrier($oauth))->remove('5114');
+
+        self::assertSame(['expired-token', 'fresh-token'], $bearers);
+    }
+
+    public function testRemoveThrowsReauthRequiredWhenSessionIsDead(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturn('old-token');
+        $oauth->method('refreshAccessToken')->willThrowException(new \LogicException('No OAuth refresh token stored.'));
+        $oauth->expects(self::once())->method('disconnect');
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('deleteListStatus')->willThrowException(new UnauthorizedHttpException('HTTP 401'));
+
+        $this->expectException(ReauthRequiredException::class);
+        $this->buildFiller($client, new MalAuthRetrier($oauth))->remove('5114');
+    }
+
+    public function testRemoveThrowsReauthRequiredWithoutHttpCallWhenNotConnected(): void
+    {
+        $oauth = $this->createMock(MalOAuthClient::class);
+        $oauth->method('accessToken')->willReturn(null);
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::never())->method('deleteListStatus');
+
+        $this->expectException(ReauthRequiredException::class);
+        $this->buildFiller($client, new MalAuthRetrier($oauth))->remove('5114');
+    }
+
+    public function testRemoveDoesNotSurfaceNotOnListFromClient(): void
+    {
+        // The client turns HTTP 404 into a normal return; remove() must stay silent as well.
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())->method('deleteListStatus');
+
+        $this->buildFiller($client, $this->realAuthRetrier('the-token'))->remove('5114');
+        $this->addToAssertionCount(1);
     }
 
     private function realAuthRetrier(string $bearer): MalAuthRetrier
