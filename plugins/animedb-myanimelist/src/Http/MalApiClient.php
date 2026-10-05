@@ -199,7 +199,7 @@ class MalApiClient
      */
     public function updateListStatus(string $bearer, string $animeId, string $status, ?int $watchedEpisodes): array
     {
-        if (preg_match('/^[1-9]\d*$/', $animeId) !== 1) {
+        if (preg_match('/^[1-9]\d*\z/', $animeId) !== 1) {
             throw new \InvalidArgumentException(\sprintf('Invalid MyAnimeList anime id "%s".', $animeId));
         }
 
@@ -230,12 +230,12 @@ class MalApiClient
      */
     public function deleteListStatus(string $bearer, string $animeId): void
     {
-        if (preg_match('/^[1-9]\d*$/', $animeId) !== 1) {
+        if (preg_match('/^[1-9]\d*\z/', $animeId) !== 1) {
             throw new \InvalidArgumentException(\sprintf('Invalid MyAnimeList anime id "%s".', $animeId));
         }
 
         try {
-            $this->sendWithRetry(fn (): ResponseInterface => $this->sendDelete(\sprintf(self::LIST_STATUS_PATH_FORMAT, $animeId), $bearer), null, true);
+            $this->sendWithRetry(fn (): ResponseInterface => $this->sendDelete(\sprintf(self::LIST_STATUS_PATH_FORMAT, $animeId), $bearer), null, true, true);
         } catch (NotFoundHttpException) {
             // Not on the list: nothing to remove.
         }
@@ -322,6 +322,8 @@ class MalApiClient
      *
      * @param callable(): ResponseInterface $send
      * @param callable(): void|null         $onHeartbeat
+     * @param bool                          $allowEmptyBody an empty 2xx body yields `[]` instead of
+     *                                                      an invalid-JSON error (DELETE only)
      *
      * @return array<string, mixed>
      *
@@ -331,7 +333,7 @@ class MalApiClient
      * @throws MalRequestException       transport failure, another non-2xx status, invalid
      *                                   JSON, or the 429 retry budget was exhausted
      */
-    private function sendWithRetry(callable $send, ?callable $onHeartbeat, bool $notFoundAsException): array
+    private function sendWithRetry(callable $send, ?callable $onHeartbeat, bool $notFoundAsException, bool $allowEmptyBody = false): array
     {
         $attempt = 0;
         $waitedSeconds = 0.0;
@@ -373,17 +375,17 @@ class MalApiClient
                 throw new MalRequestException(\sprintf('MyAnimeList API responded with HTTP %d.', $status));
             }
 
-            return self::decodeBody($response);
+            return self::decodeBody($response, $allowEmptyBody);
         }
     }
 
     /**
      * @return array<string, mixed>
      */
-    private static function decodeBody(ResponseInterface $response): array
+    private static function decodeBody(ResponseInterface $response, bool $allowEmptyBody): array
     {
         $raw = (string) $response->getBody();
-        if (trim($raw) === '') {
+        if ($allowEmptyBody && trim($raw) === '') {
             return [];
         }
 
