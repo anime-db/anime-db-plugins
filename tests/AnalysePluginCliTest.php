@@ -189,17 +189,29 @@ final class AnalysePluginCliTest extends TestCase
      */
     public function testEveryPublishedPluginPassesTheGate(string $pluginDir): void
     {
-        [$exitCode, $output] = $this->analyse($pluginDir);
+        [$outcome, $message] = $this->gateOutcome($pluginDir);
 
-        if ($exitCode !== 0) {
-            $skipReason = self::contractIncompatibilityReason($pluginDir);
-
-            if ($skipReason !== null) {
-                self::markTestSkipped($skipReason."\n".$output);
-            }
+        if ($outcome === 'skip') {
+            self::markTestSkipped($message);
         }
 
-        self::assertSame(0, $exitCode, $output);
+        self::assertSame('pass', $outcome, $message);
+    }
+
+    /**
+     * @return array{0: 'pass'|'skip'|'fail', 1: string} outcome of the all-plugins gate test for a plugin directory
+     */
+    private function gateOutcome(string $pluginDir): array
+    {
+        [$exitCode, $output] = $this->analyse($pluginDir);
+
+        if ($exitCode === 0) {
+            return ['pass', $output];
+        }
+
+        $skipReason = self::contractIncompatibilityReason($pluginDir);
+
+        return $skipReason === null ? ['fail', $output] : ['skip', $skipReason."\n".$output];
     }
 
     /**
@@ -226,6 +238,61 @@ final class AnalysePluginCliTest extends TestCase
         self::assertNotNull($reason);
         self::assertStringContainsString('requires plugin-contracts <0.0.1', $reason);
         self::assertStringContainsString('installed '.$installed, $reason);
+    }
+
+    public function testConstraintOfTheInstalledMinorIsCompatibleAndThePreviousMinorIsNot(): void
+    {
+        [$major, $minor] = self::installedMajorMinor();
+
+        self::assertNull(self::contractIncompatibilityReason($this->pluginWithConstraint(\sprintf('^%d.%d', $major, $minor))));
+
+        if ($minor === 0) {
+            self::markTestSkipped('Installed contract is at minor 0 — no previous minor to compare with.');
+        }
+
+        self::assertNotNull(
+            self::contractIncompatibilityReason($this->pluginWithConstraint(\sprintf('^%d.%d', $major, $minor - 1))),
+        );
+    }
+
+    public function testIncompatiblePluginThatPassesAnalysisIsNotSkipped(): void
+    {
+        $plugin = $this->incompatiblePlugin();
+        file_put_contents(
+            $plugin.'/manifest.json',
+            json_encode([
+                'id' => 'fixture-plugin',
+                'name' => 'Fixture',
+                'version' => '0.0.1',
+                'type' => 'local',
+                'features' => ['summary' => false],
+                'require' => ['core' => '>=0.0.1', 'php' => '>=8.5', 'plugin-contracts' => $this->previousMinorConstraint()],
+            ], \JSON_THROW_ON_ERROR),
+        );
+        mkdir($plugin.'/src', recursive: true);
+        file_put_contents($plugin.'/src/Clean.php', "<?php\n\ndeclare(strict_types=1);\n\nfinal class Clean\n{\n}\n");
+
+        self::assertNotNull(self::contractIncompatibilityReason($plugin));
+
+        [$outcome, $message] = $this->gateOutcome($plugin);
+
+        self::assertSame('pass', $outcome, $message);
+    }
+
+    public function testIncompatiblePluginThatFailsAnalysisIsSkippedWithTheGateOutput(): void
+    {
+        $plugin = $this->incompatiblePlugin();
+        exec('cp -r '.escapeshellarg(self::repoRoot().'/tests/fixtures/gate-probe/.').' '.escapeshellarg($plugin));
+        file_put_contents(
+            $plugin.'/manifest.json',
+            json_encode(['id' => 'fixture', 'require' => ['plugin-contracts' => $this->previousMinorConstraint()]], \JSON_THROW_ON_ERROR),
+        );
+
+        [$outcome, $message] = $this->gateOutcome($plugin);
+
+        self::assertSame('skip', $outcome, $message);
+        self::assertStringContainsString('requires plugin-contracts '.$this->previousMinorConstraint(), $message);
+        self::assertStringContainsString('Calling exec() directly is forbidden', self::unwrap($message));
     }
 
     public function testCompatiblePluginIsStillAnalysedAndFailsOnGateErrors(): void
@@ -331,6 +398,36 @@ final class AnalysePluginCliTest extends TestCase
         );
 
         return [$exitCode, implode("\n", $output)];
+    }
+
+    private function previousMinorConstraint(): string
+    {
+        [$major, $minor] = self::installedMajorMinor();
+
+        if ($minor === 0) {
+            self::markTestSkipped('Installed contract is at minor 0 — no previous minor to compare with.');
+        }
+
+        return \sprintf('^%d.%d', $major, $minor - 1);
+    }
+
+    private function incompatiblePlugin(): string
+    {
+        return $this->pluginWithConstraint($this->previousMinorConstraint());
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private static function installedMajorMinor(): array
+    {
+        self::assertSame(
+            1,
+            preg_match('/^v?(\d+)\.(\d+)/', self::installedContractVersion(), $matches),
+            'Cannot parse the installed plugin-contracts version.',
+        );
+
+        return [(int) $matches[1], (int) $matches[2]];
     }
 
     private function pluginWithConstraint(string $constraint): string
