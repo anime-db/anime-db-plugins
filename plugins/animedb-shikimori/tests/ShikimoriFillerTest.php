@@ -346,10 +346,10 @@ final class ShikimoriFillerTest extends TestCase
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
         // Shikimori clamps `episodes` to the title's actual episode count: we send 999, it comes back 220.
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 999));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 999));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 220),
+            new SyncItem('20', SyncStatus::Watching, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 220),
             $result,
         );
     }
@@ -368,10 +368,10 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, null, 13));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Completed, 'Naruto', new \DateTimeImmutable('2026-08-10T12:05:00.000+03:00'), 13),
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:05:00.000+03:00'), 13),
             $result,
         );
     }
@@ -387,9 +387,9 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 42));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 42), $result);
     }
 
     public function testRemoveDeletesTheFoundUserRateOnce(): void
@@ -540,10 +540,44 @@ final class ShikimoriFillerTest extends TestCase
         $items = iterator_to_array($filler->pull());
 
         self::assertEquals([
-            new SyncItem('20', SyncStatus::Watching, 'Naruto'),
-            new SyncItem('21', SyncStatus::Watching, 'Bleach'),
-            new SyncItem('22', SyncStatus::Dropped, 'One Piece'),
+            new SyncItem('20', SyncStatus::Watching, 'Naruto', null),
+            new SyncItem('21', SyncStatus::Watching, 'Bleach', null),
+            new SyncItem('22', SyncStatus::Dropped, 'One Piece', null),
         ], $items);
+    }
+
+    public function testPullPassesTheSourceTypeFromKind(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn([
+            'userRates' => [
+                ['anime' => ['id' => '1', 'name' => 'A', 'kind' => 'tv'], 'status' => 'watching'],
+                ['anime' => ['id' => '2', 'name' => 'B', 'kind' => 'movie'], 'status' => 'watching'],
+                ['anime' => ['id' => '3', 'name' => 'C', 'kind' => 'pv'], 'status' => 'watching'],
+                ['anime' => ['id' => '4', 'name' => 'D'], 'status' => 'watching'],
+            ],
+        ]);
+
+        $items = iterator_to_array($this->buildFiller($client, null, $this->realAuthRetrier('the-token'))->pull());
+
+        self::assertSame(
+            [AnimeType::Tv, AnimeType::Movie, null, null],
+            array_map(static fn (SyncItem $i): ?AnimeType => $i->type, $items),
+        );
+    }
+
+    public function testPushConfirmingItemHasNullTypeEvenIfInputCarriesOne(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['currentUser' => ['id' => '7']]);
+        $restClient = $this->createMock(ShikimoriRestClient::class);
+        $restClient->method('findUserRateId')->willReturn('42');
+        $restClient->method('updateUserRate')->willReturn(['id' => 42]);
+
+        $result = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'))
+            ->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', AnimeType::Tv, null, 5));
+
+        self::assertNull($result->type);
     }
 
     public function testPullMapsUpdatedAtAndWatchedEpisodes(): void
@@ -565,7 +599,7 @@ final class ShikimoriFillerTest extends TestCase
         $items = iterator_to_array($filler->pull());
 
         self::assertEquals(
-            [new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T09:30:00.000+03:00'), 55)],
+            [new SyncItem('20', SyncStatus::Watching, 'Naruto', null, new \DateTimeImmutable('2026-08-10T09:30:00.000+03:00'), 55)],
             $items,
         );
     }
