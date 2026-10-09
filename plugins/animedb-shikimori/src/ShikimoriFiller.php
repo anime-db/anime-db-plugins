@@ -275,7 +275,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
         $updatedAt = self::parseDateTime($response['updated_at'] ?? null);
         $watchedEpisodes = \is_int($response['episodes'] ?? null) ? $response['episodes'] : $item->watchedEpisodes;
 
-        return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+        return new SyncItem($item->externalId, $item->status, $item->title, null, $updatedAt, $watchedEpisodes);
     }
 
     /**
@@ -397,7 +397,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 
         $watchedEpisodes = \is_int($userRate['episodes'] ?? null) ? $userRate['episodes'] : null;
 
-        return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($userRate['updatedAt'] ?? null), $watchedEpisodes);
+        return new SyncItem((string) $externalId, $status, $title, null, self::parseDateTime($userRate['updatedAt'] ?? null), $watchedEpisodes);
     }
 
     /**
