@@ -111,7 +111,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
     private const USER_RATES_QUERY = <<<'GRAPHQL'
         query($page: PositiveInt, $limit: PositiveInt) {
             userRates(page: $page, limit: $limit) {
-                anime { id name }
+                anime { id name kind }
                 status
                 episodes
                 updatedAt
@@ -275,7 +275,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
         $updatedAt = self::parseDateTime($response['updated_at'] ?? null);
         $watchedEpisodes = \is_int($response['episodes'] ?? null) ? $response['episodes'] : $item->watchedEpisodes;
 
-        return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+        return new SyncItem($item->externalId, $item->status, $item->title, null, $updatedAt, $watchedEpisodes);
     }
 
     /**
@@ -397,7 +397,9 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 
         $watchedEpisodes = \is_int($userRate['episodes'] ?? null) ? $userRate['episodes'] : null;
 
-        return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($userRate['updatedAt'] ?? null), $watchedEpisodes);
+        $type = AnimeTypeMapper::map(\is_string($anime['kind'] ?? null) ? $anime['kind'] : null);
+
+        return new SyncItem((string) $externalId, $status, $title, $type, self::parseDateTime($userRate['updatedAt'] ?? null), $watchedEpisodes);
     }
 
     /**
