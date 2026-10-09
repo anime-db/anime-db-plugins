@@ -241,7 +241,7 @@ final class MalApiClientTest extends TestCase
             ->method('createRequest')
             ->with(
                 'GET',
-                'https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status&limit=5&offset=10&nsfw=true',
+                'https://api.myanimelist.net/v2/users/@me/animelist?fields=list_status%2Cmedia_type&limit=5&offset=10&nsfw=true',
             )
             ->willReturn($this->fluentRequest());
 

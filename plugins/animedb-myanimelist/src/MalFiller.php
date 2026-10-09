@@ -281,7 +281,7 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
             ? $response['num_episodes_watched']
             : $item->watchedEpisodes;
 
-        return new SyncItem($item->externalId, $item->status, $item->title, $updatedAt, $watchedEpisodes);
+        return new SyncItem($item->externalId, $item->status, $item->title, null, $updatedAt, $watchedEpisodes);
     }
 
     /**
@@ -372,7 +372,9 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
 
         $watchedEpisodes = \is_int($listStatus['num_episodes_watched'] ?? null) ? $listStatus['num_episodes_watched'] : null;
 
-        return new SyncItem((string) $externalId, $status, $title, self::parseDateTime($listStatus['updated_at'] ?? null), $watchedEpisodes);
+        $type = AnimeTypeMapper::map(\is_string($node['media_type'] ?? null) ? $node['media_type'] : null);
+
+        return new SyncItem((string) $externalId, $status, $title, $type, self::parseDateTime($listStatus['updated_at'] ?? null), $watchedEpisodes);
     }
 
     /**

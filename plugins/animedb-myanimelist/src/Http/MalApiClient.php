@@ -84,7 +84,7 @@ class MalApiClient
     private const HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300;
     private const LIST_STATUS_PATH_FORMAT = '/anime/%s/my_list_status';
     private const ANIMELIST_PATH = '/users/@me/animelist';
-    private const ANIMELIST_FIELDS = 'list_status';
+    private const ANIMELIST_FIELDS = 'list_status,media_type';
 
     public function __construct(
         private readonly ClientInterface $httpClient,
