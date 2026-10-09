@@ -346,10 +346,10 @@ final class ShikimoriFillerTest extends TestCase
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
         // Shikimori clamps `episodes` to the title's actual episode count: we send 999, it comes back 220.
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 999));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 999));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Watching, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 220),
+            new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T12:00:00.000+03:00'), 220),
             $result,
         );
     }
@@ -368,10 +368,10 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, null, 13));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Completed, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:05:00.000+03:00'), 13),
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', new \DateTimeImmutable('2026-08-10T12:05:00.000+03:00'), 13),
             $result,
         );
     }
@@ -387,9 +387,9 @@ final class ShikimoriFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $restClient, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 42));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 42), $result);
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 42), $result);
     }
 
     public function testRemoveDeletesTheFoundUserRateOnce(): void
@@ -565,7 +565,7 @@ final class ShikimoriFillerTest extends TestCase
         $items = iterator_to_array($filler->pull());
 
         self::assertEquals(
-            [new SyncItem('20', SyncStatus::Watching, 'Naruto', null, new \DateTimeImmutable('2026-08-10T09:30:00.000+03:00'), 55)],
+            [new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T09:30:00.000+03:00'), 55)],
             $items,
         );
     }
