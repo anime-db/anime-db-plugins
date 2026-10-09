@@ -455,10 +455,10 @@ final class MalFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', null, 13));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', AnimeType::Tv, null, 13));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Completed, 'Naruto', new \DateTimeImmutable('2026-08-10T12:05:00+00:00'), 13),
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:05:00+00:00'), 13),
             $result,
         );
     }
@@ -475,7 +475,7 @@ final class MalFillerTest extends TestCase
         $client->expects(self::once())->method('updateListStatus')->willReturn([]);
 
         $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
-        $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5));
+        $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 5));
     }
 
     public function testPushFallsBackToSentValuesWhenResponseOmitsConfirmation(): void
@@ -485,9 +485,9 @@ final class MalFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, $this->realAuthRetrier('the-token'));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 5));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 5), $result);
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 5), $result);
     }
 
     public function testPushRetriesOnceAfterUnauthorizedThroughMalAuthRetrier(): void
@@ -515,7 +515,7 @@ final class MalFillerTest extends TestCase
 
         $filler = $this->buildFiller($client, new MalAuthRetrier($oauth));
 
-        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, 1));
+        $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 1));
 
         self::assertSame(5, $result->watchedEpisodes);
     }
@@ -538,7 +538,7 @@ final class MalFillerTest extends TestCase
         $items = iterator_to_array($filler->pull());
 
         self::assertEquals(
-            [new SyncItem('20', SyncStatus::Watching, 'Naruto', new \DateTimeImmutable('2026-08-10T09:30:00+00:00'), 55)],
+            [new SyncItem('20', SyncStatus::Watching, 'Naruto', null, new \DateTimeImmutable('2026-08-10T09:30:00+00:00'), 55)],
             $items,
         );
     }
@@ -590,6 +590,37 @@ final class MalFillerTest extends TestCase
         $this->buildFiller($pushClient, $this->realAuthRetrier('the-token'))->push($pulledItem);
     }
 
+    /**
+     * @return iterable<string, array{string|null, AnimeType|null}>
+     */
+    public static function pullMediaTypeProvider(): iterable
+    {
+        yield 'tv' => ['tv', AnimeType::Tv];
+        yield 'movie' => ['movie', AnimeType::Movie];
+        yield 'pv' => ['pv', null];
+        yield 'absent' => [null, null];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('pullMediaTypeProvider')]
+    public function testPullTakesTypeFromMediaType(?string $mediaType, ?AnimeType $expected): void
+    {
+        $node = ['id' => 4, 'title' => 'Valid'];
+        if ($mediaType !== null) {
+            $node['media_type'] = $mediaType;
+        }
+
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('fetchAnimeListPage')->willReturn([
+            'items' => [['node' => $node, 'list_status' => ['status' => 'plan_to_watch']]],
+            'hasNext' => false,
+        ]);
+
+        $items = iterator_to_array($this->buildFiller($client, $this->realAuthRetrier('the-token'))->pull());
+
+        self::assertCount(1, $items);
+        self::assertSame($expected, $items[0]->type);
+    }
+
     public function testPullSkipsItemsWithoutIdTitleOrUnknownStatus(): void
     {
         $client = $this->createMock(MalApiClient::class);
@@ -611,7 +642,7 @@ final class MalFillerTest extends TestCase
 
         $items = iterator_to_array($filler->pull());
 
-        self::assertEquals([new SyncItem('4', SyncStatus::Plan, 'Valid')], $items);
+        self::assertEquals([new SyncItem('4', SyncStatus::Plan, 'Valid', null)], $items);
     }
 
     /**
