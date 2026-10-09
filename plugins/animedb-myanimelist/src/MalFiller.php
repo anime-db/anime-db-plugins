@@ -281,7 +281,7 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
             ? $response['num_episodes_watched']
             : $item->watchedEpisodes;
 
-        return new SyncItem($item->externalId, $item->status, $item->title, null, $updatedAt, $watchedEpisodes);
+        return new SyncItem($item->externalId, $item->status, $item->title, $item->type, $updatedAt, $watchedEpisodes);
     }
 
     /**
