@@ -175,10 +175,12 @@ final class AnalysePluginCliTest extends TestCase
      * unrelated pull request inherits the red. This test moves that discovery to the commit
      * that causes it.
      *
-     * A plugin whose `require.plugin-contracts` does not admit the installed contract is
-     * skipped with the reason, not failed: the root vendor/ floats on the latest contract, and
-     * a breaking minor would otherwise turn every pull request red until all plugins moved at
-     * once, which the one-plugin-per-pull-request rule forbids. The gate itself is unchanged.
+     * Every plugin is always analysed. Only when the analysis fails for a plugin whose
+     * `require.plugin-contracts` does not admit the installed contract is the test skipped
+     * (with the reason and the gate output) instead of failed: the root vendor/ floats on the
+     * latest contract, and a breaking minor would otherwise turn every pull request red until
+     * all plugins moved at once, which the one-plugin-per-pull-request rule forbids. Plugins
+     * that still conform on a newer minor keep being verified. The gate itself is unchanged.
      *
      * It is also what the framework packages in this repository's require-dev are for: without
      * them nothing outside CI could analyse a real plugin at all.
@@ -187,13 +189,15 @@ final class AnalysePluginCliTest extends TestCase
      */
     public function testEveryPublishedPluginPassesTheGate(string $pluginDir): void
     {
-        $skipReason = self::contractIncompatibilityReason($pluginDir);
-
-        if ($skipReason !== null) {
-            self::markTestSkipped($skipReason);
-        }
-
         [$exitCode, $output] = $this->analyse($pluginDir);
+
+        if ($exitCode !== 0) {
+            $skipReason = self::contractIncompatibilityReason($pluginDir);
+
+            if ($skipReason !== null) {
+                self::markTestSkipped($skipReason."\n".$output);
+            }
+        }
 
         self::assertSame(0, $exitCode, $output);
     }
