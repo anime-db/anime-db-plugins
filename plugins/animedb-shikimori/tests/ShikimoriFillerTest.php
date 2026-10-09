@@ -549,7 +549,12 @@ final class ShikimoriFillerTest extends TestCase
     public function testPullPassesTheSourceTypeFromKind(): void
     {
         $client = $this->createMock(GraphQlClient::class);
-        $client->method('query')->willReturn([
+        $client->expects(self::once())->method('query')->with(
+            self::callback(static fn (string $q): bool => 1 === preg_match('/anime\s*\{[^}]*\bkind\b/', $q)),
+            self::anything(),
+            self::anything(),
+            self::anything(),
+        )->willReturn([
             'userRates' => [
                 ['anime' => ['id' => '1', 'name' => 'A', 'kind' => 'tv'], 'status' => 'watching'],
                 ['anime' => ['id' => '2', 'name' => 'B', 'kind' => 'movie'], 'status' => 'watching'],
