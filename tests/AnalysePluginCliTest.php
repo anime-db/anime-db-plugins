@@ -27,6 +27,8 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools\Tests;
 
+use Composer\InstalledVersions;
+use Composer\Semver\Semver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -173,6 +175,11 @@ final class AnalysePluginCliTest extends TestCase
      * unrelated pull request inherits the red. This test moves that discovery to the commit
      * that causes it.
      *
+     * A plugin whose `require.plugin-contracts` does not admit the installed contract is
+     * skipped with the reason, not failed: the root vendor/ floats on the latest contract, and
+     * a breaking minor would otherwise turn every pull request red until all plugins moved at
+     * once, which the one-plugin-per-pull-request rule forbids. The gate itself is unchanged.
+     *
      * It is also what the framework packages in this repository's require-dev are for: without
      * them nothing outside CI could analyse a real plugin at all.
      *
@@ -180,6 +187,12 @@ final class AnalysePluginCliTest extends TestCase
      */
     public function testEveryPublishedPluginPassesTheGate(string $pluginDir): void
     {
+        $skipReason = self::contractIncompatibilityReason($pluginDir);
+
+        if ($skipReason !== null) {
+            self::markTestSkipped($skipReason);
+        }
+
         [$exitCode, $output] = $this->analyse($pluginDir);
 
         self::assertSame(0, $exitCode, $output);
@@ -197,6 +210,36 @@ final class AnalysePluginCliTest extends TestCase
         foreach ($dirs as $dir) {
             yield basename($dir) => [$dir];
         }
+    }
+
+    public function testIncompatiblePluginIsSkippedWithBothVersionsInTheReason(): void
+    {
+        $installed = self::installedContractVersion();
+        $plugin = $this->pluginWithConstraint('<0.0.1');
+
+        $reason = self::contractIncompatibilityReason($plugin);
+
+        self::assertNotNull($reason);
+        self::assertStringContainsString('requires plugin-contracts <0.0.1', $reason);
+        self::assertStringContainsString('installed '.$installed, $reason);
+    }
+
+    public function testCompatiblePluginIsStillAnalysedAndFailsOnGateErrors(): void
+    {
+        $plugin = $this->pluginWithConstraint('>=0.1');
+        exec('cp -r '.escapeshellarg(self::repoRoot().'/tests/fixtures/gate-probe/.').' '.escapeshellarg($plugin));
+
+        self::assertNull(self::contractIncompatibilityReason($plugin));
+
+        [$exitCode, $output] = $this->analyse($plugin);
+
+        self::assertSame(1, $exitCode, $output);
+        self::assertStringContainsString('Calling exec() directly is forbidden', self::unwrap($output));
+    }
+
+    public function testPluginWithoutContractRequirementIsNotSkippedByCompatibility(): void
+    {
+        self::assertNull(self::contractIncompatibilityReason($this->temporaryDirectory()));
     }
 
     public function testTranslationPluginIsSkippedRatherThanAnalysed(): void
@@ -284,6 +327,59 @@ final class AnalysePluginCliTest extends TestCase
         );
 
         return [$exitCode, implode("\n", $output)];
+    }
+
+    private function pluginWithConstraint(string $constraint): string
+    {
+        $plugin = $this->temporaryDirectory();
+        file_put_contents(
+            $plugin.'/manifest.json',
+            json_encode(['id' => 'fixture', 'require' => ['plugin-contracts' => $constraint]], \JSON_THROW_ON_ERROR),
+        );
+
+        return $plugin;
+    }
+
+    private static function installedContractVersion(): string
+    {
+        $version = InstalledVersions::getPrettyVersion('anime-db/plugin-contracts');
+        self::assertNotNull($version, 'anime-db/plugin-contracts is not installed.');
+
+        return $version;
+    }
+
+    /**
+     * @return string|null why the plugin is not analysed against the installed contract, or null if it is
+     */
+    private static function contractIncompatibilityReason(string $pluginDir): ?string
+    {
+        $file = $pluginDir.'/manifest.json';
+
+        if (!is_file($file)) {
+            return null;
+        }
+
+        $manifest = json_decode((string) file_get_contents($file), true);
+        $constraint = \is_array($manifest) && \is_array($manifest['require'] ?? null)
+            ? ($manifest['require']['plugin-contracts'] ?? null)
+            : null;
+
+        if (!\is_string($constraint)) {
+            return null;
+        }
+
+        $installed = self::installedContractVersion();
+
+        if (Semver::satisfies(ltrim($installed, 'v'), $constraint)) {
+            return null;
+        }
+
+        return \sprintf(
+            '%s requires plugin-contracts %s, installed %s — not analysed until it moves to the installed contract',
+            basename($pluginDir),
+            $constraint,
+            $installed,
+        );
     }
 
     private static function repoRoot(): string
