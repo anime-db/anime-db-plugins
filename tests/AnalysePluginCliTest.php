@@ -297,15 +297,16 @@ final class AnalysePluginCliTest extends TestCase
 
     public function testCompatiblePluginIsStillAnalysedAndFailsOnGateErrors(): void
     {
-        $plugin = $this->pluginWithConstraint('>=0.1');
+        [$major, $minor] = self::installedMajorMinor();
+        $plugin = $this->pluginWithConstraint(\sprintf('^%d.%d', $major, $minor));
         exec('cp -r '.escapeshellarg(self::repoRoot().'/tests/fixtures/gate-probe/.').' '.escapeshellarg($plugin));
 
         self::assertNull(self::contractIncompatibilityReason($plugin));
 
-        [$exitCode, $output] = $this->analyse($plugin);
+        [$outcome, $message] = $this->gateOutcome($plugin);
 
-        self::assertSame(1, $exitCode, $output);
-        self::assertStringContainsString('Calling exec() directly is forbidden', self::unwrap($output));
+        self::assertSame('fail', $outcome, $message);
+        self::assertStringContainsString('Calling exec() directly is forbidden', self::unwrap($message));
     }
 
     public function testPluginWithoutContractRequirementIsNotSkippedByCompatibility(): void
