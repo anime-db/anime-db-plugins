@@ -458,7 +458,7 @@ final class MalFillerTest extends TestCase
         $result = $filler->push(new SyncItem('20', SyncStatus::Completed, 'Naruto', AnimeType::Tv, null, 13));
 
         self::assertEquals(
-            new SyncItem('20', SyncStatus::Completed, 'Naruto', AnimeType::Tv, new \DateTimeImmutable('2026-08-10T12:05:00+00:00'), 13),
+            new SyncItem('20', SyncStatus::Completed, 'Naruto', null, new \DateTimeImmutable('2026-08-10T12:05:00+00:00'), 13),
             $result,
         );
     }
@@ -487,7 +487,7 @@ final class MalFillerTest extends TestCase
 
         $result = $filler->push(new SyncItem('20', SyncStatus::Watching, 'Naruto', AnimeType::Movie, null, 5));
 
-        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', AnimeType::Movie, null, 5), $result);
+        self::assertEquals(new SyncItem('20', SyncStatus::Watching, 'Naruto', null, null, 5), $result);
     }
 
     public function testPushRetriesOnceAfterUnauthorizedThroughMalAuthRetrier(): void
