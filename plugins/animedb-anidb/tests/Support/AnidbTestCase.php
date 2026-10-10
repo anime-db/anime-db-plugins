@@ -37,6 +37,7 @@ use AnimeDb\Plugins\AnimedbAnidb\Dump\FileLock;
 use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbApiClient;
 use AnimeDb\Plugins\AnimedbAnidb\Http\BanGuard;
 use AnimeDb\Plugins\AnimedbAnidb\Http\CardCache;
+use AnimeDb\Plugins\AnimedbAnidb\Http\HotAnimeCache;
 use AnimeDb\Plugins\AnimedbAnidb\Http\RequestLimiter;
 use AnimeDb\Plugins\AnimedbAnidb\Index\IndexBuilder;
 use AnimeDb\Plugins\AnimedbAnidb\Index\IndexReader;
@@ -73,6 +74,7 @@ abstract class AnidbTestCase extends TestCase
     protected AnidbFiller $filler;
     protected AniDbApiClient $apiClient;
     protected CardCache $cards;
+    protected HotAnimeCache $hotAnime;
     protected BanGuard $banGuard;
 
     protected function setUp(): void
@@ -100,6 +102,7 @@ abstract class AnidbTestCase extends TestCase
         );
         $reader = new IndexReader($this->files);
         $this->cards = new CardCache($cache, fn (): int => $this->now);
+        $this->hotAnime = new HotAnimeCache($cache, fn (): int => $this->now);
         $this->banGuard = new BanGuard($this->settings, $cache, fn (): int => $this->now);
         $this->apiClient = new AniDbApiClient(
             $this->httpClient(),
@@ -115,6 +118,7 @@ abstract class AnidbTestCase extends TestCase
             ),
             $this->banGuard,
             $this->cards,
+            $this->hotAnime,
         );
         $this->filler = new AnidbFiller(
             new TitleSearch($this->downloader, new IndexBuilder($this->files), $reader, $this->files, new FileLock()),

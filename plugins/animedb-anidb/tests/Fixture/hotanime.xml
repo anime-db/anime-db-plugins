@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><hotanime>
+    <anime id="19079" restricted="false">
+        <episodecount>10</episodecount>
+        <startdate>2026-07-25</startdate>
+        <enddate>2026-10-27</enddate>
+        <title xml:lang="x-jat" type="main">Alpha Hot Title</title>
+        <ratings>
+            <permanent count="38">7.70</permanent>
+            <temporary count="12">7.10</temporary>
+        </ratings>
+        <picture>alpha-cover.jpg</picture>
+        <unknownfield>ignored</unknownfield>
+    </anime>
+    <anime id="19080" restricted="true">
+        <episodecount>6</episodecount>
+        <startdate>2026-07-01</startdate>
+        <title xml:lang="x-jat" type="main">Restricted Hot Title</title>
+        <ratings>
+            <permanent count="20">8.00</permanent>
+        </ratings>
+        <picture>restricted-cover.jpg</picture>
+    </anime>
+    <anime id="19081" restricted="false">
+        <episodecount>12</episodecount>
+        <startdate>2026-07-05</startdate>
+        <title xml:lang="x-jat" type="main">Beta Hot Title</title>
+        <ratings>
+            <permanent count="15">6.90</permanent>
+        </ratings>
+    </anime>
+    <anime id="19082" restricted="false">
+        <title xml:lang="x-jat" type="main">Gamma Hot Title</title>
+        <picture>gamma-cover.png</picture>
+    </anime>
+</hotanime>
