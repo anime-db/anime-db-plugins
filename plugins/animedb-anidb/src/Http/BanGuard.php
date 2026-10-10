@@ -33,8 +33,9 @@ use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 
 /**
  * Stops requests while an AniDB ban window is open. The "do not call until" moment is kept in
- * the plugin settings, not in the cache directory, so it survives cache cleaning and a plugin
- * reinstall; each request during a ban would extend it.
+ * the plugin settings, not in the cache directory, so it survives cache cleaning; whether it
+ * survives uninstalling the plugin is up to the host, and this guard does not rely on it. Each
+ * request during a ban would extend it.
  *
  * The settings write can fail, and the ban must not depend on it: the moment is also kept in the
  * process and in a marker file in the cache directory (visible to every process of the

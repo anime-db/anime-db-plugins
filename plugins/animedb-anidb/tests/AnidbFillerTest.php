@@ -27,7 +27,9 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbAnidb\Tests;
 
+use AnimeDb\PluginContracts\Filler\FillerInterface;
 use AnimeDb\PluginContracts\Search\SearchByPluginInterface;
+use AnimeDb\PluginContracts\Sync\SyncInterface;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\AnidbTestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 
@@ -41,10 +43,11 @@ final class AnidbFillerTest extends AnidbTestCase
         return array_map(static fn ($c): string => $c->getExternalId(), $this->filler->find($query));
     }
 
-    public function testImplementsOnlySearchContract(): void
+    public function testImplementsFillerContractOnly(): void
     {
+        self::assertInstanceOf(FillerInterface::class, $this->filler);
         self::assertInstanceOf(SearchByPluginInterface::class, $this->filler);
-        self::assertNotInstanceOf(\AnimeDb\PluginContracts\Filler\FillerInterface::class, $this->filler);
+        self::assertNotInstanceOf(SyncInterface::class, $this->filler);
     }
 
     public function testResolveExternalId(): void

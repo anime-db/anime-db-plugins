@@ -34,6 +34,10 @@ use AnimeDb\Plugins\AnimedbAnidb\Dump\AttemptStore;
 use AnimeDb\Plugins\AnimedbAnidb\Dump\DumpDownloader;
 use AnimeDb\Plugins\AnimedbAnidb\Dump\DumpFiles;
 use AnimeDb\Plugins\AnimedbAnidb\Dump\FileLock;
+use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbApiClient;
+use AnimeDb\Plugins\AnimedbAnidb\Http\BanGuard;
+use AnimeDb\Plugins\AnimedbAnidb\Http\CardCache;
+use AnimeDb\Plugins\AnimedbAnidb\Http\RequestLimiter;
 use AnimeDb\Plugins\AnimedbAnidb\Index\IndexBuilder;
 use AnimeDb\Plugins\AnimedbAnidb\Index\IndexReader;
 use AnimeDb\Plugins\AnimedbAnidb\TitleSearch;
@@ -67,6 +71,8 @@ abstract class AnidbTestCase extends TestCase
     protected DumpFiles $files;
     protected DumpDownloader $downloader;
     protected AnidbFiller $filler;
+    protected CardCache $cards;
+    protected BanGuard $banGuard;
 
     protected function setUp(): void
     {
@@ -92,8 +98,25 @@ abstract class AnidbTestCase extends TestCase
             fn (): int => $this->now,
         );
         $reader = new IndexReader($this->files);
+        $this->cards = new CardCache($cache, fn (): int => $this->now);
+        $this->banGuard = new BanGuard($this->settings, $cache, fn (): int => $this->now);
         $this->filler = new AnidbFiller(
             new TitleSearch($this->downloader, new IndexBuilder($this->files), $reader, $this->files, new FileLock()),
+            new AniDbApiClient(
+                $this->httpClient(),
+                $this->requestFactory(),
+                $manifest,
+                new RequestLimiter(
+                    $cache,
+                    new FileLock(),
+                    fn (): float => (float) $this->now,
+                    function (float $seconds): void {
+                        $this->now += (int) ceil($seconds);
+                    },
+                ),
+                $this->banGuard,
+                $this->cards,
+            ),
             $manifest,
         );
     }
