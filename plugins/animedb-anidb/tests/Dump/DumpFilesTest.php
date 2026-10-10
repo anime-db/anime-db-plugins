@@ -54,6 +54,23 @@ final class DumpFilesTest extends AnidbTestCase
         self::assertSame(['etag' => null, 'last_modified' => null], $this->files->readMeta());
     }
 
+    public function testLockExcludesOtherHoldersOnlyWhileTheActionRuns(): void
+    {
+        $tryLock = function (): bool {
+            $handle = fopen($this->files->lockPath(), 'c');
+            self::assertNotFalse($handle);
+            $acquired = flock($handle, \LOCK_EX | \LOCK_NB);
+            fclose($handle);
+
+            return $acquired;
+        };
+
+        $insideAcquired = (new FileLock())->withLock($this->files->lockPath(), $tryLock);
+
+        self::assertFalse($insideAcquired);
+        self::assertTrue($tryLock());
+    }
+
     public function testLockFileIsSeparateAndKeptItsInode(): void
     {
         $lock = new FileLock();

@@ -38,13 +38,19 @@ use Psr\Http\Message\RequestFactoryInterface;
  *
  * The attempt is recorded the moment an HTTP response arrives — any status, 304 and errors
  * included — before the body is decompressed or parsed, so a broken body or a crash while
- * handling it still counts. The record is strict: it applies even when the dump file is
+ * handling it still counts. The body is untrusted: its size and the unpacked size are capped, and a body
+ * that does not unpack to something shaped like the title dump leaves the existing dump alone. The record is strict: it applies even when the dump file is
  * missing. The request is conditional (`If-None-Match`/`If-Modified-Since` from the meta file)
  * only when the dump file exists. Must be called under the lock.
  */
 final class DumpDownloader
 {
     public const DUMP_URL = 'https://anidb.net/api/anime-titles.dat.gz';
+
+    /** The real dump is a few MB unpacked; anything beyond these limits is not a title dump. */
+    public const MAX_BODY_BYTES = 16 * 1024 * 1024;
+    public const MAX_DUMP_BYTES = 64 * 1024 * 1024;
+    private const MIN_DUMP_LINES = 10;
 
     /**
      * @param \Closure(): int|null $clock
@@ -98,21 +104,41 @@ final class DumpDownloader
         }
 
         try {
-            $body = (string) $response->getBody();
+            $stream = $response->getBody();
+            $size = $stream->getSize();
+            if ($size !== null && $size > self::MAX_BODY_BYTES) {
+                return;
+            }
+            $body = (string) $stream;
         } catch (\RuntimeException) {
             return;
         }
 
-        $dump = $body === '' ? false : @gzdecode($body);
-        if ($dump === false || $dump === '') {
+        if ($body === '' || strlen($body) > self::MAX_BODY_BYTES) {
+            return;
+        }
+
+        $dump = @gzdecode($body, self::MAX_DUMP_BYTES);
+        if ($dump === false || strlen($dump) > self::MAX_DUMP_BYTES || !self::looksLikeDump($dump)) {
             return;
         }
 
         $etag = $response->getHeaderLine('ETag');
         $lastModified = $response->getHeaderLine('Last-Modified');
 
+        // Drop the old validators first: if the process stops between the two renames, the
+        // version falls back to file size and mtime and the new dump is still re-indexed.
+        @unlink($this->files->metaPath());
         $this->files->writeAtomic($this->files->dumpPath(), $dump);
         $this->files->writeMeta($etag !== '' ? $etag : null, $lastModified !== '' ? $lastModified : null);
+    }
+
+    private static function looksLikeDump(string $dump): bool
+    {
+        // the head is enough: a dump has thousands of title lines right after its comment header
+        $head = substr($dump, 0, 65536);
+
+        return preg_match_all('/^\d+\|[1-4]\|[^|\r\n]*\|[^\r\n]+$/m', $head) >= self::MIN_DUMP_LINES;
     }
 
     private function now(): int

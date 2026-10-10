@@ -35,13 +35,15 @@ final class UserAgentTest extends TestCase
 {
     public function testForManifestMatchesTheRequiredUserAgentFormat(): void
     {
-        $manifest = $this->createMock(OwnManifestInterface::class);
-        $manifest->method('id')->willReturn('animedb-anidb');
-        $manifest->method('version')->willReturn('0.1.0');
+        foreach ([['testvendor-probe', '9.8.7'], ['other-plugin', '0.0.3']] as [$id, $version]) {
+            $manifest = $this->createMock(OwnManifestInterface::class);
+            $manifest->method('id')->willReturn($id);
+            $manifest->method('version')->willReturn($version);
 
-        self::assertSame(
-            'AnimeDB animedb-anidb/0.1.0 (+https://anime-db.org/)',
-            UserAgent::forManifest($manifest),
-        );
+            self::assertSame(
+                \sprintf('AnimeDB %s/%s (+https://anime-db.org/)', $id, $version),
+                UserAgent::forManifest($manifest),
+            );
+        }
     }
 }

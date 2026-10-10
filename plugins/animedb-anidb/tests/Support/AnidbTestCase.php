@@ -79,15 +79,15 @@ abstract class AnidbTestCase extends TestCase
         $cache = $this->createMock(PluginCacheDirectoryInterface::class);
         $cache->method('path')->willReturn($this->cacheDir);
         $manifest = $this->createMock(OwnManifestInterface::class);
-        $manifest->method('id')->willReturn('animedb-anidb');
-        $manifest->method('version')->willReturn('0.1.0');
+        $manifest->method('id')->willReturn('testvendor-probe');
+        $manifest->method('version')->willReturn('9.8.7');
 
         $this->files = new DumpFiles($cache);
         $this->downloader = new DumpDownloader(
             $this->httpClient(),
             $this->requestFactory(),
             $manifest,
-            new AttemptStore($this->settings),
+            new AttemptStore($this->settings, $this->files),
             $this->files,
             fn (): int => $this->now,
         );

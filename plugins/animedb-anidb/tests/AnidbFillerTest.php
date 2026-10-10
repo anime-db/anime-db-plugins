@@ -62,7 +62,7 @@ final class AnidbFillerTest extends AnidbTestCase
         self::assertCount(1, $this->requests);
         self::assertFileExists($this->files->indexPath());
         self::assertCount(1, $candidates);
-        self::assertSame('animedb-anidb', $candidates[0]->getPluginId());
+        self::assertSame('testvendor-probe', $candidates[0]->getPluginId());
         self::assertSame('Cowboy Bebop', $candidates[0]->getName());
         self::assertSame('5', $candidates[0]->getExternalId());
     }
@@ -135,7 +135,8 @@ final class AnidbFillerTest extends AnidbTestCase
     {
         $this->seedDump($this->fixtureDump());
 
-        self::assertSame(['2', '3', '4'], $this->ids('narut'));
+        self::assertSame(['4'], $this->ids('boruto naruto'));
+        self::assertSame([], $this->ids('narut'));
     }
 
     public function testSubstringMatchesAreNotReturned(): void

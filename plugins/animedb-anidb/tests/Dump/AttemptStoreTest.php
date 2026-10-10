@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbAnidb\Tests\Dump;
 
+use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 use AnimeDb\Plugins\AnimedbAnidb\Dump\AttemptStore;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\ArraySettingsStore;
 use PHPUnit\Framework\TestCase;
@@ -63,8 +64,25 @@ final class AttemptStoreTest extends TestCase
         $settings = new ArraySettingsStore();
         $settings->failNextUpdates = 100;
 
-        (new AttemptStore($settings))->record(AttemptStore::KIND_RESPONSE, 500);
+        $store = new AttemptStore($settings);
+        $store->record(AttemptStore::KIND_RESPONSE, 500);
 
         self::assertSame(5, $settings->updateCalls);
+        self::assertArrayNotHasKey('dump_attempt', $settings->data);
+        self::assertFalse($store->isDue(501));
+        self::assertTrue($store->isDue(500 + AttemptStore::RESPONSE_INTERVAL));
+    }
+
+    public function testRecordSurvivesAnyStoreError(): void
+    {
+        $settings = $this->createMock(SettingsStoreInterface::class);
+        $settings->method('read')->willReturn([]);
+        $settings->method('update')->willThrowException(new \RuntimeException('disk full'));
+
+        $store = new AttemptStore($settings);
+        $store->record(AttemptStore::KIND_TRANSPORT_FAILURE, 500);
+
+        self::assertFalse($store->isDue(501));
+        self::assertTrue($store->isDue(500 + AttemptStore::TRANSPORT_FAILURE_INTERVAL));
     }
 }

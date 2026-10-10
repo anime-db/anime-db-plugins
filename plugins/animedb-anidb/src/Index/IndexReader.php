@@ -33,7 +33,7 @@ use AnimeDb\Plugins\AnimedbAnidb\Dump\DumpFiles;
  * Reads the ready SQLite index. Takes no lock: the index file is only ever replaced whole.
  *
  * Ranking: exact matches of the normalized title are the only result when there are any;
- * otherwise prefix matches. Substring matches are never returned. Within a level, matches are
+ * otherwise prefix matches that end on a word boundary (the query is a whole-word beginning of the title). Substring matches are never returned. Within a level, matches are
  * ordered by title type (main, official, synonym, short), then by `aid`.
  */
 final class IndexReader
@@ -81,7 +81,7 @@ final class IndexReader
             $rows = $this->fetch(
                 $pdo,
                 'n.norm >= :lo AND n.norm < :hi',
-                ['lo' => $norm, 'hi' => $norm."\u{10FFFF}"],
+                ['lo' => $norm.' ', 'hi' => $norm.'!'],
                 $limit,
             );
         }

@@ -57,6 +57,11 @@ final class DumpFiles
         return $this->cacheDirectory->path().'/anime-titles.sqlite';
     }
 
+    public function attemptPath(): string
+    {
+        return $this->cacheDirectory->path().'/anime-titles.attempt.json';
+    }
+
     public function lockPath(): string
     {
         return $this->cacheDirectory->path().'/anime-titles.lock';

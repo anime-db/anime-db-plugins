@@ -69,6 +69,9 @@ final class AnidbIdResolverTest extends TestCase
         yield 'perl-bin other show' => ['https://anidb.net/perl-bin/animedb.pl?show=character&aid=4521'];
         yield 'perl-bin no aid' => ['https://anidb.net/perl-bin/animedb.pl?show=anime'];
         yield 'perl-bin non numeric aid' => ['https://anidb.net/perl-bin/animedb.pl?show=anime&aid=x'];
+        yield 'leading zeros' => ['https://anidb.net/a0042'];
+        yield 'zero aid' => ['https://anidb.net/anime/0'];
+        yield 'perl-bin leading zeros' => ['https://anidb.net/perl-bin/animedb.pl?show=anime&aid=0042'];
         yield 'root' => ['https://anidb.net/'];
         yield 'garbage' => ['not a url'];
     }

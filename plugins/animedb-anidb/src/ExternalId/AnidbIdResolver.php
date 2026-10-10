@@ -67,7 +67,7 @@ final class AnidbIdResolver
                 continue;
             }
 
-            if (preg_match('#^/(?:anime/|a)(\d+)$#', $path, $matches) === 1) {
+            if (preg_match('#^/(?:anime/|a)([1-9]\d*)$#', $path, $matches) === 1) {
                 return $matches[1];
             }
 
@@ -81,7 +81,7 @@ final class AnidbIdResolver
                     ($params['show'] ?? null) === 'anime'
                     && isset($params['aid'])
                     && is_string($params['aid'])
-                    && preg_match('/^\d+$/', $params['aid']) === 1
+                    && preg_match('/^[1-9]\d*$/', $params['aid']) === 1
                 ) {
                     return $params['aid'];
                 }

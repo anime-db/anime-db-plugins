@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbAnidb\Tests\Dump;
 
+use AnimeDb\Plugins\AnimedbAnidb\Dump\AttemptStore;
 use AnimeDb\Plugins\AnimedbAnidb\Dump\DumpDownloader;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\AnidbTestCase;
 use Psr\Http\Client\ClientExceptionInterface;
@@ -41,7 +42,7 @@ final class DumpDownloaderTest extends AnidbTestCase
 
         self::assertCount(1, $this->requests);
         self::assertSame(DumpDownloader::DUMP_URL, $this->requests[0]['url']);
-        self::assertSame(['User-Agent' => 'AnimeDB animedb-anidb/0.1.0 (+https://anime-db.org/)'], $this->requests[0]['headers']);
+        self::assertSame(['User-Agent' => 'AnimeDB testvendor-probe/9.8.7 (+https://anime-db.org/)'], $this->requests[0]['headers']);
         self::assertSame($this->fixtureDump(), file_get_contents($this->files->dumpPath()));
         self::assertSame(
             ['etag' => '"v1"', 'last_modified' => 'Sat, 10 Oct 2026 03:00:00 GMT'],
@@ -107,6 +108,48 @@ final class DumpDownloaderTest extends AnidbTestCase
         self::assertSame('"v1"', $this->files->readMeta()['etag']);
     }
 
+    public function testFailedSettingsWriteDoesNotLiftTheLimit(): void
+    {
+        $this->settings->failNextUpdates = 100;
+        $this->responses = [$this->dumpResponse($this->fixtureDump())];
+        $this->downloader->refresh();
+
+        self::assertArrayNotHasKey('dump_attempt', $this->settings->data);
+
+        $this->downloader->refresh();
+        self::assertCount(1, $this->requests);
+
+        // a fresh process (no in-memory record) is held back by the marker file in the cache
+        $fresh = new AttemptStore($this->settings, $this->files);
+        self::assertFalse($fresh->isDue($this->now + 1));
+    }
+
+    public function testGzipBombIsRejectedAndOldDumpKept(): void
+    {
+        $this->seedDump('1|1|x-jat|Old'."\n");
+        $this->now += 86400;
+        $bomb = (string) gzencode(str_repeat("1|1|x-jat|A\n", (int) (DumpDownloader::MAX_DUMP_BYTES / 12) * 4));
+        $this->responses = [$this->response(200, $bomb, ['ETag' => '"v2"'])];
+
+        $this->downloader->refresh();
+
+        self::assertSame('1|1|x-jat|Old'."\n", file_get_contents($this->files->dumpPath()));
+        self::assertSame('"v1"', $this->files->readMeta()['etag']);
+        self::assertSame(['at' => $this->now, 'kind' => 'response'], $this->settings->data['dump_attempt']);
+    }
+
+    public function testValidGzipWithForeignContentKeepsOldDump(): void
+    {
+        $this->seedDump('1|1|x-jat|Old'."\n");
+        $this->now += 86400;
+        $this->responses = [$this->dumpResponse('<html>maintenance page</html>', ['ETag' => '"v2"'])];
+
+        $this->downloader->refresh();
+
+        self::assertSame('1|1|x-jat|Old'."\n", file_get_contents($this->files->dumpPath()));
+        self::assertSame('"v1"', $this->files->readMeta()['etag']);
+    }
+
     public function testTransportFailureRetriesAfterAnHourNotADay(): void
     {
         $this->responses = [$this->createMock(ClientExceptionInterface::class)];
@@ -117,7 +160,7 @@ final class DumpDownloaderTest extends AnidbTestCase
         $this->downloader->refresh();
         self::assertCount(1, $this->requests);
 
-        $this->now += 1;
+        ++$this->now;
         $this->responses = [$this->dumpResponse($this->fixtureDump())];
         $this->downloader->refresh();
         self::assertCount(2, $this->requests);
