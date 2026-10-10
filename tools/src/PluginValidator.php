@@ -159,7 +159,7 @@ final class PluginValidator
      *
      * @var list<string>
      */
-    private const OFFICIAL_PLUGIN_IDS = ['animedb-shikimori', 'animedb-language-pack', 'animedb-media-details', 'animedb-myanimelist'];
+    private const OFFICIAL_PLUGIN_IDS = ['animedb-anidb', 'animedb-shikimori', 'animedb-language-pack', 'animedb-media-details', 'animedb-myanimelist'];
 
     /**
      * Extensions the application actually has a route for. A file under `assets/` with any
