@@ -1,0 +1,26 @@
+{
+    "name": "anime-db/animedb-anidb",
+    "description": "Официальный плагин-источник AniDB для AnimeDB (поиск по названию и распознавание ссылок).",
+    "type": "anime-db-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.5",
+        "anime-db/plugin-contracts": "^0.26.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbAnidb\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbAnidb\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
