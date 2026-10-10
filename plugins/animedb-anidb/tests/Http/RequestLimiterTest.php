@@ -177,27 +177,62 @@ final class RequestLimiterTest extends TestCase
                 static function (float $s): void {},
             );
             $limiter->acquire();
+            $limiter->acquire();
             PHP);
 
         $autoload = \dirname(__DIR__, 4).'/vendor/autoload.php';
 
+        $start = microtime(true);
         $processes = [];
         $pipes = [];
-        for ($i = 0; $i < 6; ++$i) {
+        for ($i = 0; $i < 5; ++$i) {
             $processes[] = proc_open(
                 [\PHP_BINARY, $script, $autoload, $this->dir, \dirname(__DIR__, 2).'/src'],
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes[$i],
             );
         }
-        foreach ($processes as $process) {
-            proc_close($process);
+        foreach ($processes as $i => $process) {
+            $stderr = (string) stream_get_contents($pipes[$i][2]);
+            stream_get_contents($pipes[$i][1]);
+            self::assertSame(0, proc_close($process), 'Worker failed: '.$stderr);
         }
+        $end = microtime(true);
 
-        // six reservations, none lost: the next free slot moved by six intervals (a lost update
-        // would leave it near the start)
+        // five workers reserve twice each: ten reservations, none lost, so the next free slot
+        // moved by ten intervals; one lost update would put it below the lower bound
         $next = (float) file_get_contents($this->dir.'/anidb-api.slot');
-        self::assertEqualsWithDelta(12.0, $next - microtime(true), 2.0);
+        self::assertGreaterThanOrEqual($start + 20.0 - 0.001, $next);
+        self::assertLessThanOrEqual($end + 20.0 + 0.001, $next);
+    }
+
+    public function testSlotFromTheFutureIsDropped(): void
+    {
+        file_put_contents($this->dir.'/anidb-api.slot', \sprintf('%.6F', $this->now + 3600));
+
+        $this->limiter()->acquire();
+
+        self::assertSame([], $this->sleeps);
+        self::assertEqualsWithDelta($this->now + 2.0, (float) file_get_contents($this->dir.'/anidb-api.slot'), 0.001);
+    }
+
+    public function testNonFiniteSlotIsIgnored(): void
+    {
+        file_put_contents($this->dir.'/anidb-api.slot', '1e400');
+
+        $this->limiter()->acquire();
+
+        self::assertSame([], $this->sleeps);
+    }
+
+    public function testUnavailableCacheDirectoryIsARequestException(): void
+    {
+        $cache = $this->createMock(PluginCacheDirectoryInterface::class);
+        $cache->method('path')->willReturn($this->dir.'/missing');
+        $limiter = new RequestLimiter($cache, new FileLock(), fn (): float => $this->now, static function (float $s): void {});
+
+        $this->expectException(AniDbRequestException::class);
+        $limiter->acquire();
     }
 
     private function limiter(?\Closure $sleeper = null): RequestLimiter

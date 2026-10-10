@@ -69,16 +69,13 @@ final class RequestLimiter
      */
     public function acquire(?callable $onHeartbeat = null): void
     {
-        $wait = $this->lock->withLock($this->lockPath(), function (): float {
-            $now = $this->now();
-            $slot = max($now, $this->readNextSlot());
-            if ($slot - $now > self::MAX_WAIT) {
-                throw new AniDbRequestException('The AniDB request queue is too long, try again later.');
-            }
-            $this->writeNextSlot($slot + self::INTERVAL);
-
-            return $slot - $now;
-        });
+        try {
+            $wait = $this->reserve();
+        } catch (AniDbRequestException $exception) {
+            throw $exception;
+        } catch (\RuntimeException $exception) {
+            throw new AniDbRequestException('Cannot reserve an AniDB request slot.', 0, $exception);
+        }
 
         // the lock is released here: sleeping never blocks other processes
         while ($wait > 0.0) {
@@ -89,6 +86,26 @@ final class RequestLimiter
             $this->sleep($step);
             $wait -= $step;
         }
+    }
+
+    private function reserve(): float
+    {
+        return $this->lock->withLock($this->lockPath(), function (): float {
+            $now = $this->now();
+            $next = $this->readNextSlot();
+            // a slot this far ahead cannot come from a correct run (the clock went back, the
+            // cache was moved): drop it instead of refusing every request until the clock catches up
+            if ($next - $now > self::MAX_WAIT + self::INTERVAL) {
+                $next = $now;
+            }
+            $slot = max($now, $next);
+            if ($slot - $now > self::MAX_WAIT) {
+                throw new AniDbRequestException('The AniDB request queue is too long, try again later.');
+            }
+            $this->writeNextSlot($slot + self::INTERVAL);
+
+            return $slot - $now;
+        });
     }
 
     public function lockPath(): string
@@ -105,13 +122,18 @@ final class RequestLimiter
     {
         $raw = @file_get_contents($this->slotPath());
 
-        return \is_string($raw) && is_numeric($raw) ? (float) $raw : 0.0;
+        if (!\is_string($raw) || !is_numeric($raw)) {
+            return 0.0;
+        }
+        $slot = (float) $raw;
+
+        return is_finite($slot) ? $slot : 0.0;
     }
 
     private function writeNextSlot(float $slot): void
     {
         // read and written only under the lock; the lock file, not this one, carries the lock
-        if (file_put_contents($this->slotPath(), \sprintf('%.6F', $slot)) === false) {
+        if (@file_put_contents($this->slotPath(), \sprintf('%.6F', $slot)) === false) {
             throw new AniDbRequestException('Cannot reserve an AniDB request slot.');
         }
     }

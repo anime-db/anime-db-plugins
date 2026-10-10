@@ -82,6 +82,16 @@ final class CardCacheTest extends TestCase
         self::assertSame([$cache->path(7)], glob($this->dir.'/*'));
     }
 
+    public function testPutIntoUnavailableDirectoryIsSilent(): void
+    {
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willReturn($this->dir.'/missing');
+
+        (new CardCache($directory))->put(7000, '<anime/>');
+
+        self::assertNull((new CardCache($directory))->get(7000));
+    }
+
     private function cache(): CardCache
     {
         $directory = $this->createMock(PluginCacheDirectoryInterface::class);

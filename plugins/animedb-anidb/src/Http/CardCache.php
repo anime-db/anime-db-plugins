@@ -63,11 +63,11 @@ final class CardCache
     public function put(int $aid, string $xml): void
     {
         $directory = $this->cacheDirectory->path();
-        $tmp = tempnam($directory, 'tmp');
+        $tmp = @tempnam($directory, 'tmp');
         if ($tmp === false) {
             return;
         }
-        if (file_put_contents($tmp, $xml) === false || !rename($tmp, $this->path($aid))) {
+        if (@file_put_contents($tmp, $xml) === false || !@rename($tmp, $this->path($aid))) {
             @unlink($tmp);
         }
     }
