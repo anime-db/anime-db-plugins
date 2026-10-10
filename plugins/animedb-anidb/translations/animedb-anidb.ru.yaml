@@ -1,0 +1,26 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+widget:
+    related:
+        title: Связанные аниме
+        description: Показывает продолжения, предыстории, побочные истории и другие тайтлы, связанные по данным AniDB.
+    similar:
+        title: Похожие аниме
+        description: Показывает аниме, которые AniDB указывает как похожие на этот тайтл.
+    relation:
+        sequel: Продолжение
+        prequel: Предыстория
+        same_setting: Тот же мир
+        alternative_setting: Альтернативный мир
+        alternative_version: Альтернативная версия
+        music_video: Музыкальный клип
+        character: Персонаж
+        side_story: Побочная история
+        parent_story: Основная история
+        summary: Краткий пересказ
+        full_story: Полная история
+        other: Другое

@@ -1,0 +1,26 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+widget:
+    related:
+        title: Related anime
+        description: Shows sequels, prequels, side stories, and other titles related by AniDB's data.
+    similar:
+        title: Similar anime
+        description: Shows anime that AniDB lists as similar to this title.
+    relation:
+        sequel: Sequel
+        prequel: Prequel
+        same_setting: Same setting
+        alternative_setting: Alternative setting
+        alternative_version: Alternative version
+        music_video: Music video
+        character: Character
+        side_story: Side story
+        parent_story: Parent story
+        summary: Summary
+        full_story: Full story
+        other: Other
