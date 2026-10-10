@@ -1,5 +1,5 @@
 {
-    "sequence": 60,
+    "sequence": 61,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -10,12 +10,12 @@
             "manifest": {
                 "id": "animedb-anidb",
                 "name": "AniDB",
-                "version": "0.1.2",
+                "version": "0.2.0",
                 "type": "integration",
-                "description": "Официальный плагин-источник AniDB: поиск по названию и распознавание ссылок.",
+                "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок и заполнение карточки.",
                 "author": "AnimeDB",
                 "features": {
-                    "filler": false,
+                    "filler": true,
                     "sync": false,
                     "related": false,
                     "similar": false,
@@ -28,6 +28,12 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.2.0",
+                    "core": ">=0.0.1",
+                    "sha256": "e08d1cc5e713f31adf219a97bd2d62a8342f6f7bdf7a25a14e97adfca60e21a7",
+                    "plugin_contracts": "^0.26.1"
+                },
                 {
                     "version": "0.1.2",
                     "core": ">=0.0.1",
