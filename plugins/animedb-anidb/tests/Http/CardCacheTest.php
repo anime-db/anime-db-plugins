@@ -92,6 +92,16 @@ final class CardCacheTest extends TestCase
         self::assertNull((new CardCache($directory))->get(7000));
     }
 
+    public function testThrowingCacheDirectoryIsAMissAndNoOp(): void
+    {
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willThrowException(new \RuntimeException('no dir'));
+        $cache = new CardCache($directory);
+
+        $cache->put(7, '<anime/>');
+        self::assertNull($cache->get(7));
+    }
+
     private function cache(): CardCache
     {
         $directory = $this->createMock(PluginCacheDirectoryInterface::class);

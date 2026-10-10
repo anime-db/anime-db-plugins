@@ -74,7 +74,7 @@ final class AniDbApiClientTest extends AnidbTestCase
                     $this->now += (int) ceil($seconds);
                 },
             ),
-            new BanGuard($this->settings, fn (): int => $this->now),
+            new BanGuard($this->settings, $directory, fn (): int => $this->now),
             $this->cardCache,
         );
     }
@@ -185,6 +185,28 @@ final class AniDbApiClientTest extends AnidbTestCase
 
         $this->expectException(NotFoundHttpException::class);
         $this->client->fetchAnime(5000);
+    }
+
+    public function testUnavailableCacheDirectoryFailsWithRequestException(): void
+    {
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willThrowException(new \RuntimeException('no dir'));
+        $manifest = $this->createMock(OwnManifestInterface::class);
+        $manifest->method('id')->willReturn('animedb-anidb');
+        $manifest->method('version')->willReturn('0.1.1');
+        $client = new AniDbApiClient(
+            $this->httpClient(),
+            $this->requestFactory(),
+            $manifest,
+            new RequestLimiter($directory, new FileLock(), fn (): float => (float) $this->now, static function (float $seconds): void {
+            }),
+            new BanGuard($this->settings, $directory, fn (): int => $this->now),
+            new CardCache($directory, fn (): int => $this->now),
+        );
+        $this->responses = [$this->xml(self::fixture('card_7000.xml'))];
+
+        $this->expectException(AniDbRequestException::class);
+        $client->fetchAnime(7000);
     }
 
     public function testNotFoundIsNotCached(): void

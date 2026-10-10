@@ -48,7 +48,11 @@ final class CardCache
 
     public function get(int $aid): ?string
     {
-        $path = $this->path($aid);
+        try {
+            $path = $this->path($aid);
+        } catch (\RuntimeException) {
+            return null;
+        }
         clearstatcache(true, $path);
         $modified = @filemtime($path);
         if ($modified === false || $this->now() - $modified >= self::TTL) {
@@ -62,13 +66,16 @@ final class CardCache
 
     public function put(int $aid, string $xml): void
     {
-        $directory = $this->cacheDirectory->path();
-        $tmp = @tempnam($directory, 'tmp');
-        if ($tmp === false) {
-            return;
-        }
-        if (@file_put_contents($tmp, $xml) === false || !@rename($tmp, $this->path($aid))) {
-            @unlink($tmp);
+        try {
+            $tmp = @tempnam($this->cacheDirectory->path(), 'tmp');
+            if ($tmp === false) {
+                return;
+            }
+            if (@file_put_contents($tmp, $xml) === false || !@rename($tmp, $this->path($aid))) {
+                @unlink($tmp);
+            }
+        } catch (\RuntimeException) {
+            // an unavailable cache directory only costs the cache, not the downloaded card
         }
     }
 

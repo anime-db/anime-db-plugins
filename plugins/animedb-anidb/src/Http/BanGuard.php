@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbAnidb\Http;
 
+use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 use AnimeDb\PluginContracts\Settings\ConcurrentWriteException;
 use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
 
@@ -34,6 +35,10 @@ use AnimeDb\PluginContracts\Settings\SettingsStoreInterface;
  * Stops requests while an AniDB ban window is open. The "do not call until" moment is kept in
  * the plugin settings, not in the cache directory, so it survives cache cleaning and a plugin
  * reinstall; each request during a ban would extend it.
+ *
+ * The settings write can fail, and the ban must not depend on it: the moment is also kept in the
+ * process and in a marker file in the cache directory (visible to every process of the
+ * application); a request is allowed only when none of the three records is still in the future.
  */
 final class BanGuard
 {
@@ -49,6 +54,7 @@ final class BanGuard
      */
     public function __construct(
         private readonly SettingsStoreInterface $settings,
+        private readonly PluginCacheDirectoryInterface $cacheDirectory,
         private readonly ?\Closure $clock = null,
     ) {
     }
@@ -58,7 +64,7 @@ final class BanGuard
      */
     public function assertNotBanned(): void
     {
-        $until = $this->localUntil;
+        $until = max($this->localUntil, $this->readMarker());
         try {
             $stored = $this->settings->read()[self::KEY] ?? null;
             if (\is_int($stored)) {
@@ -76,6 +82,7 @@ final class BanGuard
     {
         $until = $this->now() + self::BAN_SECONDS;
         $this->localUntil = $until;
+        $this->writeMarker($until);
 
         for ($attempt = 1; $attempt <= self::WRITE_ATTEMPTS; ++$attempt) {
             try {
@@ -89,6 +96,40 @@ final class BanGuard
                 return;
             }
         }
+    }
+
+    private function readMarker(): int
+    {
+        try {
+            $raw = @file_get_contents($this->markerPath());
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        return \is_string($raw) && ctype_digit(trim($raw)) ? (int) trim($raw) : 0;
+    }
+
+    private function writeMarker(int $until): void
+    {
+        $tmp = false;
+        try {
+            $tmp = @tempnam($this->cacheDirectory->path(), 'tmp');
+            if ($tmp === false) {
+                return;
+            }
+            if (@file_put_contents($tmp, (string) $until) === false || !@rename($tmp, $this->markerPath())) {
+                @unlink($tmp);
+            }
+        } catch (\Throwable) {
+            if ($tmp !== false) {
+                @unlink($tmp);
+            }
+        }
+    }
+
+    private function markerPath(): string
+    {
+        return $this->cacheDirectory->path().'/anidb-api.banned';
     }
 
     private function now(): int

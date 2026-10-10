@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbAnidb\Tests\Http;
 
+use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbRequestException;
 use AnimeDb\Plugins\AnimedbAnidb\Http\BanGuard;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\ArraySettingsStore;
@@ -35,6 +36,21 @@ use PHPUnit\Framework\TestCase;
 final class BanGuardTest extends TestCase
 {
     private int $now = 1_800_000_000;
+    private string $dir;
+
+    protected function setUp(): void
+    {
+        $this->dir = sys_get_temp_dir().'/anidb-ban-'.bin2hex(random_bytes(6));
+        mkdir($this->dir);
+    }
+
+    protected function tearDown(): void
+    {
+        foreach (glob($this->dir.'/*') ?: [] as $file) {
+            unlink($file);
+        }
+        rmdir($this->dir);
+    }
 
     public function testNotBannedByDefault(): void
     {
@@ -92,8 +108,53 @@ final class BanGuardTest extends TestCase
         $guard->assertNotBanned();
     }
 
+    public function testBanHoldsInOtherProcessesWhenSettingsWriteAlwaysFails(): void
+    {
+        $broken = new ArraySettingsStore();
+        $broken->failNextUpdates = 100;
+        $this->guard($broken)->markBanned();
+
+        $otherProcess = $this->guard(new ArraySettingsStore());
+        $this->now += 86399;
+        try {
+            $otherProcess->assertNotBanned();
+            self::fail('Expected AniDbRequestException.');
+        } catch (AniDbRequestException) {
+        }
+
+        $this->now += 1;
+        $otherProcess->assertNotBanned();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testBanHoldsFromSettingsWhenMarkerIsGone(): void
+    {
+        $settings = new ArraySettingsStore();
+        $this->guard($settings)->markBanned();
+        array_map('unlink', glob($this->dir.'/*') ?: []);
+
+        $this->expectException(AniDbRequestException::class);
+        $this->guard($settings)->assertNotBanned();
+    }
+
+    public function testUnavailableCacheDirectoryDoesNotBreakTheGuard(): void
+    {
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willThrowException(new \RuntimeException('no dir'));
+        $guard = new BanGuard(new ArraySettingsStore(), $directory, fn (): int => $this->now);
+
+        $guard->assertNotBanned();
+        $guard->markBanned();
+
+        $this->expectException(AniDbRequestException::class);
+        $guard->assertNotBanned();
+    }
+
     private function guard(ArraySettingsStore $settings): BanGuard
     {
-        return new BanGuard($settings, fn (): int => $this->now);
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willReturn($this->dir);
+
+        return new BanGuard($settings, $directory, fn (): int => $this->now);
     }
 }
