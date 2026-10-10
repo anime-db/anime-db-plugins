@@ -144,7 +144,7 @@ abstract class AnidbTestCase extends TestCase
         $this->settings->data['dump_attempt'] = ['at' => $this->now, 'kind' => 'response'];
     }
 
-    private function httpClient(): ClientInterface
+    protected function httpClient(): ClientInterface
     {
         $client = $this->createMock(ClientInterface::class);
         $client->method('sendRequest')->willReturnCallback(function (RequestInterface $request): ResponseInterface {
@@ -164,7 +164,7 @@ abstract class AnidbTestCase extends TestCase
         return $client;
     }
 
-    private function requestFactory(): RequestFactoryInterface
+    protected function requestFactory(): RequestFactoryInterface
     {
         $factory = $this->createMock(RequestFactoryInterface::class);
         $factory->method('createRequest')->willReturnCallback(function (string $method, $uri): RequestInterface {
