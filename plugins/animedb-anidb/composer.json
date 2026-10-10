@@ -1,6 +1,6 @@
 {
     "name": "anime-db/animedb-anidb",
-    "description": "Официальный плагин-источник AniDB для AnimeDB (поиск по названию и распознавание ссылок).",
+    "description": "Официальный плагин-источник AniDB для AnimeDB (поиск по названию, распознавание ссылок и заполнение карточки).",
     "type": "anime-db-plugin",
     "license": "GPL-3.0-or-later",
     "require": {
