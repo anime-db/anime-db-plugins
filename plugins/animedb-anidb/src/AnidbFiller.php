@@ -43,12 +43,12 @@ use AnimeDb\Plugins\AnimedbAnidb\Mapping\TagMapper;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\TitleMapper;
 
 /**
- * Источник AniDB: поиск аниме по названию в локальном суточном дампе названий и
- * распознавание id по уже прикреплённым к записи ссылкам.
+ * Источник AniDB: единственная точка плагина для хоста — поиск аниме по названию в
+ * локальном суточном дампе названий, распознавание id по уже прикреплённым к записи ссылкам и
+ * заполнение карточки через `AniDbApiClient` (кэш 24 ч, лимитер, предохранитель бана).
  *
- * Единственный класс плагина, на который опирается хост: расширение до `FillerInterface`
- * делается в этом же классе, а не в отдельном — второй filler-совместимый класс на тот же id
- * плагина дал бы коллизию тегов на хосте.
+ * Всё собрано в одном классе, потому что второй filler-совместимый класс на тот же id плагина
+ * дал бы коллизию тегов на хосте.
  *
  * Поиск отдаёт только точные совпадения нормализованного названия, а при их отсутствии —
  * префиксные; подстрочных совпадений нет: заполнение карточки берёт первого кандидата без
@@ -175,21 +175,19 @@ final class AnidbFiller implements FillerInterface
     }
 
     /**
-     * Empty names and names equal to `$title` are skipped; pairs (name, locale) are unique.
+     * Empty names and names equal to `$title` are skipped; repeats of a (name, locale) pair are
+     * already removed by `TitleMapper::names()`.
      *
      * @return list<AnimeName>|null
      */
     private static function buildAlternativeNames(string $title, \SimpleXMLElement $card): ?array
     {
-        $seen = [];
         $names = [];
         foreach (TitleMapper::names($card) as $name) {
             $value = $name->name;
-            $key = ($name->locale ?? '')."\0".$value;
-            if ($value === '' || $value === $title || isset($seen[$key])) {
+            if ($value === '' || $value === $title) {
                 continue;
             }
-            $seen[$key] = true;
             $names[] = $name;
         }
 
