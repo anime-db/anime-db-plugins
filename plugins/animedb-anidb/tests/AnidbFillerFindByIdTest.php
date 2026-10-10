@@ -28,7 +28,10 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\AnimedbAnidb\Tests;
 
 use AnimeDb\PluginContracts\Model\AnimeType;
+use AnimeDb\PluginContracts\Model\Demographic;
+use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\NameRole;
+use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbRequestException;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\AnidbTestCase;
 
@@ -113,16 +116,54 @@ final class AnidbFillerFindByIdTest extends AnidbTestCase
         self::assertSame('2018-12-31', $data->dateEnd?->format('Y-m-d'));
     }
 
-    public function testEndBeforePremiereAfterRoundingDropsOnlyEnd(): void
+    public function testEndBeforePremiereDropsOnlyEnd(): void
     {
-        $this->responses = [$this->response(200, '<anime id="9"><startdate>2018-12-31</startdate><enddate>2018-05</enddate>'
-            .'<titles><title xml:lang="x-jat" type="main">T</title></titles></anime>')];
+        $data = $this->fillFromDates('2018-12-31', '2018-05');
+
+        self::assertSame('2018-12-31', $data->datePremiere?->format('Y-m-d'));
+        self::assertNull($data->dateEnd);
+    }
+
+    public function testEndEqualToPremiereIsKept(): void
+    {
+        $data = $this->fillFromDates('2018-05-14', '2018-05-14');
+
+        self::assertSame('2018-05-14', $data->datePremiere?->format('Y-m-d'));
+        self::assertSame('2018-05-14', $data->dateEnd?->format('Y-m-d'));
+    }
+
+    public function testPartialEndInPremiereMonthIsRoundedToEndOfMonthAndKept(): void
+    {
+        $data = $this->fillFromDates('2018-05-14', '2018-05');
+
+        self::assertSame('2018-05-14', $data->datePremiere?->format('Y-m-d'));
+        self::assertSame('2018-05-31', $data->dateEnd?->format('Y-m-d'));
+    }
+
+    public function testTagsAreMappedToGenresThemesAndDemographic(): void
+    {
+        $tag = static fn (string $name): string => '<tag id="1" weight="300" localspoiler="false" globalspoiler="false"><name>'.$name.'</name></tag>';
+        $this->responses = [$this->response(200, '<anime id="9"><titles><title xml:lang="x-jat" type="main">T</title></titles><tags>'
+            .$tag('romance').$tag('mecha').$tag('Seinen').'</tags></anime>')];
 
         $data = $this->filler->findById('9');
 
         self::assertNotNull($data);
-        self::assertSame('2018-12-31', $data->datePremiere?->format('Y-m-d'));
-        self::assertNull($data->dateEnd);
+        self::assertSame([GenreCode::Romance], $data->genres);
+        self::assertSame([ThemeCode::Mecha], $data->themes);
+        self::assertSame(Demographic::Seinen, $data->demographic);
+    }
+
+    public function testCardWithoutTagsGivesNullGenresThemesAndDemographic(): void
+    {
+        $this->responses = [$this->response(200, '<anime id="9"><titles><title xml:lang="x-jat" type="main">T</title></titles></anime>')];
+
+        $data = $this->filler->findById('9');
+
+        self::assertNotNull($data);
+        self::assertNull($data->genres);
+        self::assertNull($data->themes);
+        self::assertNull($data->demographic);
     }
 
     public function testTitlesAreMappedWithoutDuplicatesAndKanareading(): void
@@ -239,6 +280,16 @@ final class AnidbFillerFindByIdTest extends AnidbTestCase
             'studios',
             'cover',
         ], $this->filler->getFillableFields());
+    }
+
+    private function fillFromDates(string $start, string $end): \AnimeDb\PluginContracts\Filler\PluginAnimeData
+    {
+        $this->responses = [$this->response(200, '<anime id="9"><startdate>'.$start.'</startdate><enddate>'.$end.'</enddate>'
+            .'<titles><title xml:lang="x-jat" type="main">T</title></titles></anime>')];
+        $data = $this->filler->findById('9');
+        self::assertNotNull($data);
+
+        return $data;
     }
 
     private function fill(int $aid): \AnimeDb\PluginContracts\Filler\PluginAnimeData
