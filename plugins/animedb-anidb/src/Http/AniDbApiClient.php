@@ -121,20 +121,36 @@ final class AniDbApiClient
             }
         }
 
+        if ($this->hotAnimeCache->isBackingOff()) {
+            $stale = $this->hotAnimeCache->getStale();
+            $list = $stale !== null ? self::parse($stale) : null;
+            if ($list !== null && $list->getName() === 'hotanime') {
+                return $list;
+            }
+
+            throw new AniDbRequestException('AniDB hotanime request is paused after a recent failure.');
+        }
+
         $this->banGuard->assertNotBanned();
         $this->limiter->acquire($onHeartbeat);
 
-        $xml = $this->download(['request' => 'hotanime']);
-        $list = self::parse($xml);
-        if ($list === null) {
-            throw new AniDbRequestException('AniDB API returned invalid XML.');
-        }
+        try {
+            $xml = $this->download(['request' => 'hotanime']);
+            $list = self::parse($xml);
+            if ($list === null) {
+                throw new AniDbRequestException('AniDB API returned invalid XML.');
+            }
 
-        if ($list->getName() === 'error') {
-            $this->throwApiError(trim((string) $list));
-        }
-        if ($list->getName() !== 'hotanime') {
-            throw new AniDbRequestException('AniDB API returned an unexpected document.');
+            if ($list->getName() === 'error') {
+                $this->throwApiError(trim((string) $list));
+            }
+            if ($list->getName() !== 'hotanime') {
+                throw new AniDbRequestException('AniDB API returned an unexpected document.');
+            }
+        } catch (AniDbRequestException $exception) {
+            $this->hotAnimeCache->markFailed();
+
+            throw $exception;
         }
 
         $this->hotAnimeCache->put($xml);

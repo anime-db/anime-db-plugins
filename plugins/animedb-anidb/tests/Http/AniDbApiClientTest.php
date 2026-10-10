@@ -336,6 +336,56 @@ final class AniDbApiClientTest extends AnidbTestCase
         $this->client->fetchAnime(1);
     }
 
+    public function testHotAnimeIgnoresACachedDocumentWithAnotherRoot(): void
+    {
+        foreach (['<anime id="1"/>', 'garbage'] as $junk) {
+            $this->hotAnimeCache()->put($junk);
+            $this->responses = [$this->xml('<hotanime><anime id="1"/></hotanime>')];
+
+            self::assertSame('hotanime', $this->client->fetchHotAnime()->getName());
+            self::assertStringContainsString('<hotanime>', (string) file_get_contents($this->cacheDir.'/anidb-hotanime.xml'));
+            @unlink($this->cacheDir.'/anidb-hotanime.xml');
+        }
+        self::assertCount(2, $this->requests);
+    }
+
+    public function testHotAnimeUnexpectedRootFailsAndIsNotCached(): void
+    {
+        $this->responses = [$this->xml('<anime id="1"/>')];
+
+        try {
+            $this->client->fetchHotAnime();
+            self::fail('An unexpected root must fail.');
+        } catch (AniDbRequestException $exception) {
+            self::assertStringContainsString('unexpected document', $exception->getMessage());
+        }
+        self::assertFileDoesNotExist($this->cacheDir.'/anidb-hotanime.xml');
+    }
+
+    public function testHotAnimeApiErrorWithoutBanFailsWithoutBanOrCache(): void
+    {
+        $this->responses = [$this->xml('<error code="302">client version missing</error>')];
+
+        try {
+            $this->client->fetchHotAnime();
+            self::fail('An API error must fail.');
+        } catch (AniDbRequestException) {
+        }
+
+        self::assertFileDoesNotExist($this->cacheDir.'/anidb-hotanime.xml');
+        // not banned: another kind of request still goes out
+        $this->responses = [$this->xml('<anime id="1"/>')];
+        self::assertSame('anime', $this->client->fetchAnime(1)->getName());
+    }
+
+    private function hotAnimeCache(): HotAnimeCache
+    {
+        $directory = $this->createMock(PluginCacheDirectoryInterface::class);
+        $directory->method('path')->willReturn($this->cacheDir);
+
+        return new HotAnimeCache($directory, fn (): int => $this->now);
+    }
+
     /**
      * @return \Psr\Http\Message\ResponseInterface
      */

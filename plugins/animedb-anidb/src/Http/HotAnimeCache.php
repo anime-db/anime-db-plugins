@@ -36,7 +36,10 @@ use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 final class HotAnimeCache
 {
     public const TTL = 86400;
+    /** Pause after a failed request, so a persistent failure is not retried on every render. */
+    public const FAILURE_BACKOFF = 3600;
     private const FILE = 'anidb-hotanime.xml';
+    private const FAILURE_FILE = 'anidb-hotanime.failed';
 
     /**
      * @param \Closure(): int|null $clock
@@ -65,6 +68,38 @@ final class HotAnimeCache
         return \is_string($xml) && $xml !== '' ? $xml : null;
     }
 
+    /** The cached list regardless of its age, for use while a failed request is backing off. */
+    public function getStale(): ?string
+    {
+        try {
+            $xml = @file_get_contents($this->path());
+        } catch (\RuntimeException) {
+            return null;
+        }
+
+        return \is_string($xml) && $xml !== '' ? $xml : null;
+    }
+
+    public function markFailed(): void
+    {
+        try {
+            @file_put_contents($this->failurePath(), (string) $this->now());
+        } catch (\RuntimeException) {
+            // without a cache directory there is nowhere to remember the failure
+        }
+    }
+
+    public function isBackingOff(): bool
+    {
+        try {
+            $at = @file_get_contents($this->failurePath());
+        } catch (\RuntimeException) {
+            return false;
+        }
+
+        return \is_string($at) && ctype_digit($at) && $this->now() - (int) $at < self::FAILURE_BACKOFF;
+    }
+
     public function put(string $xml): void
     {
         try {
@@ -83,6 +118,11 @@ final class HotAnimeCache
     public function path(): string
     {
         return $this->cacheDirectory->path().'/'.self::FILE;
+    }
+
+    private function failurePath(): string
+    {
+        return $this->cacheDirectory->path().'/'.self::FAILURE_FILE;
     }
 
     private function now(): int

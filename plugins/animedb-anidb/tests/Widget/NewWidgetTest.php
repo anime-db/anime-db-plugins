@@ -103,6 +103,43 @@ final class NewWidgetTest extends AnidbTestCase
         }
     }
 
+    public function testFailedRequestIsNotRepeatedOnTheNextRender(): void
+    {
+        $this->responses = [$this->response(200, '<error code="302">client version missing</error>')];
+        $widget = $this->widget();
+
+        foreach ([1, 2] as $_) {
+            try {
+                $widget->render();
+                self::fail('An API error must fail the render.');
+            } catch (AniDbRequestException) {
+            }
+        }
+        self::assertCount(1, $this->requests, 'no second request while backing off');
+
+        $this->now += HotAnimeCache::FAILURE_BACKOFF + 1;
+        $this->responses = [$this->response(200, self::fixture())];
+        self::assertStringContainsString('Alpha Hot Title', $widget->render());
+        self::assertCount(2, $this->requests);
+    }
+
+    public function testStaleCacheIsServedWhileBackingOff(): void
+    {
+        $this->hotAnime->put(self::fixture());
+        $this->now += HotAnimeCache::TTL + 1;
+        $this->responses = [$this->response(503)];
+        $widget = $this->widget();
+
+        try {
+            $widget->render();
+            self::fail('A failed request must fail the render.');
+        } catch (AniDbRequestException) {
+        }
+
+        self::assertStringContainsString('Alpha Hot Title', $widget->render());
+        self::assertCount(1, $this->requests);
+    }
+
     public function testBannedResponseTripsTheGuard(): void
     {
         $this->responses = [$this->response(200, '<error code="500">banned</error>')];
@@ -130,7 +167,10 @@ final class NewWidgetTest extends AnidbTestCase
         $html = $this->widget()->render();
 
         self::assertStringNotContainsString('Restricted Hot Title', $html);
-        self::assertStringNotContainsString('restricted-cover', $html);
+        foreach ($this->items() as $item) {
+            self::assertStringNotContainsString('restricted-cover', (string) $item->thumbnail);
+            self::assertStringNotContainsString('19080', $item->url);
+        }
         $titles = ['Alpha Hot Title', 'Beta Hot Title', 'Gamma Hot Title'];
         $positions = array_map(static fn (string $t): int|false => strpos($html, $t), $titles);
         self::assertSame($positions, array_values(array_filter($positions, 'is_int')));
