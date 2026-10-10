@@ -1,0 +1,27 @@
+# created: Sat Oct 10 03:00:00 2026
+# <aid>|<type>|<language>|<title>
+# type: 1=primary title; 2=synonyms; 3=shorttitles; 4=official title
+1|1|x-jat|Seikai no Monogatari
+1|3|en|Seikai
+1|4|en|Tale of the Star World
+2|1|x-jat|Naruto
+2|4|en|Naruto
+2|2|en|Naruto Original
+2|3|en|NRT
+3|1|x-jat|Naruto Shippuuden
+3|4|en|Naruto Shippuden
+3|3|en|Shippuden
+4|1|x-jat|Boruto: Naruto Next Generations
+4|2|en|Naruto Next
+5|1|x-jat|Cowboy Bebop
+5|4|ja|カウボーイビバップ
+5|kanareading|ja|Kaubooi Bibappu
+6|1|x-jat|Bebop Cowboy Rival
+10|1|x-jat|Main Ten
+10|3|en|Zeta Short
+11|1|x-jat|Main Eleven
+11|4|en|Zeta Official
+12|1|x-jat|Main Twelve
+12|2|en|Zeta Synonym
+13|1|x-jat|Zeta Main
+14|1|x-jat|Zeta Main Two
