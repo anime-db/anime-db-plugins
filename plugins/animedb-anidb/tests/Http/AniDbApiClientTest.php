@@ -34,6 +34,7 @@ use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbApiClient;
 use AnimeDb\Plugins\AnimedbAnidb\Http\AniDbRequestException;
 use AnimeDb\Plugins\AnimedbAnidb\Http\BanGuard;
 use AnimeDb\Plugins\AnimedbAnidb\Http\CardCache;
+use AnimeDb\Plugins\AnimedbAnidb\Http\HotAnimeCache;
 use AnimeDb\Plugins\AnimedbAnidb\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbAnidb\Http\RequestLimiter;
 use AnimeDb\Plugins\AnimedbAnidb\Tests\Support\AnidbTestCase;
@@ -76,6 +77,7 @@ final class AniDbApiClientTest extends AnidbTestCase
             ),
             new BanGuard($this->settings, $directory, fn (): int => $this->now),
             $this->cardCache,
+            new HotAnimeCache($directory, fn (): int => $this->now),
         );
     }
 
@@ -202,6 +204,7 @@ final class AniDbApiClientTest extends AnidbTestCase
             }),
             new BanGuard($this->settings, $directory, fn (): int => $this->now),
             new CardCache($directory, fn (): int => $this->now),
+            new HotAnimeCache($directory, fn (): int => $this->now),
         );
         $this->responses = [$this->xml(self::fixture('card_7000.xml'))];
 
