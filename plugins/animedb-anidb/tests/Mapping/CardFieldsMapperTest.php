@@ -102,10 +102,12 @@ final class CardFieldsMapperTest extends TestCase
 
     public function testCoverUsesOnlyTheCardPicture(): void
     {
-        $card = FixtureCard::load(2500);
-        self::assertGreaterThan(1, \count($card->xpath('//picture') ?: []));
+        $card = FixtureCard::fromString(
+            '<anime><characters><character><picture>1.jpg</picture></character></characters>'
+            . '<picture>main.jpg</picture></anime>',
+        );
 
-        self::assertSame('https://cdn-eu.anidb.net/images/main/3897.jpg', CardFieldsMapper::coverUrl($card));
+        self::assertSame('https://cdn-eu.anidb.net/images/main/main.jpg', CardFieldsMapper::coverUrl($card));
     }
 
     public function testCoverIsNullWithoutCardPicture(): void

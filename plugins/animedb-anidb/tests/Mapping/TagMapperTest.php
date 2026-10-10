@@ -63,13 +63,12 @@ final class TagMapperTest extends TestCase
         ], TagMapper::map($card));
     }
 
-    public function testSpoilerAndZeroWeightTagsAreDropped(): void
+    public function testSpoilerTagsAreDropped(): void
     {
         $card = FixtureCard::fromString(
             '<anime><tags>'
             . self::tag('drama', 'weight="300" localspoiler="true" globalspoiler="false"')
             . self::tag('horror', 'weight="300" localspoiler="false" globalspoiler="true"')
-            . self::tag('comedy', 'weight="0" localspoiler="false" globalspoiler="false"')
             . self::tag('fantasy')
             . '</tags></anime>',
         );
@@ -80,12 +79,28 @@ final class TagMapperTest extends TestCase
         );
     }
 
-    public function testLiveFixtureKeepsOnlyWeightedKnownTags(): void
+    public function testZeroWeightIsIgnored(): void
+    {
+        $card = FixtureCard::fromString(
+            '<anime><tags>'
+            . self::tag('comedy', 'weight="0" localspoiler="false" globalspoiler="false"')
+            . self::tag('themes', 'weight="0" localspoiler="false" globalspoiler="false"')
+            . '</tags></anime>',
+        );
+
+        self::assertSame(
+            ['genres' => [GenreCode::Comedy], 'themes' => [], 'demographics' => []],
+            TagMapper::map($card),
+        );
+    }
+
+    public function testLiveFixtureKeepsImplicitlyAppliedParents(): void
     {
         $result = TagMapper::map(FixtureCard::load(2500));
 
-        // `romance` and `school life` carry weight="0" in this card, `yuri` and `high school` do not.
-        self::assertSame([GenreCode::GirlsLove], $result['genres']);
+        // `romance` and `school life` carry weight="0" (implicit parents of applied tags) and are kept.
+        self::assertContains(GenreCode::Romance, $result['genres']);
+        self::assertContains(GenreCode::GirlsLove, $result['genres']);
         self::assertSame([ThemeCode::School], $result['themes']);
         self::assertSame([], $result['demographics']);
     }

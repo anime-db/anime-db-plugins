@@ -38,7 +38,9 @@ use AnimeDb\PluginContracts\Model\ThemeCode;
  * wording where it differs from the contract's slug) and tried against all three enums in a
  * fixed order (`GenreCode` → `ThemeCode` → `Demographic`) via `tryFrom()`. A tag that matches
  * none is dropped rather than failing the whole card. Tags flagged `localspoiler` or
- * `globalspoiler`, and tags with `weight="0"`, are dropped before matching.
+ * `globalspoiler` are dropped before matching. The tag weight is not considered: in AniDB
+ * `weight="0"` means "not rated" or "applied implicitly via a child tag", not "does not apply"; hierarchy
+ * service nodes (`themes`, `elements`, ...) fall out on `tryFrom()` anyway.
  */
 final class TagMapper
 {
@@ -73,9 +75,6 @@ final class TagMapper
         $tags = $card->xpath('/anime/tags/tag');
         foreach ($tags !== false && $tags !== null ? $tags : [] as $tag) {
             if (self::isTrue((string) $tag['localspoiler']) || self::isTrue((string) $tag['globalspoiler'])) {
-                continue;
-            }
-            if (isset($tag['weight']) && (int) $tag['weight'] === 0) {
                 continue;
             }
 
