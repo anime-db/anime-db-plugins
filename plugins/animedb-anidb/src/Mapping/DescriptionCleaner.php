@@ -42,7 +42,7 @@ final class DescriptionCleaner
     {
         $text = preg_replace('~https?://(?:[\w-]+\.)*anidb\.net/\S+\s+\[([^\]]*)\]~u', '$1', $raw) ?? $raw;
         $text = preg_replace('/^[ \t]*Note:.*(?:\R|\z)/mu', '', $text) ?? $text;
-        $text = preg_replace('/(?:^|\R)[ \t]*Source(?:[ \t]+[^\r\n:]+)?:.*\z/su', '', $text) ?? $text;
+        $text = preg_replace('/(?:^|\R)[ \t]*Source\b[^\r\n]*:[^\r\n]*\s*\z/u', '', $text) ?? $text;
 
         return trim($text);
     }

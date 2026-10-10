@@ -65,6 +65,7 @@ final class CardFieldsMapperTest extends TestCase
             . '<episode><epno type="1">2</epno><length>25</length></episode>'
             . '<episode><epno type="1">3</epno><length>24</length></episode>'
             . '<episode><epno type="2">S1</epno><length>90</length></episode>'
+            . '<episode><epno type="2">S2</epno><length>90</length></episode>'
             . '<episode><epno type="3">C1</epno><length>1</length></episode>'
             . '</episodes></anime>',
         );

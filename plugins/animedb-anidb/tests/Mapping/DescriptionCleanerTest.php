@@ -47,6 +47,14 @@ final class DescriptionCleanerTest extends TestCase
         self::assertSame("First line.\nSecond line.", DescriptionCleaner::clean($raw));
     }
 
+    public function testSourceLikeLineInTheMiddleIsKept(): void
+    {
+        self::assertSame(
+            "Plot.\nSource of power: the crystal.\nMore plot.",
+            DescriptionCleaner::clean("Plot.\nSource of power: the crystal.\nMore plot.\nSource: ANN"),
+        );
+    }
+
     public function testSourceTailWithoutColonAfterKeyword(): void
     {
         self::assertSame('Text.', DescriptionCleaner::clean("Text.\nSource ANN:"));
