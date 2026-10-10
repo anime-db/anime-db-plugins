@@ -71,6 +71,7 @@ abstract class AnidbTestCase extends TestCase
     protected DumpFiles $files;
     protected DumpDownloader $downloader;
     protected AnidbFiller $filler;
+    protected AniDbApiClient $apiClient;
     protected CardCache $cards;
     protected BanGuard $banGuard;
 
@@ -100,23 +101,24 @@ abstract class AnidbTestCase extends TestCase
         $reader = new IndexReader($this->files);
         $this->cards = new CardCache($cache, fn (): int => $this->now);
         $this->banGuard = new BanGuard($this->settings, $cache, fn (): int => $this->now);
+        $this->apiClient = new AniDbApiClient(
+            $this->httpClient(),
+            $this->requestFactory(),
+            $manifest,
+            new RequestLimiter(
+                $cache,
+                new FileLock(),
+                fn (): float => (float) $this->now,
+                function (float $seconds): void {
+                    $this->now += (int) ceil($seconds);
+                },
+            ),
+            $this->banGuard,
+            $this->cards,
+        );
         $this->filler = new AnidbFiller(
             new TitleSearch($this->downloader, new IndexBuilder($this->files), $reader, $this->files, new FileLock()),
-            new AniDbApiClient(
-                $this->httpClient(),
-                $this->requestFactory(),
-                $manifest,
-                new RequestLimiter(
-                    $cache,
-                    new FileLock(),
-                    fn (): float => (float) $this->now,
-                    function (float $seconds): void {
-                        $this->now += (int) ceil($seconds);
-                    },
-                ),
-                $this->banGuard,
-                $this->cards,
-            ),
+            $this->apiClient,
             $manifest,
         );
     }

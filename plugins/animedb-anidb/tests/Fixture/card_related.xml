@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?><anime id="4000" restricted="false">
+    <type>TV Series</type>
+    <titles>
+        <title xml:lang="x-jat" type="main">Fixture Main</title>
+    </titles>
+    <relatedanime>
+        <anime id="9100" type="Sequel">Zeta Sequel</anime>
+        <anime id="120" type="Side Story">Alpha Side Story</anime>
+        <anime id="5000" type="Prequel">Mid Prequel</anime>
+        <anime id="7777" type="Brand New Relation">Odd One</anime>
+        <anime id="abc" type="Sequel">Broken Id</anime>
+    </relatedanime>
+    <similaranime>
+        <anime id="8800" approval="10" total="12">Zulu Similar</anime>
+        <anime id="33" approval="4" total="5">Alpha Similar</anime>
+        <anime id="0" approval="1" total="1">Zero Id</anime>
+    </similaranime>
+    <recommendations total="1">
+        <recommendation type="Recommended" uid="1">User Recommended Title</recommendation>
+    </recommendations>
+</anime>

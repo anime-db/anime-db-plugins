@@ -8,7 +8,9 @@
         "anime-db/plugin-contracts": "^0.26.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "symfony/yaml": "8.1.*",
+        "twig/twig": "^3.0"
     },
     "autoload": {
         "psr-4": {
