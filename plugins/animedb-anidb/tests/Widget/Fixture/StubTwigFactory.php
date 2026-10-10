@@ -63,7 +63,7 @@ final class StubTwigFactory
         $twig = new Environment($loader);
         $twig->addFilter(new TwigFilter(
             'trans',
-            static fn (string $key, array $params = [], ?string $domain = null): string => $catalog[$key] ?? $key,
+            static fn (string $key, array $params = [], ?string $domain = null): string => $domain === 'animedb-anidb' ? ($catalog[$key] ?? $key) : $key,
         ));
 
         return $twig;
