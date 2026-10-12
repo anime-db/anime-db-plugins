@@ -58,6 +58,7 @@ final class AniDbApiClient
         private readonly RequestLimiter $limiter,
         private readonly BanGuard $banGuard,
         private readonly CardCache $cache,
+        private readonly HotAnimeCache $hotAnimeCache,
     ) {
     }
 
@@ -84,7 +85,7 @@ final class AniDbApiClient
         $this->banGuard->assertNotBanned();
         $this->limiter->acquire($onHeartbeat);
 
-        $xml = $this->download($aid);
+        $xml = $this->download(['request' => 'anime', 'aid' => $aid]);
         $card = self::parse($xml);
         if ($card === null) {
             throw new AniDbRequestException('AniDB API returned invalid XML.');
@@ -102,6 +103,61 @@ final class AniDbApiClient
         return $card;
     }
 
+    /**
+     * The list of titles popular right now (`request=hotanime`), once a day: served from the
+     * 24-hour disk cache, otherwise through the ban guard and a shared limiter slot.
+     *
+     * @param callable(): void|null $onHeartbeat called while waiting for a limiter slot
+     *
+     * @throws AniDbRequestException any failure
+     */
+    public function fetchHotAnime(?callable $onHeartbeat = null): \SimpleXMLElement
+    {
+        $cached = $this->hotAnimeCache->get();
+        if ($cached !== null) {
+            $list = self::parse($cached);
+            if ($list !== null && $list->getName() === 'hotanime') {
+                return $list;
+            }
+        }
+
+        if ($this->hotAnimeCache->isBackingOff()) {
+            $stale = $this->hotAnimeCache->getStale();
+            $list = $stale !== null ? self::parse($stale) : null;
+            if ($list !== null && $list->getName() === 'hotanime') {
+                return $list;
+            }
+
+            throw new AniDbRequestException('AniDB hotanime request is paused after a recent failure.');
+        }
+
+        $this->banGuard->assertNotBanned();
+        $this->limiter->acquire($onHeartbeat);
+
+        try {
+            $xml = $this->download(['request' => 'hotanime']);
+            $list = self::parse($xml);
+            if ($list === null) {
+                throw new AniDbRequestException('AniDB API returned invalid XML.');
+            }
+
+            if ($list->getName() === 'error') {
+                $this->throwApiError(trim((string) $list));
+            }
+            if ($list->getName() !== 'hotanime') {
+                throw new AniDbRequestException('AniDB API returned an unexpected document.');
+            }
+        } catch (AniDbRequestException $exception) {
+            $this->hotAnimeCache->markFailed();
+
+            throw $exception;
+        }
+
+        $this->hotAnimeCache->put($xml);
+
+        return $list;
+    }
+
     private function throwApiError(string $message): never
     {
         if (stripos($message, 'banned') !== false) {
@@ -116,15 +172,17 @@ final class AniDbApiClient
         throw new AniDbRequestException('AniDB API error: '.$message);
     }
 
-    private function download(int $aid): string
+    /**
+     * @param array<string, int|string> $query request-specific parameters
+     */
+    private function download(array $query): string
     {
         $url = self::BASE_URL.'?'.http_build_query([
-            'request' => 'anime',
+            'request' => $query['request'],
             'client' => self::CLIENT,
             'clientver' => self::CLIENT_VERSION,
             'protover' => self::PROTOCOL_VERSION,
-            'aid' => $aid,
-        ]);
+        ] + $query);
         $request = $this->requestFactory->createRequest('GET', $url)
             ->withHeader('User-Agent', UserAgent::forManifest($this->ownManifest));
 

@@ -1,7 +1,7 @@
 {
     "id": "animedb-anidb",
     "name": "AniDB",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "type": "integration",
     "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок и заполнение карточки.",
     "author": "AnimeDB",

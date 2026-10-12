@@ -11,6 +11,9 @@ widget:
     similar:
         title: Similar anime
         description: Shows anime that AniDB lists as similar to this title.
+    new:
+        title: Popular now on AniDB
+        description: Shows titles that are popular on AniDB right now, mostly from the current season. The list does not take your own list into account.
     relation:
         sequel: Sequel
         prequel: Prequel
