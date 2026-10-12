@@ -54,7 +54,7 @@ final class NewWidgetTest extends AnidbTestCase
 
         $html = $this->widget()->render();
 
-        self::assertStringContainsString('Alpha Hot Title', $html);
+        self::assertStringContainsString('Bleach: Sennen Kessen Hen - Kashin Tan', $html);
         self::assertSame([], $this->requests);
     }
 
@@ -77,7 +77,7 @@ final class NewWidgetTest extends AnidbTestCase
     {
         $this->responses = [$this->response(200, (string) gzencode(self::fixture()))];
 
-        self::assertStringContainsString('Alpha Hot Title', $this->widget()->render());
+        self::assertStringContainsString('Bleach: Sennen Kessen Hen - Kashin Tan', $this->widget()->render());
     }
 
     public function testStaleCacheMakesOneRequest(): void
@@ -119,7 +119,7 @@ final class NewWidgetTest extends AnidbTestCase
 
         $this->now += HotAnimeCache::FAILURE_BACKOFF + 1;
         $this->responses = [$this->response(200, self::fixture())];
-        self::assertStringContainsString('Alpha Hot Title', $widget->render());
+        self::assertStringContainsString('Bleach: Sennen Kessen Hen - Kashin Tan', $widget->render());
         self::assertCount(2, $this->requests);
     }
 
@@ -136,7 +136,7 @@ final class NewWidgetTest extends AnidbTestCase
         } catch (AniDbRequestException) {
         }
 
-        self::assertStringContainsString('Alpha Hot Title', $widget->render());
+        self::assertStringContainsString('Bleach: Sennen Kessen Hen - Kashin Tan', $widget->render());
         self::assertCount(1, $this->requests);
     }
 
@@ -160,35 +160,66 @@ final class NewWidgetTest extends AnidbTestCase
         self::assertFileDoesNotExist($this->cacheDir.'/anidb-hotanime.xml');
     }
 
-    public function testFiltersRestrictedKeepsOrderAndAllowsMissingCover(): void
+    public function testLiveFixtureFiltersRestrictedAndKeepsOrder(): void
     {
         $this->hotAnime->put(self::fixture());
 
-        $html = $this->widget()->render();
-
-        self::assertStringNotContainsString('Restricted Hot Title', $html);
-        foreach ($this->items() as $item) {
-            self::assertStringNotContainsString('restricted-cover', (string) $item->thumbnail);
-            self::assertStringNotContainsString('19080', $item->url);
-        }
-        $titles = ['Alpha Hot Title', 'Beta Hot Title', 'Gamma Hot Title'];
-        $positions = array_map(static fn (string $t): int|false => strpos($html, $t), $titles);
-        self::assertSame($positions, array_values(array_filter($positions, 'is_int')));
-        $sorted = $positions;
-        sort($sorted);
-        self::assertSame($sorted, $positions);
-        self::assertStringContainsString('href="https://anidb.net/anime/19079"', $html);
-    }
-
-    public function testItemsCoverUrlsAndMissingPicture(): void
-    {
-        $this->hotAnime->put(self::fixture());
         $items = $this->items();
 
-        self::assertSame('https://cdn-eu.anidb.net/images/main/alpha-cover.jpg', $items[0]->thumbnail);
+        self::assertCount(8, $items);
+        self::assertSame([
+            'Bleach: Sennen Kessen Hen - Kashin Tan',
+            'Kusuriya no Hitorigoto (2026)',
+            'Nige Jouzu no Wakagimi (2026)',
+            'Tensei Shitara Ken Deshita II',
+            'Yasei no Last Boss ga Arawareta! (2026)',
+            'Tempal: Item no Chikara',
+            'Tensei Kizoku, Kantei Skill de Nariagaru Dai 3 Ki',
+            'Boku no Hero Academia: I Am a Hero Too',
+        ], array_map(static fn ($i): string => $i->title, $items));
+        self::assertSame('https://anidb.net/anime/19079', $items[0]->url);
+        self::assertSame('https://cdn-eu.anidb.net/images/main/327260.jpg', $items[0]->thumbnail);
+        foreach ($items as $item) {
+            self::assertStringNotContainsString('/20051', $item->url);
+            self::assertStringNotContainsString('/20071', $item->url);
+            self::assertStringNotContainsString('328317', (string) $item->thumbnail);
+            self::assertStringNotContainsString('327132', (string) $item->thumbnail);
+        }
+        $html = $this->widget()->render();
+        self::assertStringNotContainsString('Deco x Deco', $html);
+        self::assertStringNotContainsString('Inaka ni wa', $html);
+    }
+
+    public function testMissingPictureGivesItemWithoutCover(): void
+    {
+        $this->hotAnime->put('<hotanime>'
+            .'<anime id="1" restricted="false"><title type="main">With Cover</title><picture>a.jpg</picture></anime>'
+            .'<anime id="2" restricted="false"><title type="main">No Cover</title></anime>'
+            .'</hotanime>');
+
+        $items = $this->items();
+
+        self::assertCount(2, $items);
+        self::assertSame('https://cdn-eu.anidb.net/images/main/a.jpg', $items[0]->thumbnail);
         self::assertNull($items[1]->thumbnail);
-        self::assertSame('Beta Hot Title', $items[1]->title);
-        self::assertSame('https://anidb.net/anime/19081', $items[1]->url);
+        self::assertSame('https://anidb.net/anime/2', $items[1]->url);
+    }
+
+    public function testRestrictedFilterIsClosedByDefault(): void
+    {
+        $this->hotAnime->put('<hotanime>'
+            .'<anime id="1"><title type="main">No Attribute</title></anime>'
+            .'<anime id="2" restricted="1"><title type="main">One</title></anime>'
+            .'<anime id="3" restricted="yes"><title type="main">Yes</title></anime>'
+            .'<anime id="4" restricted=""><title type="main">Empty</title></anime>'
+            .'<anime id="5" restricted="true"><title type="main">True</title></anime>'
+            .'<anime id="6" restricted="FALSE"><title type="main">Upper False</title></anime>'
+            .'<anime id="7" restricted=" false "><title type="main">Padded False</title></anime>'
+            .'</hotanime>');
+
+        $items = $this->items();
+
+        self::assertSame(['Upper False', 'Padded False'], array_map(static fn ($i): string => $i->title, $items));
     }
 
     public function testLimitsToTwentyItems(): void
@@ -209,13 +240,13 @@ final class NewWidgetTest extends AnidbTestCase
     public function testInvalidIdOrCoverSkipsTheItem(): void
     {
         $this->hotAnime->put('<hotanime>'
-            .'<anime id="0"><title type="main">Zero Id</title></anime>'
-            .'<anime id="12/../x"><title type="main">Path Id</title></anime>'
-            .'<anime id="1234567890"><title type="main">Long Id</title></anime>'
-            .'<anime><title type="main">No Id</title></anime>'
-            .'<anime id="5"><title type="main">Bad Cover</title><picture>../x.jpg</picture></anime>'
-            .'<anime id="6"><title type="alias">No Main</title></anime>'
-            .'<anime id="7"><title type="main">Good One</title></anime>'
+            .'<anime id="0" restricted="false"><title type="main">Zero Id</title></anime>'
+            .'<anime id="12/../x" restricted="false"><title type="main">Path Id</title></anime>'
+            .'<anime id="1234567890" restricted="false"><title type="main">Long Id</title></anime>'
+            .'<anime restricted="false"><title type="main">No Id</title></anime>'
+            .'<anime id="5" restricted="false"><title type="main">Bad Cover</title><picture>../x.jpg</picture></anime>'
+            .'<anime id="6" restricted="false"><title type="alias">No Main</title></anime>'
+            .'<anime id="7" restricted="false"><title type="main">Good One</title></anime>'
             .'</hotanime>');
 
         $items = $this->items();

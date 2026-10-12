@@ -3,33 +3,103 @@
         <episodecount>10</episodecount>
         <startdate>2026-07-25</startdate>
         <enddate>2026-10-27</enddate>
-        <title xml:lang="x-jat" type="main">Alpha Hot Title</title>
+        <title xml:lang="x-jat" type="main">Bleach: Sennen Kessen Hen - Kashin Tan</title>
         <ratings>
             <permanent count="38">7.70</permanent>
-            <temporary count="12">7.10</temporary>
+            <temporary count="41">7.68</temporary>
         </ratings>
-        <picture>alpha-cover.jpg</picture>
-        <unknownfield>ignored</unknownfield>
+        <picture>327260.jpg</picture>
     </anime>
-    <anime id="19080" restricted="true">
-        <episodecount>6</episodecount>
-        <startdate>2026-07-01</startdate>
-        <title xml:lang="x-jat" type="main">Restricted Hot Title</title>
-        <ratings>
-            <permanent count="20">8.00</permanent>
-        </ratings>
-        <picture>restricted-cover.jpg</picture>
-    </anime>
-    <anime id="19081" restricted="false">
+    <anime id="19444" restricted="false">
         <episodecount>12</episodecount>
-        <startdate>2026-07-05</startdate>
-        <title xml:lang="x-jat" type="main">Beta Hot Title</title>
+        <startdate>2026-10-02</startdate>
+        <title xml:lang="x-jat" type="main">Kusuriya no Hitorigoto (2026)</title>
         <ratings>
-            <permanent count="15">6.90</permanent>
+            <permanent count="22">9.44</permanent>
+            <temporary count="22">8.18</temporary>
         </ratings>
+        <picture>328827.jpg</picture>
     </anime>
-    <anime id="19082" restricted="false">
-        <title xml:lang="x-jat" type="main">Gamma Hot Title</title>
-        <picture>gamma-cover.png</picture>
+    <anime id="18903" restricted="false">
+        <episodecount>12</episodecount>
+        <startdate>2026-07-17</startdate>
+        <enddate>2026-10-02</enddate>
+        <title xml:lang="x-jat" type="main">Nige Jouzu no Wakagimi (2026)</title>
+        <ratings>
+            <permanent count="83">6.21</permanent>
+            <temporary count="83">6.74</temporary>
+        </ratings>
+        <picture>330018.jpg</picture>
+    </anime>
+    <anime id="17789" restricted="false">
+        <episodecount>12</episodecount>
+        <startdate>2026-10-01</startdate>
+        <title xml:lang="x-jat" type="main">Tensei Shitara Ken Deshita II</title>
+        <ratings>
+            <permanent count="29">6.09</permanent>
+            <temporary count="29">7.22</temporary>
+        </ratings>
+        <picture>328836.jpg</picture>
+    </anime>
+    <anime id="19777" restricted="false">
+        <startdate>2026-09-26</startdate>
+        <title xml:lang="x-jat" type="main">Yasei no Last Boss ga Arawareta! (2026)</title>
+        <ratings>
+            <permanent count="18">4.71</permanent>
+            <temporary count="18">5.56</temporary>
+        </ratings>
+        <picture>329358.jpg</picture>
+    </anime>
+    <anime id="20077" restricted="false">
+        <episodecount>12</episodecount>
+        <startdate>2026-09-27</startdate>
+        <title xml:lang="x-jat" type="main">Tempal: Item no Chikara</title>
+        <ratings>
+            <permanent count="23">5.09</permanent>
+            <temporary count="23">6.36</temporary>
+        </ratings>
+        <picture>329559.jpg</picture>
+    </anime>
+    <anime id="19070" restricted="false">
+        <startdate>2026-09-28</startdate>
+        <title xml:lang="x-jat" type="main">Tensei Kizoku, Kantei Skill de Nariagaru Dai 3 Ki</title>
+        <ratings>
+            <permanent count="13">3.97</permanent>
+            <temporary count="13">5.58</temporary>
+        </ratings>
+        <picture>329558.jpg</picture>
+    </anime>
+    <anime id="20051" restricted="true">
+        <episodecount>2</episodecount>
+        <startdate>2026-07-31</startdate>
+        <enddate>2026-07-31</enddate>
+        <title xml:lang="x-jat" type="main">Deco x Deco The Animation</title>
+        <ratings>
+            <permanent count="27">3.49</permanent>
+            <temporary count="30">5.91</temporary>
+        </ratings>
+        <picture>328317.jpg</picture>
+    </anime>
+    <anime id="20071" restricted="true">
+        <episodecount>2</episodecount>
+        <startdate>2026-07-31</startdate>
+        <enddate>2026-07-31</enddate>
+        <title xml:lang="x-jat" type="main">Inaka ni wa Kore Kurai Shika Goraku ga Nai</title>
+        <ratings>
+            <permanent count="26">3.99</permanent>
+            <temporary count="27">5.72</temporary>
+        </ratings>
+        <picture>327132.jpg</picture>
+    </anime>
+    <anime id="20241" restricted="false">
+        <episodecount>1</episodecount>
+        <startdate>2026-08-03</startdate>
+        <enddate>2026-08-03</enddate>
+        <title xml:lang="x-jat" type="main">Boku no Hero Academia: I Am a Hero Too</title>
+        <ratings>
+            <permanent count="62">3.62</permanent>
+            <temporary count="63">5.92</temporary>
+        </ratings>
+        <picture>328587.jpg</picture>
     </anime>
 </hotanime>

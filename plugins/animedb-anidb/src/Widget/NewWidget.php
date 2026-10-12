@@ -39,8 +39,8 @@ use Twig\Environment;
  *
  * The list comes only through {@see AniDbApiClient} (24-hour disk cache, shared request limiter
  * and ban guard), once per render; everything shown is taken from that response, so there is no
- * request per title. Items keep the response order, titles marked `restricted="true"` are left
- * out, and at most {@see self::LIMIT} items are shown.
+ * request per title. Items keep the response order, only titles explicitly marked `restricted="false"` are
+ * shown, and at most {@see self::LIMIT} items are shown.
  */
 final class NewWidget implements CatalogWidgetInterface
 {
@@ -97,7 +97,8 @@ final class NewWidget implements CatalogWidgetInterface
 
     private static function buildItem(\SimpleXMLElement $node): ?WidgetListItem
     {
-        if (strtolower(trim((string) $node['restricted'])) === 'true') {
+        // fail closed: only an explicit restricted="false" lets a title through
+        if (strtolower(trim((string) $node['restricted'])) !== 'false') {
             return null;
         }
 
