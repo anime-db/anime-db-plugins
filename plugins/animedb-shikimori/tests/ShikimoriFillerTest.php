@@ -309,6 +309,74 @@ final class ShikimoriFillerTest extends TestCase
         self::assertNull($filler->findById('20')->episodesCount);
     }
 
+    public function testCardQueryRequestsExternalLinks(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->expects(self::once())->method('query')
+            ->with(self::stringContains('externalLinks { kind url }'))
+            ->willReturn(['animes' => []]);
+
+        $this->buildFiller($client)->findById('52991');
+    }
+
+    public function testFindByIdKeepsOnlyAllowedExternalLinkKindsAndAddsOwnPage(): void
+    {
+        $kinds = ['official_site', 'wikipedia', 'wikipedia', 'wikipedia', 'anime_news_network', 'myanimelist', 'anime_db', 'world_art', 'kinopoisk', 'kage_project', 'twitter', 'shiki'];
+        $links = [];
+        foreach ($kinds as $i => $kind) {
+            $links[] = ['kind' => $kind, 'url' => 'https://example.org/'.$kind.'/'.$i];
+        }
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '52991';
+        $fixture['externalLinks'] = $links;
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
+
+        self::assertNotNull($data);
+        self::assertSame([
+            'https://example.org/official_site/0',
+            'https://example.org/wikipedia/1',
+            'https://example.org/wikipedia/2',
+            'https://example.org/wikipedia/3',
+            'https://example.org/anime_news_network/4',
+            'https://example.org/myanimelist/5',
+            'https://example.org/anime_db/6',
+            'https://example.org/world_art/7',
+            'https://example.org/kinopoisk/8',
+            'https://shikimori.io/animes/52991',
+        ], $data->externalUrls);
+    }
+
+    public function testFindByIdOwnPageUsesConfiguredHost(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '20';
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.one'))->findById('20');
+
+        self::assertSame(['https://shikimori.one/animes/20'], $data?->externalUrls);
+    }
+
+    public function testFindByIdOwnPageIsResolvedBackToTheSameId(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '20';
+        $filler = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'));
+
+        $data = $filler->findById('20');
+
+        self::assertSame('20', $filler->resolveExternalId($data?->externalUrls ?? []));
+    }
+
+    private function clientReturning(array $anime, string $baseUrl): GraphQlClient
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->method('query')->willReturn(['animes' => [$anime]]);
+        $client->method('baseUrl')->willReturn($baseUrl);
+
+        return $client;
+    }
+
     public function testGetFillableFieldsExcludesCountriesButIncludesImages(): void
     {
         $filler = $this->buildFiller($this->createMock(GraphQlClient::class));
@@ -317,6 +385,7 @@ final class ShikimoriFillerTest extends TestCase
 
         self::assertNotContains('countries', $fields);
         self::assertContains('images', $fields);
+        self::assertContains('externalUrls', $fields);
         self::assertContains('title', $fields);
         self::assertContains('genres', $fields);
         self::assertContains('demographic', $fields);
@@ -328,7 +397,8 @@ final class ShikimoriFillerTest extends TestCase
 
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.one/animes/z20-naruto']));
-        self::assertNull($filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+        self::assertSame('20', $filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+        self::assertNull($filler->resolveExternalId(['https://example.com/anime/20']));
     }
 
     public function testPushUpdatesExistingUserRateWhenAlreadyOnTheList(): void

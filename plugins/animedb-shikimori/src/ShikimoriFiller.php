@@ -66,6 +66,17 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
     private const SEARCH_LIMIT = 15;
     private const USER_RATES_PAGE_LIMIT = 50;
 
+    /** `externalLinks[].kind` values passed to `externalUrls`; every other kind is dropped. */
+    private const EXTERNAL_LINK_KINDS = [
+        'myanimelist',
+        'anime_db',
+        'anime_news_network',
+        'world_art',
+        'kinopoisk',
+        'wikipedia',
+        'official_site',
+    ];
+
     private const SEARCH_QUERY = <<<'GRAPHQL'
         query($search: String, $limit: Int) {
             animes(search: $search, limit: $limit) {
@@ -99,6 +110,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
                 genres { id name russian kind }
                 description
                 screenshots { originalUrl }
+                externalLinks { kind url }
             }
         }
         GRAPHQL;
@@ -214,7 +226,37 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
             episodesCount: \is_int($anime['episodes'] ?? null) && $anime['episodes'] > 0 ? $anime['episodes'] : null,
             cover: \is_string($anime['poster']['originalUrl'] ?? null) ? $anime['poster']['originalUrl'] : null,
             images: self::buildImages($anime),
+            externalUrls: $this->buildExternalUrls($externalId, $anime),
         );
+    }
+
+    /**
+     * The title's own page on the configured host plus the allowed `externalLinks` kinds.
+     *
+     * @param array<mixed> $anime
+     *
+     * @return list<string>
+     */
+    private function buildExternalUrls(string $externalId, array $anime): array
+    {
+        $urls = [];
+        $links = \is_array($anime['externalLinks'] ?? null) ? $anime['externalLinks'] : [];
+        foreach ($links as $link) {
+            if (
+                \is_array($link)
+                && \is_string($link['kind'] ?? null)
+                && \in_array($link['kind'], self::EXTERNAL_LINK_KINDS, true)
+                && \is_string($link['url'] ?? null)
+                && preg_match('#^https?://#i', $link['url']) === 1
+            ) {
+                $urls[] = $link['url'];
+            }
+        }
+
+        $id = \is_scalar($anime['id'] ?? null) ? (string) $anime['id'] : $externalId;
+        $urls[] = $this->client->baseUrl().'/animes/'.$id;
+
+        return array_values(array_unique($urls));
     }
 
     /**
@@ -237,6 +279,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
             'episodesCount',
             'cover',
             'images',
+            'externalUrls',
         ];
     }
 

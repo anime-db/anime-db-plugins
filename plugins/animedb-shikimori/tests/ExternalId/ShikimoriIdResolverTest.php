@@ -42,9 +42,9 @@ final class ShikimoriIdResolverTest extends TestCase
         self::assertSame('20', ShikimoriIdResolver::resolve(['https://shikimori.one/animes/z20-naruto']));
     }
 
-    public function testReturnsNullWhenNoUrlMatchesAShikimoriDomain(): void
+    public function testReturnsNullWhenNoUrlMatchesAShikimoriOrMalDomain(): void
     {
-        self::assertNull(ShikimoriIdResolver::resolve(['https://myanimelist.net/anime/20']));
+        self::assertNull(ShikimoriIdResolver::resolve(['https://example.com/anime/20']));
     }
 
     public function testReturnsNullForAnEmptyUrlList(): void
@@ -58,5 +58,29 @@ final class ShikimoriIdResolverTest extends TestCase
             'https://myanimelist.net/anime/20',
             'https://shikimori.org/animes/42-cowboy-bebop',
         ]));
+    }
+
+    public function testResolvesIdFromMalAnimeUrl(): void
+    {
+        self::assertSame('52991', ShikimoriIdResolver::resolve(['https://myanimelist.net/anime/52991/Sousou_no_Frieren']));
+    }
+
+    public function testResolvesIdFromLegacyMalQueryUrl(): void
+    {
+        self::assertSame('52991', ShikimoriIdResolver::resolve(['https://myanimelist.net/anime.php?id=52991']));
+    }
+
+    public function testIgnoresMalMangaUrl(): void
+    {
+        self::assertNull(ShikimoriIdResolver::resolve(['https://myanimelist.net/manga/20']));
+    }
+
+    public function testOwnUrlWinsOverMalInBothOrders(): void
+    {
+        $own = 'https://shikimori.io/animes/1-a';
+        $mal = 'https://myanimelist.net/anime/2';
+
+        self::assertSame('1', ShikimoriIdResolver::resolve([$own, $mal]));
+        self::assertSame('1', ShikimoriIdResolver::resolve([$mal, $own]));
     }
 }

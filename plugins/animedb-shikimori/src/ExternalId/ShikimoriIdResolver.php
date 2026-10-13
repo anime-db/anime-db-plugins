@@ -29,7 +29,8 @@ namespace AnimeDb\Plugins\AnimedbShikimori\ExternalId;
 
 /**
  * Matches Shikimori domains (`shikimori.io`/`.one`/`.org`, including subdomains) and a path of
- * the form `/animes/<id>` or `/animes/z<id>-<slug>`, returning the numeric id.
+ * the form `/animes/<id>` or `/animes/z<id>-<slug>`, returning the numeric id; failing that, a
+ * `myanimelist.net` anime link (the id is the same on both sites).
  *
  * Used by {@see \AnimeDb\Plugins\AnimedbShikimori\ShikimoriFiller}, which implements
  * `ExternalIdResolutionInterface` through `SyncInterface` — extracted here instead of inlined
@@ -42,9 +43,20 @@ final class ShikimoriIdResolver
     }
 
     /**
+     * The title's own Shikimori page wins over a MAL link anywhere in the list, so the result
+     * does not depend on the order of the links.
+     *
      * @param string[] $urls
      */
     public static function resolve(array $urls): ?string
+    {
+        return self::resolveOwn($urls) ?? self::resolveMal($urls);
+    }
+
+    /**
+     * @param string[] $urls
+     */
+    private static function resolveOwn(array $urls): ?string
     {
         foreach ($urls as $url) {
             if (!is_string($url)) {
@@ -59,6 +71,43 @@ final class ShikimoriIdResolver
             $path = parse_url($url, \PHP_URL_PATH);
             if (is_string($path) && preg_match('#/animes/z?(\d+)#', $path, $matches) === 1) {
                 return $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * A MAL anime id is the Shikimori id of the same title. Forms: `/anime/N` and the legacy
+     * `/anime.php?id=N`.
+     *
+     * @param string[] $urls
+     */
+    private static function resolveMal(array $urls): ?string
+    {
+        foreach ($urls as $url) {
+            if (!is_string($url)) {
+                continue;
+            }
+
+            $host = parse_url($url, \PHP_URL_HOST);
+            if (!is_string($host) || preg_match('/^(www\.)?myanimelist\.net$/i', $host) !== 1) {
+                continue;
+            }
+
+            $path = parse_url($url, \PHP_URL_PATH);
+            if (is_string($path) && preg_match('#^/anime/(\d+)(?:/|$)#', $path, $matches) === 1) {
+                return $matches[1];
+            }
+
+            if ($path === '/anime.php') {
+                $query = parse_url($url, \PHP_URL_QUERY);
+                if (is_string($query)) {
+                    parse_str($query, $params);
+                    if (isset($params['id']) && is_string($params['id']) && preg_match('/^\d+$/', $params['id']) === 1) {
+                        return $params['id'];
+                    }
+                }
             }
         }
 

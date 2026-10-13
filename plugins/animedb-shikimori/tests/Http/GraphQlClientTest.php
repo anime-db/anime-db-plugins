@@ -298,6 +298,14 @@ final class GraphQlClientTest extends TestCase
      * @param array<string, mixed>  $body
      * @param array<string, string> $headers
      */
+    public function testBaseUrlFollowsConfiguredEndpointAndDefaultsOtherwise(): void
+    {
+        $http = $this->createMock(ClientInterface::class);
+
+        self::assertSame('https://shikimori.io', $this->buildClient($http)->baseUrl());
+        self::assertSame('https://shikimori.one', $this->buildClient($http, ['api_endpoint' => 'https://shikimori.one/'])->baseUrl());
+    }
+
     private function jsonResponse(int $status, array $body, array $headers = []): ResponseInterface
     {
         $stream = $this->createMock(StreamInterface::class);
