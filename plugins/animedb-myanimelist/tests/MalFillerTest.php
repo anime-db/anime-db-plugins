@@ -39,6 +39,7 @@ use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
 use AnimeDb\PluginContracts\Sync\SyncItem;
 use AnimeDb\PluginContracts\Sync\SyncRemovalInterface;
 use AnimeDb\PluginContracts\Sync\SyncStatus;
+use AnimeDb\Plugins\AnimedbMyanimelist\ExternalId\MalIdResolver;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\MalApiClient;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\NotFoundHttpException;
 use AnimeDb\Plugins\AnimedbMyanimelist\Http\UnauthorizedHttpException;
@@ -295,6 +296,33 @@ final class MalFillerTest extends TestCase
         self::assertNull($data->countries);
     }
 
+    public function testFindByIdReportsOnlyOwnPageAsExternalUrlRecognisedByResolver(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(self::cardFixture('card_3455.json'));
+
+        $data = $this->buildFiller($client)->findById('3455');
+
+        self::assertNotNull($data);
+        self::assertSame(['https://myanimelist.net/anime/3455'], $data->externalUrls);
+        self::assertSame('3455', MalIdResolver::resolve($data->externalUrls));
+    }
+
+    public function testFindByIdCardRequestQueryIsUnchanged(): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->expects(self::once())
+            ->method('get')
+            ->with('/anime/3455', [
+                'fields' => 'id,title,main_picture,alternative_titles,start_date,end_date,'
+                    .'synopsis,media_type,status,genres,num_episodes,average_episode_duration,studios,'
+                    .'pictures,related_anime,recommendations',
+            ])
+            ->willReturn(self::cardFixture('card_3455.json'));
+
+        $this->buildFiller($client)->findById('3455');
+    }
+
     public function testFindByIdCompletesAPartialEndDateToTheLastDayOfItsPeriod(): void
     {
         $fixture = self::cardFixture('card_3455.json');
@@ -433,6 +461,7 @@ final class MalFillerTest extends TestCase
             'episodesCount',
             'cover',
             'images',
+            'externalUrls',
         ], $filler->getFillableFields());
     }
 
