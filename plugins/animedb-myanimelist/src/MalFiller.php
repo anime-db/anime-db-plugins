@@ -94,6 +94,12 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
         .'synopsis,media_type,status,genres,num_episodes,average_episode_duration,studios,'
         .'pictures,related_anime,recommendations';
 
+    /**
+     * The title's own page; MyAnimeList API v2 returns no links to other databases, so this is
+     * the only address `findById()` reports.
+     */
+    private const ANIME_PAGE_URL = 'https://myanimelist.net/anime/';
+
     private const SECONDS_PER_MINUTE = 60;
 
     /**
@@ -229,6 +235,7 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
             episodesCount: \is_int($anime['num_episodes'] ?? null) && $anime['num_episodes'] > 0 ? $anime['num_episodes'] : null,
             cover: self::buildCover($anime),
             images: self::buildImages($anime),
+            externalUrls: [self::ANIME_PAGE_URL.$externalId],
         );
     }
 
@@ -252,6 +259,7 @@ final class MalFiller implements SyncInterface, SyncRemovalInterface
             'episodesCount',
             'cover',
             'images',
+            'externalUrls',
         ];
     }
 
