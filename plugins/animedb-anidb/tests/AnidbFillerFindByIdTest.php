@@ -332,7 +332,14 @@ final class AnidbFillerFindByIdTest extends AnidbTestCase
             .'<externalentity><identifier>-5</identifier></externalentity>'
             .'<externalentity/></resource>'
             .'<resource type="2"><externalentity><identifier>v</identifier><identifier>5</identifier></externalentity></resource>'
-            .'<resource type="4"><externalentity><url> </url></externalentity><externalentity/></resource>'
+            .'<resource type="4"><externalentity><url> </url></externalentity><externalentity/>'
+            .'<externalentity><url>javascript:alert(1)</url></externalentity>'
+            .'<externalentity><url>data:text/html,x</url></externalentity>'
+            .'<externalentity><url>ftp://example.org/a</url></externalentity>'
+            .'<externalentity><url>//example.org/a</url></externalentity>'
+            .'<externalentity><url>http://</url></externalentity>'
+            .'<externalentity><url>https://exa mple.org/</url></externalentity>'
+            .'</resource>'
             .'<resource type="9"><externalentity><identifier>77</identifier></externalentity></resource>'
             .'</resources>');
 

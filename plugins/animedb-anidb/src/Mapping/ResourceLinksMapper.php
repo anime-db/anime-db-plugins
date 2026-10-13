@@ -40,6 +40,7 @@ final class ResourceLinksMapper
 {
     private const ANN_URL = 'https://www.animenewsnetwork.com/encyclopedia/anime.php?id=';
     private const MAL_URL = 'https://myanimelist.net/anime/';
+    private const MAX_URL_LENGTH = 2048;
     private const OWN_URL = 'https://anidb.net/anime/';
 
     /**
@@ -59,7 +60,7 @@ final class ResourceLinksMapper
             foreach ($resource->externalentity as $entity) {
                 if ($type === '4') {
                     $url = trim((string) $entity->url);
-                    if ($url !== '') {
+                    if (self::isSafeUrl($url)) {
                         $urls[] = $url;
                     }
                     continue;
@@ -74,5 +75,23 @@ final class ResourceLinksMapper
         }
 
         return array_values(array_unique($urls));
+    }
+
+    /**
+     * The address is user-edited AniDB data shown as a clickable link: only an absolute
+     * http(s) URL with a host, no whitespace or control characters, bounded length.
+     */
+    private static function isSafeUrl(string $url): bool
+    {
+        if ($url === '' || \strlen($url) > self::MAX_URL_LENGTH
+            || preg_match('/[\s\x00-\x1F\x7F]/', $url) === 1) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+
+        return $parts !== false
+            && \in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
+            && ($parts['host'] ?? '') !== '';
     }
 }
