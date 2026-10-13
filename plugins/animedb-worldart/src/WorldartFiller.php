@@ -101,7 +101,10 @@ final class WorldartFiller implements SearchByPluginInterface
      */
     private function singleResult(string $target, ?callable $onHeartbeat): array
     {
-        $url = str_starts_with($target, '/') ? WorldartClient::BASE_URL.$target : $target;
+        // the site writes targets relative, with or without the leading slash; "//host" is not ours
+        $url = parse_url($target, \PHP_URL_SCHEME) === null && !str_starts_with($target, '//')
+            ? WorldartClient::BASE_URL.'/'.ltrim($target, '/')
+            : $target;
         $id = WorldartIdResolver::resolve([$url]);
         if ($id === null) {
             throw new WorldartRequestException('World-Art redirected the search to an unexpected page.');

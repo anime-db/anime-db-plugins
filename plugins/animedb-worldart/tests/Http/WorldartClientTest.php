@@ -134,11 +134,12 @@ final class WorldartClientTest extends WorldartTestCase
         $this->client->search('naruto');
     }
 
-    public function testNotConnectAnswerToCardIsAPageWithoutTitle(): void
+    public function testNotConnectAnswerToCardIsARequestException(): void
     {
         $this->queueFixture('search_not_connect_redirect.html');
 
-        self::assertNull($this->client->fetchCard(9999999)->title());
+        $this->expectException(WorldartRequestException::class);
+        $this->client->fetchCard(9999999);
     }
 
     public function testBaseUrlIsPlainHttp(): void

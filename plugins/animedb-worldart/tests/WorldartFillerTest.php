@@ -92,10 +92,38 @@ final class WorldartFillerTest extends WorldartTestCase
     public function testRedirectToCardWithoutTitleGivesNothing(): void
     {
         $this->queueFixture('search_single_result_redirect.html');
-        $this->queueFixture('search_not_connect_redirect.html');
+        $this->responses[] = $this->response(200, '<html><body></body></html>');
 
         self::assertSame([], $this->filler->find('Serial Experiments Lain'));
         self::assertCount(2, $this->requests);
+    }
+
+    public function testNotConnectAnswerToCardAfterSingleResultIsARequestException(): void
+    {
+        $this->queueFixture('search_single_result_redirect.html');
+        $this->queueFixture('search_not_connect_redirect.html');
+
+        $this->expectException(WorldartRequestException::class);
+        $this->filler->find('Serial Experiments Lain');
+    }
+
+    public function testRedirectTargetWithoutLeadingSlashIsResolvedAgainstTheBase(): void
+    {
+        $this->responses[] = $this->response(200, "<html><head><meta http-equiv='Refresh' content='0; url=animation/animation.php?id=6'></head></html>");
+        $this->queueFixture('card_6.html');
+
+        $candidates = $this->filler->find('Serial Experiments Lain');
+
+        self::assertCount(1, $candidates);
+        self::assertSame('6', $candidates[0]->getExternalId());
+    }
+
+    public function testRedirectToForeignHostWithSchemeRelativeTargetIsARequestException(): void
+    {
+        $this->responses[] = $this->response(200, "<html><head><meta http-equiv='Refresh' content='0; url=//other-host/animation/animation.php?id=6'></head></html>");
+
+        $this->expectException(WorldartRequestException::class);
+        $this->filler->find('x');
     }
 
     public function testRedirectToUnexpectedPageIsARequestException(): void

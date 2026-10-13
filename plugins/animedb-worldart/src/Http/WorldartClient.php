@@ -55,7 +55,8 @@ final class WorldartClient
     }
 
     /**
-     * A card page. The answer to a non-existent id is a page without the title of the entry.
+     * A card page. A page without the title of the entry is returned as is; a redirect to the
+     * "site is unavailable" page is a failure.
      *
      * @param callable(): void|null $onHeartbeat called while waiting for a limiter slot
      *
@@ -72,7 +73,7 @@ final class WorldartClient
 
     /**
      * A search page for the query already encoded in `windows-1251`. A redirect to the "site is
-     * unavailable" page is a failure, not an empty answer.
+     * unavailable" page is a failure, not an empty answer (see {@see download()}).
      *
      * @param callable(): void|null $onHeartbeat called while waiting for a limiter slot
      *
@@ -80,17 +81,10 @@ final class WorldartClient
      */
     public function search(string $encodedQuery, ?callable $onHeartbeat = null): WorldartPage
     {
-        $page = $this->download(
+        return $this->download(
             '/search.php?public_search='.urlencode($encodedQuery).'&global_sector=animation',
             $onHeartbeat,
         );
-
-        $target = $page->refreshTarget();
-        if ($target !== null && parse_url($target, \PHP_URL_PATH) === self::NOT_CONNECT_PATH) {
-            throw new WorldartRequestException('World-Art is unavailable.');
-        }
-
-        return $page;
     }
 
     /**
@@ -115,6 +109,12 @@ final class WorldartClient
             throw new WorldartRequestException(\sprintf('World-Art responded with HTTP %d.', $status));
         }
 
-        return WorldartPage::fromBytes($body);
+        $page = WorldartPage::fromBytes($body);
+        $target = $page->refreshTarget();
+        if ($target !== null && parse_url($target, \PHP_URL_PATH) === self::NOT_CONNECT_PATH) {
+            throw new WorldartRequestException('World-Art is unavailable.');
+        }
+
+        return $page;
     }
 }
