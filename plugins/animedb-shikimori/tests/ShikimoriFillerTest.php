@@ -397,7 +397,8 @@ final class ShikimoriFillerTest extends TestCase
 
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.io/animes/20-naruto']));
         self::assertSame('20', $filler->resolveExternalId(['https://shikimori.one/animes/z20-naruto']));
-        self::assertNull($filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+        self::assertSame('20', $filler->resolveExternalId(['https://myanimelist.net/anime/20']));
+        self::assertNull($filler->resolveExternalId(['https://example.com/anime/20']));
     }
 
     public function testPushUpdatesExistingUserRateWhenAlreadyOnTheList(): void

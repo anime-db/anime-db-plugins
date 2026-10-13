@@ -42,9 +42,9 @@ final class ShikimoriIdResolverTest extends TestCase
         self::assertSame('20', ShikimoriIdResolver::resolve(['https://shikimori.one/animes/z20-naruto']));
     }
 
-    public function testReturnsNullWhenNoUrlMatchesAShikimoriDomain(): void
+    public function testReturnsNullWhenNoUrlMatchesAShikimoriOrMalDomain(): void
     {
-        self::assertNull(ShikimoriIdResolver::resolve(['https://myanimelist.net/anime/20']));
+        self::assertNull(ShikimoriIdResolver::resolve(['https://example.com/anime/20']));
     }
 
     public function testReturnsNullForAnEmptyUrlList(): void
