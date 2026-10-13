@@ -347,6 +347,50 @@ final class ShikimoriFillerTest extends TestCase
         ], $data->externalUrls);
     }
 
+    public function testFindByIdDropsMalformedExternalLinkUrls(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '52991';
+        $fixture['externalLinks'] = [];
+        foreach ([
+            'javascript:alert(1)',
+            'data:text/html,x',
+            'https://',
+            '//example.org/a',
+            'https://exa mple.org/',
+            "https://example.org/\x07",
+            'https://example.org/'.str_repeat('a', 2049 - \strlen('https://example.org/') + 1),
+        ] as $url) {
+            $fixture['externalLinks'][] = ['kind' => 'official_site', 'url' => $url];
+        }
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
+
+        self::assertSame(['https://shikimori.io/animes/52991'], $data?->externalUrls);
+    }
+
+    public function testFindByIdKeepsNonAsciiExternalLinkUrl(): void
+    {
+        $url = 'https://ja.wikipedia.org/wiki/葬送のフリーレン';
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '52991';
+        $fixture['externalLinks'] = [['kind' => 'wikipedia', 'url' => $url]];
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
+
+        self::assertSame([$url, 'https://shikimori.io/animes/52991'], $data?->externalUrls);
+    }
+
+    public function testFindByIdOwnPageUsesRequestedIdNotResponseId(): void
+    {
+        $fixture = self::narutoFixture();
+        $fixture['id'] = '999999';
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
+
+        self::assertSame(['https://shikimori.io/animes/52991'], $data?->externalUrls);
+    }
+
     public function testFindByIdOwnPageUsesConfiguredHost(): void
     {
         $fixture = self::narutoFixture();
