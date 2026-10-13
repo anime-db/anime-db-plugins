@@ -65,6 +65,7 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 {
     private const SEARCH_LIMIT = 15;
     private const USER_RATES_PAGE_LIMIT = 50;
+    private const MAX_URL_LENGTH = 2048;
 
     /** `externalLinks[].kind` values passed to `externalUrls`; every other kind is dropped. */
     private const EXTERNAL_LINK_KINDS = [
@@ -193,6 +194,11 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 
     public function findById(string $externalId): ?PluginAnimeData
     {
+        // `ids` is a comma-separated GraphQL argument and the id goes into the own-page URL.
+        if (!ctype_digit($externalId)) {
+            return null;
+        }
+
         $data = $this->client->query(self::CARD_QUERY, ['ids' => $externalId, 'limit' => 1]);
         $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
         $anime = $animes[0] ?? null;
@@ -247,16 +253,33 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
                 && \is_string($link['kind'] ?? null)
                 && \in_array($link['kind'], self::EXTERNAL_LINK_KINDS, true)
                 && \is_string($link['url'] ?? null)
-                && preg_match('#^https?://#i', $link['url']) === 1
+                && self::isSafeUrl($link['url'])
             ) {
                 $urls[] = $link['url'];
             }
         }
 
-        $id = \is_scalar($anime['id'] ?? null) ? (string) $anime['id'] : $externalId;
-        $urls[] = $this->client->baseUrl().'/animes/'.$id;
+        $urls[] = $this->client->baseUrl().'/animes/'.$externalId;
 
         return array_values(array_unique($urls));
+    }
+
+    /**
+     * The address is user-edited Shikimori data: only an absolute http(s) URL with a host,
+     * no Unicode whitespace, control or format characters (invalid UTF-8 is rejected), bounded length. Non-ASCII characters are allowed.
+     */
+    private static function isSafeUrl(string $url): bool
+    {
+        if ($url === '' || \strlen($url) > self::MAX_URL_LENGTH
+            || preg_match('/[\p{C}\p{Z}]/u', $url) !== 0) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+
+        return $parts !== false
+            && \in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
+            && ($parts['host'] ?? '') !== '';
     }
 
     /**
