@@ -59,4 +59,28 @@ final class ShikimoriIdResolverTest extends TestCase
             'https://shikimori.org/animes/42-cowboy-bebop',
         ]));
     }
+
+    public function testResolvesIdFromMalAnimeUrl(): void
+    {
+        self::assertSame('52991', ShikimoriIdResolver::resolve(['https://myanimelist.net/anime/52991/Sousou_no_Frieren']));
+    }
+
+    public function testResolvesIdFromLegacyMalQueryUrl(): void
+    {
+        self::assertSame('52991', ShikimoriIdResolver::resolve(['https://myanimelist.net/anime.php?id=52991']));
+    }
+
+    public function testIgnoresMalMangaUrl(): void
+    {
+        self::assertNull(ShikimoriIdResolver::resolve(['https://myanimelist.net/manga/20']));
+    }
+
+    public function testOwnUrlWinsOverMalInBothOrders(): void
+    {
+        $own = 'https://shikimori.io/animes/1-a';
+        $mal = 'https://myanimelist.net/anime/2';
+
+        self::assertSame('1', ShikimoriIdResolver::resolve([$own, $mal]));
+        self::assertSame('1', ShikimoriIdResolver::resolve([$mal, $own]));
+    }
 }

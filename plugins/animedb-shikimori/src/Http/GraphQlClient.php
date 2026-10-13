@@ -174,6 +174,15 @@ class GraphQlClient
         }
     }
 
+    /**
+     * The configured API host (scheme and host, no trailing slash), also the host of the
+     * title pages on the same site.
+     */
+    public function baseUrl(): string
+    {
+        return rtrim($this->resolveEndpoint(), '/');
+    }
+
     private function resolveEndpoint(): string
     {
         $endpoint = $this->settings->read()['api_endpoint'] ?? null;
