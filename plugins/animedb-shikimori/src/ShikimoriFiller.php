@@ -194,6 +194,11 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 
     public function findById(string $externalId): ?PluginAnimeData
     {
+        // `ids` is a comma-separated GraphQL argument and the id goes into the own-page URL.
+        if (!ctype_digit($externalId)) {
+            return null;
+        }
+
         $data = $this->client->query(self::CARD_QUERY, ['ids' => $externalId, 'limit' => 1]);
         $animes = \is_array($data['animes'] ?? null) ? $data['animes'] : [];
         $anime = $animes[0] ?? null;
@@ -261,12 +266,12 @@ final class ShikimoriFiller implements SyncInterface, SyncRemovalInterface
 
     /**
      * The address is user-edited Shikimori data: only an absolute http(s) URL with a host,
-     * no whitespace or control characters, bounded length. Non-ASCII characters are allowed.
+     * no Unicode whitespace, control or format characters (invalid UTF-8 is rejected), bounded length. Non-ASCII characters are allowed.
      */
     private static function isSafeUrl(string $url): bool
     {
         if ($url === '' || \strlen($url) > self::MAX_URL_LENGTH
-            || preg_match('/[\s\x00-\x1F\x7F]/', $url) === 1) {
+            || preg_match('/[\p{C}\p{Z}]/u', $url) !== 0) {
             return false;
         }
 

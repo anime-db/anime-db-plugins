@@ -359,7 +359,13 @@ final class ShikimoriFillerTest extends TestCase
             '//example.org/a',
             'https://exa mple.org/',
             "https://example.org/\x07",
-            'https://example.org/'.str_repeat('a', 2049 - \strlen('https://example.org/') + 1),
+            'http:foo',
+            'https:example.org',
+            "https://evil.example/\u{202E}gro.aidepikiw",
+            "https://example.org/\u{0085}",
+            "https://example.org/\u{00A0}",
+            "https://example.org/\xC3\x28",
+            'https://example.org/'.str_repeat('a', 2049 - \strlen('https://example.org/')),
         ] as $url) {
             $fixture['externalLinks'][] = ['kind' => 'official_site', 'url' => $url];
         }
@@ -379,6 +385,29 @@ final class ShikimoriFillerTest extends TestCase
         $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
 
         self::assertSame([$url, 'https://shikimori.io/animes/52991'], $data?->externalUrls);
+    }
+
+    public function testFindByIdKeepsExternalLinkUrlOfMaxLength(): void
+    {
+        $url = 'https://example.org/'.str_repeat('a', 2048 - \strlen('https://example.org/'));
+        $fixture = self::narutoFixture();
+        $fixture['externalLinks'] = [['kind' => 'official_site', 'url' => $url]];
+
+        $data = $this->buildFiller($this->clientReturning($fixture, 'https://shikimori.io'))->findById('52991');
+
+        self::assertSame(2048, \strlen($url));
+        self::assertSame([$url, 'https://shikimori.io/animes/52991'], $data?->externalUrls);
+    }
+
+    public function testFindByIdRejectsNonNumericIdWithoutQuery(): void
+    {
+        $client = $this->createMock(GraphQlClient::class);
+        $client->expects(self::never())->method('query');
+        $filler = $this->buildFiller($client);
+
+        foreach (['20,813', '../x', '', '20 ', '20?x=y', '-1'] as $id) {
+            self::assertNull($filler->findById($id), $id);
+        }
     }
 
     public function testFindByIdOwnPageUsesRequestedIdNotResponseId(): void
