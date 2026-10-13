@@ -308,6 +308,44 @@ final class MalFillerTest extends TestCase
         self::assertSame('3455', MalIdResolver::resolve($data->externalUrls));
     }
 
+    /**
+     * @dataProvider provideCardFixturesWithTheirIds
+     */
+    public function testFindByIdBuildsExternalUrlFromRequestedId(string $fixture, string $externalId): void
+    {
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn(self::cardFixture($fixture));
+
+        $data = $this->buildFiller($client)->findById($externalId);
+
+        self::assertNotNull($data);
+        self::assertSame(['https://myanimelist.net/anime/'.$externalId], $data->externalUrls);
+        self::assertSame($externalId, MalIdResolver::resolve($data->externalUrls));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function provideCardFixturesWithTheirIds(): iterable
+    {
+        yield 'card 3455' => ['card_3455.json', '3455'];
+        yield 'card 63143' => ['card_63143.json', '63143'];
+        yield 'card 59068' => ['card_59068.json', '59068'];
+    }
+
+    public function testFindByIdBuildsExternalUrlFromRequestedIdNotFromResponseId(): void
+    {
+        $fixture = self::cardFixture('card_3455.json');
+        $fixture['id'] = 999999;
+        $client = $this->createMock(MalApiClient::class);
+        $client->method('get')->willReturn($fixture);
+
+        $data = $this->buildFiller($client)->findById('3455');
+
+        self::assertNotNull($data);
+        self::assertSame(['https://myanimelist.net/anime/3455'], $data->externalUrls);
+    }
+
     public function testFindByIdCardRequestQueryIsUnchanged(): void
     {
         $client = $this->createMock(MalApiClient::class);
