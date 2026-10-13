@@ -279,7 +279,102 @@ final class AnidbFillerFindByIdTest extends AnidbTestCase
             'episodesCount',
             'studios',
             'cover',
+            'externalUrls',
         ], $this->filler->getFillableFields());
+    }
+
+    public function testExternalUrlsFromCard2500(): void
+    {
+        self::assertSame([
+            'https://anidb.net/anime/2500',
+            'https://www.animenewsnetwork.com/encyclopedia/anime.php?id=4422',
+            'https://myanimelist.net/anime/3303',
+            'https://web.archive.org/web/20091225093627/http://www.blue-eyes.ne.jp/momiji/index.html',
+        ], $this->fill(2500)->externalUrls);
+    }
+
+    public function testExternalUrlsFromCard7000(): void
+    {
+        self::assertSame([
+            'https://anidb.net/anime/7000',
+            'https://myanimelist.net/anime/7477',
+            'http://chirok.jp/product/content2/shoot.html',
+        ], $this->fill(7000)->externalUrls);
+    }
+
+    public function testExternalUrlsFromCard13000(): void
+    {
+        self::assertSame([
+            'https://anidb.net/anime/13000',
+            'https://myanimelist.net/anime/30429',
+        ], $this->fill(13000)->externalUrls);
+    }
+
+    public function testEveryExternalEntityOfResourceIsTaken(): void
+    {
+        $data = $this->fillFromXml('<resources><resource type="2">'
+            .'<externalentity><identifier>11</identifier></externalentity>'
+            .'<externalentity><identifier>22</identifier></externalentity>'
+            .'</resource></resources>');
+
+        self::assertSame([
+            'https://anidb.net/anime/9',
+            'https://myanimelist.net/anime/11',
+            'https://myanimelist.net/anime/22',
+        ], $data->externalUrls);
+    }
+
+    public function testInvalidEntitiesAreSkipped(): void
+    {
+        $data = $this->fillFromXml('<resources>'
+            .'<resource type="1"><externalentity><identifier>abc</identifier></externalentity>'
+            .'<externalentity><identifier>0</identifier></externalentity>'
+            .'<externalentity><identifier>-5</identifier></externalentity>'
+            .'<externalentity/></resource>'
+            .'<resource type="2"><externalentity><identifier>v</identifier><identifier>5</identifier></externalentity></resource>'
+            .'<resource type="4"><externalentity><url> </url></externalentity><externalentity/>'
+            .'<externalentity><url>javascript:alert(1)</url></externalentity>'
+            .'<externalentity><url>data:text/html,x</url></externalentity>'
+            .'<externalentity><url>ftp://example.org/a</url></externalentity>'
+            .'<externalentity><url>//example.org/a</url></externalentity>'
+            .'<externalentity><url>http://</url></externalentity>'
+            .'<externalentity><url>https://exa mple.org/</url></externalentity>'
+            .'</resource>'
+            .'<resource type="9"><externalentity><identifier>77</identifier></externalentity></resource>'
+            .'</resources>');
+
+        self::assertSame(['https://anidb.net/anime/9'], $data->externalUrls);
+    }
+
+    public function testExternalUrlsOfCachedCardMatchFreshCard(): void
+    {
+        $this->responses = [$this->response(200, self::fixture('card_2500.xml'))];
+        $fresh = $this->filler->findById('2500');
+        self::assertNotNull($fresh);
+        self::assertCount(1, $this->requests);
+
+        $cached = $this->filler->findById('2500');
+        self::assertNotNull($cached);
+        self::assertCount(1, $this->requests);
+        self::assertSame($fresh->externalUrls, $cached->externalUrls);
+    }
+
+    public function testOwnPageIsResolvedToSameAid(): void
+    {
+        $urls = $this->fill(7000)->externalUrls;
+
+        self::assertNotNull($urls);
+        self::assertSame('7000', \AnimeDb\Plugins\AnimedbAnidb\ExternalId\AnidbIdResolver::resolve($urls));
+    }
+
+    private function fillFromXml(string $resources): \AnimeDb\PluginContracts\Filler\PluginAnimeData
+    {
+        $this->responses = [$this->response(200, '<anime id="9">'.$resources
+            .'<titles><title xml:lang="x-jat" type="main">T</title></titles></anime>')];
+        $data = $this->filler->findById('9');
+        self::assertNotNull($data);
+
+        return $data;
     }
 
     private function fillFromDates(string $start, string $end): \AnimeDb\PluginContracts\Filler\PluginAnimeData

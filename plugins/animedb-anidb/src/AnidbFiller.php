@@ -39,6 +39,7 @@ use AnimeDb\Plugins\AnimedbAnidb\Mapping\AnimeTypeMapper;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\CardFieldsMapper;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\DateParser;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\DescriptionCleaner;
+use AnimeDb\Plugins\AnimedbAnidb\Mapping\ResourceLinksMapper;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\TagMapper;
 use AnimeDb\Plugins\AnimedbAnidb\Mapping\TitleMapper;
 
@@ -149,6 +150,7 @@ final class AnidbFiller implements FillerInterface
             durationMinutes: CardFieldsMapper::duration($card),
             episodesCount: CardFieldsMapper::episodeCount($card),
             cover: CardFieldsMapper::coverUrl($card),
+            externalUrls: ResourceLinksMapper::map($card, (int) $externalId),
         );
     }
 
@@ -171,6 +173,7 @@ final class AnidbFiller implements FillerInterface
             'episodesCount',
             'studios',
             'cover',
+            'externalUrls',
         ];
     }
 
