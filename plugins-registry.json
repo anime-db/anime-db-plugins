@@ -1,5 +1,5 @@
 {
-    "sequence": 63,
+    "sequence": 64,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -10,7 +10,7 @@
             "manifest": {
                 "id": "animedb-anidb",
                 "name": "AniDB",
-                "version": "0.4.0",
+                "version": "0.5.0",
                 "type": "integration",
                 "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок и заполнение карточки.",
                 "author": "AnimeDB",
@@ -28,7 +28,7 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.1"
+                    "plugin-contracts": "^0.26.2"
                 }
             },
             "versions": [
@@ -247,7 +247,7 @@
             "manifest": {
                 "id": "animedb-myanimelist",
                 "name": "MyAnimeList",
-                "version": "0.8.0",
+                "version": "0.9.0",
                 "type": "integration",
                 "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
                 "author": "AnimeDB",
@@ -265,10 +265,20 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.0"
+                    "plugin-contracts": "^0.26.2"
                 }
             },
             "versions": [
+                {
+                    "version": "0.9.0",
+                    "core": ">=0.0.1",
+                    "sha256": "e71dc95812d010432b5058f6d4e841bcff218719361b1fbc4257f90b3456042b",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2"
+                },
                 {
                     "version": "0.8.0",
                     "core": ">=0.0.1",
