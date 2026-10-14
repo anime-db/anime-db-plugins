@@ -153,6 +153,25 @@ final class WorldartFillerTest extends WorldartTestCase
         self::assertCount(24, array_unique($ids));
     }
 
+    public function testRussianNarutoQueryPutsThreeExactMatchesFirstByYearAscending(): void
+    {
+        $this->queueFixture('search_naruto.html');
+
+        $candidates = $this->filler->find('Наруто');
+        $ids = array_map(static fn (SearchByPluginCandidate $c): string => $c->getExternalId(), $candidates);
+
+        self::assertCount(24, $candidates);
+        // 262 (2002), 6223 (2007) and 11822 (2027) match the Russian name exactly
+        self::assertSame(['262', '6223', '11822'], \array_slice($ids, 0, 3));
+        // the rest keeps the order of the site (year descending)
+        self::assertSame(
+            ['9070', '8187', '2585', '386', '837', '926', '2517', '8152', '381', '5361', '7259', '7719', '6923'],
+            \array_slice($ids, 3, 13),
+        );
+        self::assertSame(['5900', '3220', '5416', '279', '3789', '2610', '2611'], \array_slice($ids, 17));
+        self::assertCount(24, array_unique($ids));
+    }
+
     public function testCandidateNamesHaveNoTailAndKeepSeasonMark(): void
     {
         $this->queueFixture('search_naruto.html');
