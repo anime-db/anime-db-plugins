@@ -98,13 +98,31 @@ final class WorldartFillerTest extends WorldartTestCase
         self::assertCount(2, $this->requests);
     }
 
-    public function testNotConnectAnswerToCardAfterSingleResultIsARequestException(): void
+    public function testNotConnectAnswerToCardAfterSingleResultGivesNothing(): void
     {
         $this->queueFixture('search_single_result_redirect.html');
         $this->queueFixture('search_not_connect_redirect.html');
 
-        $this->expectException(WorldartRequestException::class);
+        self::assertSame([], $this->filler->find('Serial Experiments Lain'));
+        self::assertSame([], glob($this->cacheDir.'/worldart-card-*'));
+    }
+
+    public function testSingleResultCardGoesThroughTheCardCache(): void
+    {
+        $this->queueFixture('search_single_result_redirect.html');
+        $this->queueFixture('card_6.html');
         $this->filler->find('Serial Experiments Lain');
+        self::assertFileExists($this->cardCachePath(6));
+        touch($this->cardCachePath(6), (int) $this->now);
+
+        // the search is asked again, the card is not
+        $this->queueFixture('search_single_result_redirect.html');
+        $candidates = $this->filler->find('Serial Experiments Lain');
+
+        self::assertCount(1, $candidates);
+        self::assertSame('Эксперименты Лэйн', $candidates[0]->getName());
+        self::assertCount(3, $this->requests);
+        self::assertStringContainsString('/search.php', $this->requests[2]);
     }
 
     public function testRedirectTargetWithoutLeadingSlashIsResolvedAgainstTheBase(): void

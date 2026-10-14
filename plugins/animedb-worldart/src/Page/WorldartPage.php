@@ -76,6 +76,50 @@ final class WorldartPage
     }
 
     /**
+     * Pairs "label → value" of the card: a `td.review` cell holding `<b>Label</b>` and the text of
+     * the second following sibling cell (the first one is a spacer). Cells without a value are skipped.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    public function pairs(): array
+    {
+        $cells = $this->xpath->query(
+            '//x:td[contains(concat(" ", normalize-space(@class), " "), " review ")][x:b]',
+        );
+        $pairs = [];
+        foreach ($cells as $cell) {
+            $label = self::clean((string) $this->xpath->query('x:b', $cell)->item(0)?->textContent);
+            $value = $this->xpath->query('following-sibling::x:td[2]', $cell)->item(0);
+            if ($label === '' || $value === null) {
+                continue;
+            }
+            $pairs[] = ['label' => $label, 'value' => self::clean((string) $value->textContent)];
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * The `src` of the cover image of the card, as written on the page.
+     */
+    public function coverSrc(): ?string
+    {
+        $nodes = $this->xpath->query('//x:img[contains(@src, "/animation/img/")]');
+        $node = $nodes->item(0);
+
+        return $node instanceof \Dom\Element ? $node->getAttribute('src') : null;
+    }
+
+    /**
+     * A card has the title of the entry and at least one pair "label → value"; anything else (a
+     * proxy page, a stub, a portal) is not a card.
+     */
+    public function isCard(): bool
+    {
+        return $this->title() !== null && $this->pairs() !== [];
+    }
+
+    /**
      * The target of `<meta http-equiv="refresh" content="0; url=...">`, as written on the page.
      */
     public function refreshTarget(): ?string
