@@ -31,7 +31,9 @@ use AnimeDb\Plugins\AnimedbWorldart\Page\WorldartPage;
 
 /**
  * The "Краткое содержание" block as `['ru' => text]`: no markup, line breaks kept, one blank line
- * between paragraphs. No block or no text → `null`.
+ * between paragraphs. No block or no text → `null`. A paragraph linking to
+ * `animation_update_synopsis.php` is the site's "no description yet / add one" notice, not a
+ * description, and is skipped.
  */
 final class DescriptionMapper
 {
@@ -42,6 +44,9 @@ final class DescriptionMapper
     {
         $paragraphs = [];
         foreach ($page->descriptionParagraphs() as $paragraph) {
+            if (self::isServiceNotice($paragraph)) {
+                continue;
+            }
             $text = WorldartPage::textWithBreaks($paragraph);
             if ($text !== '') {
                 $paragraphs[] = $text;
@@ -49,5 +54,16 @@ final class DescriptionMapper
         }
 
         return $paragraphs === [] ? null : ['ru' => implode("\n\n", $paragraphs)];
+    }
+
+    private static function isServiceNotice(\Dom\Element $paragraph): bool
+    {
+        foreach ($paragraph->getElementsByTagName('a') as $link) {
+            if (str_contains($link->getAttribute('href') ?? '', 'animation_update_synopsis.php')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

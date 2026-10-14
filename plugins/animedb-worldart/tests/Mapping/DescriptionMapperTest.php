@@ -61,4 +61,18 @@ final class DescriptionMapperTest extends TestCase
         self::assertNull(DescriptionMapper::map(CardFactory::fragment([], extra: '<table><tr><td><font size=2>Краткое содержание</font></td></tr></table>'
             ."<table><tr><td><p class='review'> </p></td></tr></table>")));
     }
+
+    public function testSynopsisUpdateNoticeIsNotADescription(): void
+    {
+        self::assertNull(DescriptionMapper::map(CardFactory::fixture('card_12242.html')));
+    }
+
+    public function testNoticeIsSkippedButRealParagraphsStay(): void
+    {
+        $page = CardFactory::fragment([], extra: '<table><tr><td><font size=2>Краткое содержание</font></td></tr></table>'
+            ."<table><tr><td><p class='review'>Text</p>"
+            ."<p class='review'>Notice <a href='http://x/animation/animation_update_synopsis.php?id=1'>link</a></p></td></tr></table>");
+
+        self::assertSame(['ru' => 'Text'], DescriptionMapper::map($page));
+    }
 }
