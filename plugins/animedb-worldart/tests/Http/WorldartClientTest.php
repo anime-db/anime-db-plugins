@@ -154,6 +154,37 @@ final class WorldartClientTest extends WorldartTestCase
         self::assertSame([], glob($this->cacheDir.'/worldart-card-*'));
     }
 
+    public function testRefreshOnAPageThatLooksLikeACardIsStillNotFound(): void
+    {
+        foreach (['http://www.world-art.ru/not_connect.html', 'not_connect.html', '/animation/', 'animation/', '/animation'] as $target) {
+            $this->responses[] = $this->response(200, $this->cardWithRefresh($target));
+            self::assertNull($this->client->fetchCard(6), $target);
+        }
+        self::assertSame([], glob($this->cacheDir.'/worldart-card-*'));
+
+        // the same card without a refresh is accepted, so only the redirect rejects it
+        $this->queueFixture('card_6.html');
+        self::assertNotNull($this->client->fetchCard(6));
+    }
+
+    public function testSlashlessNotConnectAnswerToSearchIsARequestException(): void
+    {
+        $this->responses[] = $this->response(200, "<html><head><meta http-equiv='Refresh' content='0; url=not_connect.html'></head></html>");
+
+        $this->expectException(WorldartRequestException::class);
+        $this->client->search('naruto');
+    }
+
+    private function cardWithRefresh(string $target): string
+    {
+        $card = $this->fixture('card_6.html');
+        $meta = "<meta http-equiv='Refresh' content='0; url=".$target."'>";
+        $patched = preg_replace('/<head>/i', '<head>'.$meta, $card, 1, $count);
+        self::assertSame(1, $count);
+
+        return (string) $patched;
+    }
+
     public function testFirstCardCoverUnderAnotherIdIsNotFoundButCardOneIsACard(): void
     {
         $this->queueFixture('card_1.html');
