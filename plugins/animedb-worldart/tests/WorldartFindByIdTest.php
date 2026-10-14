@@ -96,6 +96,17 @@ final class WorldartFindByIdTest extends WorldartTestCase
         self::assertSame([], glob($this->cacheDir.'/worldart-synopsis-*'));
     }
 
+    public function testCardWithoutDescriptionAndNoticeDoesNotRequestTheSynopsisPage(): void
+    {
+        $this->responses[] = $this->response(200, $this->cardWith([]));
+
+        $data = $this->filler->findById('42');
+
+        self::assertNotNull($data);
+        self::assertNull($data->descriptions);
+        self::assertSame(['http://www.world-art.ru/animation/animation.php?id=42'], $this->requests);
+    }
+
     /**
      * @return iterable<string, array{string}>
      */

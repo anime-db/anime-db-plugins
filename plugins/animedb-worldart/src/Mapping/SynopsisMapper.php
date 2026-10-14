@@ -37,6 +37,8 @@ use AnimeDb\Plugins\AnimedbWorldart\Page\WorldartPage;
  */
 final class SynopsisMapper
 {
+    private const MARK = 'текст взят с другого сайта';
+
     /**
      * @return array<string, string>|null
      */
@@ -68,7 +70,7 @@ final class SynopsisMapper
 
         $copy = $cell->cloneNode(true);
         foreach ($page->xpath()->query('.//x:i', $copy) as $mark) {
-            if ($mark instanceof \Dom\Element) {
+            if ($mark instanceof \Dom\Element && mb_strtolower(WorldartPage::clean((string) $mark->textContent)) === self::MARK) {
                 $mark->remove();
             }
         }

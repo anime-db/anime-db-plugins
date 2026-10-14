@@ -66,6 +66,13 @@ final class SynopsisMapperTest extends TestCase
         self::assertSame(['ru' => "Строка 1\nСтрока 2\n\nАбзац 2"], SynopsisMapper::map($page));
     }
 
+    public function testItalicsInsideTheTextAreKept(): void
+    {
+        $page = $this->page($this->block('Герои ищут <i>Меч Короля</i>, чтобы победить.<br><br><i>текст взят с другого сайта</i>', 0));
+
+        self::assertSame(['ru' => 'Герои ищут Меч Короля, чтобы победить.'], SynopsisMapper::map($page));
+    }
+
     public function testLoginBlockIsNotAVariant(): void
     {
         $page = $this->page("<div class='comment_block'><a href='http://www.world-art.ru/enter.php'>Войдите в систему</a>, чтобы написать.</div>");
