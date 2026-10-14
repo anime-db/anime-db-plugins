@@ -29,7 +29,7 @@ namespace AnimeDb\Plugins\AnimedbWorldart\Mapping;
 
 /**
  * An address taken from a page is shown as a clickable link: only an absolute http(s) URL with a
- * host, no whitespace or control characters, bounded length (as `ResourceLinksMapper::isSafeUrl()`
+ * host, no whitespace, control characters, backslashes or userinfo, bounded length (as `ResourceLinksMapper::isSafeUrl()`
  * of `animedb-anidb`).
  */
 final class UrlGuard
@@ -38,13 +38,15 @@ final class UrlGuard
 
     public static function isSafe(string $url): bool
     {
-        if ($url === '' || \strlen($url) > self::MAX_LENGTH || preg_match('/[\s\x00-\x1F\x7F]/', $url) === 1) {
+        if ($url === '' || \strlen($url) > self::MAX_LENGTH || preg_match('/[\s\x00-\x1F\x7F\\\\]/', $url) === 1) {
             return false;
         }
 
         $parts = parse_url($url);
 
+        // userinfo is never part of a legitimate link; it is how the host gets spoofed
         return $parts !== false
+            && !isset($parts['user']) && !isset($parts['pass'])
             && \in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
             && ($parts['host'] ?? '') !== '';
     }

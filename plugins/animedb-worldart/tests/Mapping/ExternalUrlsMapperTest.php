@@ -83,6 +83,7 @@ final class ExternalUrlsMapperTest extends TestCase
             'https://evilanidb.net/a', 'https://anidb.net.evil.org/a', 'https://wikipedia.org/wiki/A', 'https://notwikipedia.org/a',
             'https://syoboi.jp/a', 'https://cal.syoboi.jp/a', 'https://allcinema.net/a', 'https://www.youtube.com/a',
             'ftp://anidb.net/a', 'anidb.net/a', 'https://anidb.net/a b', 'javascript:alert(1)', 'https://zh.wikipedia.org/wiki/B',
+            'https://evil.com\\@anidb.net/a', 'https://user@anidb.net/a',
         ];
         $html = '';
         foreach ($links as $link) {

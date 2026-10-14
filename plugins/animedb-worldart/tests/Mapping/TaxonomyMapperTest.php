@@ -102,10 +102,17 @@ final class TaxonomyMapperTest extends TestCase
         // `2` is martial arts among the genres and seinen among the audiences
         self::assertSame(ThemeCode::MartialArts, GenreTable::MAP[2]);
 
-        $page = CardFactory::fragment(['Целевая аудитория' => "<a href='".self::LIST."public_target_audience=2'>сэйнэн</a>"]);
+        // a neutral link text: the result can only come from the id
+        $page = CardFactory::fragment(
+            [
+                'Целевая аудитория' => "<a href='".self::LIST."public_target_audience=2'>x</a>",
+                'Жанр' => self::genreLinks(2),
+            ],
+            extra: self::tag(2),
+        );
 
         self::assertSame(Demographic::Seinen, TaxonomyMapper::demographic($page));
-        self::assertSame(['genres' => [], 'themes' => []], TaxonomyMapper::genresAndThemes($page));
+        self::assertSame(['genres' => [], 'themes' => [ThemeCode::MartialArts]], TaxonomyMapper::genresAndThemes($page));
     }
 
     public function testAudienceOfFixtures(): void
