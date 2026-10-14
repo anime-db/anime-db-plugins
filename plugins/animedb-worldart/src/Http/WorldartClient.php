@@ -95,6 +95,41 @@ final class WorldartClient
     }
 
     /**
+     * The page of unmoderated short descriptions of an entry, or null when the site has no such
+     * page: a redirect to the "site is unavailable" page or any answer without the page heading.
+     * Nothing of that is cached. Goes through the same limiter and the same 24-hour disk cache as
+     * the card, in a separate file.
+     *
+     * @param callable(): void|null $onHeartbeat called while waiting for a limiter slot
+     *
+     * @throws WorldartRequestException
+     */
+    public function fetchSynopsis(int $id, ?callable $onHeartbeat = null): ?WorldartPage
+    {
+        if ($id < 1) {
+            throw new \InvalidArgumentException(\sprintf('Invalid World-Art id "%d".', $id));
+        }
+
+        $cached = $this->cardCache->getSynopsis($id);
+        if ($cached !== null) {
+            $page = WorldartPage::fromBytes($cached);
+            if ($page->isSynopsisPage()) {
+                return $page;
+            }
+        }
+
+        $body = $this->download(\sprintf('/animation/animation_update_synopsis.php?id=%d', $id), $onHeartbeat);
+        $page = WorldartPage::fromBytes($body);
+        if ($this->refreshPath($page) === self::NOT_CONNECT_PATH || !$page->isSynopsisPage()) {
+            return null;
+        }
+
+        $this->cardCache->putSynopsis($id, $body);
+
+        return $page;
+    }
+
+    /**
      * A search page for the query already encoded in `windows-1251`. A redirect to the "site is
      * unavailable" page is a failure, not an empty answer.
      *

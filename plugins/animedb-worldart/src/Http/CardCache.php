@@ -32,7 +32,8 @@ use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 /**
  * Disk cache of card pages by id: the raw bytes of the response in `windows-1251`, valid for
  * 24 hours. Only pages recognised as a card are put here; parsing happens on every read, so a
- * change of the parser does not need a cache reset.
+ * change of the parser does not need a cache reset. The synopsis page of an entry is kept the same
+ * way, in a separate file per id.
  */
 final class CardCache
 {
@@ -49,8 +50,31 @@ final class CardCache
 
     public function get(int $id): ?string
     {
+        return $this->read($this->path(...), $id);
+    }
+
+    public function put(int $id, string $bytes): void
+    {
+        $this->write($this->path(...), $id, $bytes);
+    }
+
+    public function getSynopsis(int $id): ?string
+    {
+        return $this->read($this->synopsisPath(...), $id);
+    }
+
+    public function putSynopsis(int $id, string $bytes): void
+    {
+        $this->write($this->synopsisPath(...), $id, $bytes);
+    }
+
+    /**
+     * @param \Closure(int): string $pathOf
+     */
+    private function read(\Closure $pathOf, int $id): ?string
+    {
         try {
-            $path = $this->path($id);
+            $path = $pathOf($id);
         } catch (\RuntimeException) {
             return null;
         }
@@ -65,14 +89,17 @@ final class CardCache
         return \is_string($bytes) && $bytes !== '' ? $bytes : null;
     }
 
-    public function put(int $id, string $bytes): void
+    /**
+     * @param \Closure(int): string $pathOf
+     */
+    private function write(\Closure $pathOf, int $id, string $bytes): void
     {
         try {
             $tmp = @tempnam($this->cacheDirectory->path(), 'tmp');
             if ($tmp === false) {
                 return;
             }
-            if (@file_put_contents($tmp, $bytes) === false || !@rename($tmp, $this->path($id))) {
+            if (@file_put_contents($tmp, $bytes) === false || !@rename($tmp, $pathOf($id))) {
                 @unlink($tmp);
             }
         } catch (\RuntimeException) {
@@ -83,6 +110,11 @@ final class CardCache
     public function path(int $id): string
     {
         return \sprintf('%s/worldart-card-%d.html', $this->cacheDirectory->path(), $id);
+    }
+
+    public function synopsisPath(int $id): string
+    {
+        return \sprintf('%s/worldart-synopsis-%d.html', $this->cacheDirectory->path(), $id);
     }
 
     private function now(): int

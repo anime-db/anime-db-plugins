@@ -40,8 +40,10 @@ use AnimeDb\Plugins\AnimedbWorldart\Mapping\DatesMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Mapping\DescriptionMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Mapping\ExternalUrlsMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Mapping\NamesMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\SynopsisMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Mapping\TaxonomyMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Mapping\TypeMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Page\WorldartPage;
 use AnimeDb\Plugins\AnimedbWorldart\Search\QueryEncoder;
 use AnimeDb\Plugins\AnimedbWorldart\Search\SearchPageParser;
 use AnimeDb\Plugins\AnimedbWorldart\Search\SearchResult;
@@ -111,7 +113,7 @@ final class WorldartFiller implements FillerInterface
         return new PluginAnimeData(
             title: $title,
             alternativeNames: NamesMapper::alternativeNames($page),
-            descriptions: DescriptionMapper::map($page),
+            descriptions: DescriptionMapper::map($page) ?? $this->synopsisDescription($page, $id),
             genres: $taxonomy['genres'] === [] ? null : $taxonomy['genres'],
             themes: $taxonomy['themes'] === [] ? null : $taxonomy['themes'],
             demographic: TaxonomyMapper::demographic($page),
@@ -124,6 +126,28 @@ final class WorldartFiller implements FillerInterface
             cover: CoverMapper::map($page, $id),
             externalUrls: ExternalUrlsMapper::map($page, $id),
         );
+    }
+
+    /**
+     * The description from the unmoderated synopsis page; requested only when the card shows the
+     * service notice instead of a description. The field is optional, so any failure gives null
+     * and does not fail the whole entry.
+     *
+     * @return array<string, string>|null
+     */
+    private function synopsisDescription(WorldartPage $card, int $id): ?array
+    {
+        if (!DescriptionMapper::hasOnlyServiceNotice($card)) {
+            return null;
+        }
+
+        try {
+            $page = $this->client->fetchSynopsis($id);
+        } catch (WorldartRequestException) {
+            return null;
+        }
+
+        return $page === null ? null : SynopsisMapper::map($page);
     }
 
     /**

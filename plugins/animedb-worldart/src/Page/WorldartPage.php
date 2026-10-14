@@ -156,6 +156,25 @@ final class WorldartPage
     }
 
     /**
+     * The page of short descriptions of an entry: it has the "страница редактирования кратких
+     * описаний" heading; anything else (a stub, a redirect) is not one.
+     */
+    public function isSynopsisPage(): bool
+    {
+        return $this->xpath->query('//x:h3[contains(., "страница редактирования кратких описаний")]')->length > 0;
+    }
+
+    /**
+     * The description blocks of the synopsis page (`div.comment_block`).
+     *
+     * @return list<\Dom\Element>
+     */
+    public function commentBlocks(): array
+    {
+        return $this->elements('//x:div[contains(concat(" ", normalize-space(@class), " "), " comment_block ")]');
+    }
+
+    /**
      * The links of the tags block (`div.newtag`).
      *
      * @return list<\Dom\Element>
@@ -190,6 +209,27 @@ final class WorldartPage
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Like {@see textWithBreaks()}, but a blank line (two `<br>` in a row) is kept as the border of
+     * a paragraph: lines of a paragraph are joined with a line break, paragraphs with a blank line.
+     */
+    public static function textWithParagraphs(\Dom\Node $node): string
+    {
+        $paragraphs = [];
+        $lines = [];
+        foreach ([...explode("\n", self::flatten($node)), ''] as $line) {
+            $line = self::clean($line);
+            if ($line !== '') {
+                $lines[] = $line;
+            } elseif ($lines !== []) {
+                $paragraphs[] = implode("\n", $lines);
+                $lines = [];
+            }
+        }
+
+        return implode("\n\n", $paragraphs);
     }
 
     private static function flatten(\Dom\Node $node): string
