@@ -35,10 +35,10 @@ use AnimeDb\Plugins\AnimedbWorldart\Tests\Support\WorldartTestCase;
 
 final class WorldartFillerTest extends WorldartTestCase
 {
-    public function testImplementsOnlySearchByPlugin(): void
+    public function testImplementsFiller(): void
     {
         self::assertInstanceOf(SearchByPluginInterface::class, $this->filler);
-        self::assertNotInstanceOf(FillerInterface::class, $this->filler);
+        self::assertInstanceOf(FillerInterface::class, $this->filler);
     }
 
     public function testResolveExternalId(): void

@@ -27,12 +27,21 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbWorldart;
 
+use AnimeDb\PluginContracts\Filler\FillerInterface;
+use AnimeDb\PluginContracts\Filler\PluginAnimeData;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use AnimeDb\PluginContracts\Search\SearchByPluginCandidate;
-use AnimeDb\PluginContracts\Search\SearchByPluginInterface;
 use AnimeDb\Plugins\AnimedbWorldart\ExternalId\WorldartIdResolver;
 use AnimeDb\Plugins\AnimedbWorldart\Http\WorldartClient;
 use AnimeDb\Plugins\AnimedbWorldart\Http\WorldartRequestException;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\CountryMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\CoverMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\DatesMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\DescriptionMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\ExternalUrlsMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\NamesMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\TaxonomyMapper;
+use AnimeDb\Plugins\AnimedbWorldart\Mapping\TypeMapper;
 use AnimeDb\Plugins\AnimedbWorldart\Search\QueryEncoder;
 use AnimeDb\Plugins\AnimedbWorldart\Search\SearchPageParser;
 use AnimeDb\Plugins\AnimedbWorldart\Search\SearchResult;
@@ -40,7 +49,7 @@ use AnimeDb\Plugins\AnimedbWorldart\Search\TitleNormalizer;
 
 /**
  * Источник World-Art: единственная точка плагина для хоста — распознавание id по уже
- * прикреплённым к записи ссылкам и поиск тайтла по названию.
+ * прикреплённым к записи ссылкам, поиск тайтла по названию и заполнение записи по карточке.
  *
  * Всё собрано в одном классе, потому что второй filler-совместимый класс на тот же id плагина
  * дал бы коллизию тегов на хосте.
@@ -49,7 +58,7 @@ use AnimeDb\Plugins\AnimedbWorldart\Search\TitleNormalizer;
  * кандидаты переупорядочиваются: сначала точные совпадения названия с запросом по году возрастания
  * (оригинал раньше продолжений), затем остальные в порядке сайта. Это эвристика, а не гарантия.
  */
-final class WorldartFiller implements SearchByPluginInterface
+final class WorldartFiller implements FillerInterface
 {
     public function __construct(
         private readonly WorldartClient $client,
@@ -63,6 +72,81 @@ final class WorldartFiller implements SearchByPluginInterface
     public function resolveExternalId(array $urls): ?string
     {
         return WorldartIdResolver::resolve($urls);
+    }
+
+    /**
+     * The card is taken only through the client (card cache, limiter). Nothing is returned for an id
+     * that is not a positive integer, for a title the site does not have and for a card whose title
+     * did not parse: `PluginAnimeData::$title` is not nullable. `studios` and `images` are not filled.
+     *
+     * @throws WorldartRequestException the site is unreachable or answered with a failure
+     */
+    public function findById(string $externalId): ?PluginAnimeData
+    {
+        $id = preg_match('/^[1-9][0-9]*$/', $externalId) === 1 ? filter_var($externalId, \FILTER_VALIDATE_INT) : false;
+        if ($id === false) {
+            return null;
+        }
+
+        $page = $this->client->fetchCard($id);
+        if ($page === null) {
+            return null;
+        }
+
+        $title = NamesMapper::title($page);
+        if ($title === null) {
+            return null;
+        }
+
+        $dates = DatesMapper::map($page);
+        $premiere = $dates['premiere'];
+        $end = $dates['end'];
+        // a card with the end earlier than the premiere is a mistake of the card: the host rejects such a range
+        if ($premiere !== null && $end !== null && $end < $premiere) {
+            $end = null;
+        }
+
+        $taxonomy = TaxonomyMapper::genresAndThemes($page);
+
+        return new PluginAnimeData(
+            title: $title,
+            alternativeNames: NamesMapper::alternativeNames($page),
+            descriptions: DescriptionMapper::map($page),
+            genres: $taxonomy['genres'] === [] ? null : $taxonomy['genres'],
+            themes: $taxonomy['themes'] === [] ? null : $taxonomy['themes'],
+            demographic: TaxonomyMapper::demographic($page),
+            type: TypeMapper::type($page),
+            datePremiere: $premiere,
+            dateEnd: $end,
+            durationMinutes: TypeMapper::durationMinutes($page),
+            episodesCount: TypeMapper::episodesCount($page),
+            countries: CountryMapper::map($page),
+            cover: CoverMapper::map($page, $id),
+            externalUrls: ExternalUrlsMapper::map($page, $id),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getFillableFields(): array
+    {
+        return [
+            'title',
+            'alternativeNames',
+            'descriptions',
+            'genres',
+            'themes',
+            'demographic',
+            'type',
+            'datePremiere',
+            'dateEnd',
+            'durationMinutes',
+            'episodesCount',
+            'countries',
+            'cover',
+            'externalUrls',
+        ];
     }
 
     /**

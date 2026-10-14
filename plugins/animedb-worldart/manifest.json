@@ -1,12 +1,12 @@
 {
     "id": "animedb-worldart",
     "name": "World-Art",
-    "version": "0.1.2",
+    "version": "0.2.0",
     "type": "integration",
-    "description": "Официальный плагин-источник World-Art: поиск по названию и распознавание ссылок.",
+    "description": "Официальный плагин-источник World-Art: поиск по названию, распознавание ссылок и заполнение записи.",
     "author": "AnimeDB",
     "features": {
-        "filler": false,
+        "filler": true,
         "sync": false,
         "related": false,
         "similar": false,
