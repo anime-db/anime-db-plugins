@@ -76,12 +76,13 @@ final class WorldartPage
     }
 
     /**
-     * Pairs "label → value" of the card: a `td.review` cell holding `<b>Label</b>` and the text of
-     * the second following sibling cell (the first one is a spacer). Cells without a value are skipped.
+     * Pairs "label → value" of the card: a `td.review` cell holding `<b>Label</b>` and the second
+     * following sibling cell (the first one is a spacer). Cells without a value are skipped. The
+     * title check and every field mapper read the card through this one method.
      *
-     * @return list<array{label: string, value: string}>
+     * @return list<array{label: string, node: \Dom\Element}>
      */
-    public function pairs(): array
+    public function pairNodes(): array
     {
         $cells = $this->xpath->query(
             '//x:td[contains(concat(" ", normalize-space(@class), " "), " review ")][x:b]',
@@ -90,13 +91,134 @@ final class WorldartPage
         foreach ($cells as $cell) {
             $label = self::clean((string) $this->xpath->query('x:b', $cell)->item(0)?->textContent);
             $value = $this->xpath->query('following-sibling::x:td[2]', $cell)->item(0);
-            if ($label === '' || $value === null) {
+            if ($label === '' || !$value instanceof \Dom\Element) {
                 continue;
             }
-            $pairs[] = ['label' => $label, 'value' => self::clean((string) $value->textContent)];
+            $pairs[] = ['label' => $label, 'node' => $value];
         }
 
         return $pairs;
+    }
+
+    /**
+     * Pairs "label → value" of the card as plain text.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    public function pairs(): array
+    {
+        $pairs = [];
+        foreach ($this->pairNodes() as $pair) {
+            $pairs[] = ['label' => $pair['label'], 'value' => self::clean((string) $pair['node']->textContent)];
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * The value cell of the first pair with one of the labels (an unknown label is just not found).
+     */
+    public function valueNode(string ...$labels): ?\Dom\Element
+    {
+        $pairs = $this->pairNodes();
+        foreach ($labels as $label) {
+            foreach ($pairs as $pair) {
+                if ($pair['label'] === $label) {
+                    return $pair['node'];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The summary paragraphs: `p.review` of the table that follows the "Краткое содержание"
+     * heading, without the right-aligned copyright line.
+     *
+     * @return list<\Dom\Element>
+     */
+    public function descriptionParagraphs(): array
+    {
+        $nodes = $this->xpath->query(
+            '//x:font[normalize-space(.)="Краткое содержание"]/ancestor::x:table[1]'
+            .'/following-sibling::x:table[.//x:p[contains(@class, "review")]][1]'
+            .'//x:p[contains(@class, "review")][not(@align="right")]',
+        );
+        $paragraphs = [];
+        foreach ($nodes as $node) {
+            if ($node instanceof \Dom\Element) {
+                $paragraphs[] = $node;
+            }
+        }
+
+        return $paragraphs;
+    }
+
+    /**
+     * The links of the tags block (`div.newtag`).
+     *
+     * @return list<\Dom\Element>
+     */
+    public function tagLinks(): array
+    {
+        return $this->elements('//x:div[contains(concat(" ", normalize-space(@class), " "), " newtag ")]//x:a[@href]');
+    }
+
+    /**
+     * The links to other databases: they sit inside `<noindex>`, which is not cut out.
+     *
+     * @return list<\Dom\Element>
+     */
+    public function externalLinks(): array
+    {
+        return $this->elements('//x:noindex//x:a[@href]');
+    }
+
+    /**
+     * The text of a node with every `<br>` as a line break; the whitespace of the markup is
+     * collapsed, the lines are trimmed and empty ones dropped.
+     */
+    public static function textWithBreaks(\Dom\Node $node): string
+    {
+        $lines = [];
+        foreach (explode("\n", self::flatten($node)) as $line) {
+            $line = self::clean($line);
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private static function flatten(\Dom\Node $node): string
+    {
+        $text = '';
+        foreach ($node->childNodes as $child) {
+            if ($child instanceof \Dom\Text) {
+                $text .= (string) preg_replace('/[\r\n]+/', ' ', $child->data);
+            } elseif ($child instanceof \Dom\Element) {
+                $text .= strtolower($child->localName) === 'br' ? "\n" : self::flatten($child);
+            }
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return list<\Dom\Element>
+     */
+    private function elements(string $query): array
+    {
+        $elements = [];
+        foreach ($this->xpath->query($query) as $node) {
+            if ($node instanceof \Dom\Element) {
+                $elements[] = $node;
+            }
+        }
+
+        return $elements;
     }
 
     /**
@@ -104,7 +226,9 @@ final class WorldartPage
      */
     public function coverSrc(): ?string
     {
-        $nodes = $this->xpath->query('//x:img[contains(@src, "/animation/img/")]');
+        $nodes = $this->xpath->query(
+            '//x:img[contains(@src, "/animation/img/")][not(contains(@src, "/animation/img/converted"))]',
+        );
         $node = $nodes->item(0);
 
         return $node instanceof \Dom\Element ? $node->getAttribute('src') : null;

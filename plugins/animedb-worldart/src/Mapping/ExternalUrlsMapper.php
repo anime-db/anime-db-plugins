@@ -1,0 +1,78 @@
+<?php
+
+/**
+ * AnimeDb package.
+ *
+ * @author    Peter Gribanov <info@peter-gribanov.ru>
+ * @copyright Copyright (c) 2026, Peter Gribanov
+ * @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ */
+
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+declare(strict_types=1);
+
+namespace AnimeDb\Plugins\AnimedbWorldart\Mapping;
+
+use AnimeDb\Plugins\AnimedbWorldart\Page\WorldartPage;
+
+/**
+ * The page of the card itself (always first) plus the links of the card to the databases of the
+ * allow-list. Everything else (video, streaming, stores, social networks, subtitle sites) is not
+ * given. The address is the `href` read through the DOM, which decodes the HTML entities the new
+ * cards write the links with; the `<noindex>` block that holds the links is not cut out.
+ */
+final class ExternalUrlsMapper
+{
+    private const OWN_URL = 'http://www.world-art.ru/animation/animation.php?id=';
+
+    /** @var list<string> the host itself or with `www.` */
+    private const HOSTS = [
+        'anidb.net',
+        'myanimelist.net',
+        'animenewsnetwork.com',
+        'anilist.co',
+        'kinopoisk.ru',
+        'allcinema.net',
+    ];
+
+    /**
+     * @return list<string>
+     */
+    public static function map(WorldartPage $page, int $id): array
+    {
+        $urls = [self::OWN_URL.$id];
+        foreach ($page->externalLinks() as $link) {
+            $url = trim((string) $link->getAttribute('href'));
+            if (UrlGuard::isSafe($url) && self::isAllowedHost((string) parse_url($url, \PHP_URL_HOST))) {
+                $urls[] = $url;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    private static function isAllowedHost(string $host): bool
+    {
+        $host = strtolower($host);
+        $bare = str_starts_with($host, 'www.') ? substr($host, 4) : $host;
+
+        return \in_array($bare, self::HOSTS, true)
+            || $host === 'cal.syoboi.jp'
+            || preg_match('/^[a-z0-9-]+\.wikipedia\.org$/', $host) === 1
+            || preg_match('/^(?:www\.)?shikimori\.[a-z]+$/', $host) === 1;
+    }
+}
