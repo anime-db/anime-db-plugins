@@ -1,7 +1,7 @@
 {
     "id": "animedb-worldart",
     "name": "World-Art",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "type": "integration",
     "description": "Официальный плагин-источник World-Art: поиск по названию и распознавание ссылок.",
     "author": "AnimeDB",

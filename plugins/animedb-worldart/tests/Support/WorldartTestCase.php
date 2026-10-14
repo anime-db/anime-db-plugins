@@ -29,6 +29,7 @@ namespace AnimeDb\Plugins\AnimedbWorldart\Tests\Support;
 
 use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
+use AnimeDb\Plugins\AnimedbWorldart\Http\CardCache;
 use AnimeDb\Plugins\AnimedbWorldart\Http\FileLock;
 use AnimeDb\Plugins\AnimedbWorldart\Http\RequestLimiter;
 use AnimeDb\Plugins\AnimedbWorldart\Http\WorldartClient;
@@ -88,6 +89,7 @@ abstract class WorldartTestCase extends TestCase
                     $this->now += $seconds;
                 },
             ),
+            new CardCache($cache, fn (): int => (int) $this->now),
         );
         $this->filler = new WorldartFiller($this->client, $manifest);
     }
@@ -114,6 +116,11 @@ abstract class WorldartTestCase extends TestCase
         $response->method('getBody')->willReturn($stream);
 
         return $response;
+    }
+
+    protected function cardCachePath(int $id): string
+    {
+        return $this->cacheDir.\sprintf('/worldart-card-%d.html', $id);
     }
 
     protected function queueFixture(string $name): void

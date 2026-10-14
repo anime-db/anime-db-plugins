@@ -110,7 +110,8 @@ final class WorldartFiller implements SearchByPluginInterface
             throw new WorldartRequestException('World-Art redirected the search to an unexpected page.');
         }
 
-        $title = $this->client->fetchCard((int) $id, $onHeartbeat)->title();
+        // the card is taken through the card cache: it is most likely needed right after
+        $title = $this->client->fetchCard((int) $id, $onHeartbeat)?->title();
         if ($title === null) {
             return [];
         }
