@@ -67,6 +67,19 @@ final class WorldartFindByIdTest extends WorldartTestCase
         self::assertNull($data->images);
     }
 
+    public function testSynopsisUpdateNoticeGivesNoDescription(): void
+    {
+        $this->queueFixture('card_12242.html');
+
+        $data = $this->filler->findById('12242');
+
+        self::assertNotNull($data);
+        self::assertNull($data->descriptions);
+        self::assertSame('Фрирен [ТВ-2]', $data->title);
+        self::assertSame('tv', $data->type?->value);
+        self::assertSame(10, $data->episodesCount);
+    }
+
     public function testFillsMovieWithDemographic(): void
     {
         $this->queueFixture('card_1.html');
