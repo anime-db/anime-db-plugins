@@ -51,8 +51,41 @@ final class WorldartFindByIdTest extends WorldartTestCase
         $hosts = array_map(static fn (string $url): string => (string) parse_url($url, \PHP_URL_HOST), $data->externalUrls);
         self::assertContains('anidb.net', array_map(static fn (string $h): string => preg_replace('/^www\./', '', $h) ?? $h, $hosts));
         self::assertContains('myanimelist.net', array_map(static fn (string $h): string => preg_replace('/^www\./', '', $h) ?? $h, $hosts));
+        self::assertSame(['adventure', 'fantasy'], self::values($data->genres));
+        self::assertSame(['adult-cast', 'super-power', 'survival'], self::values($data->themes));
+        self::assertNull($data->demographic);
+        self::assertSame('tv', $data->type?->value);
+        self::assertSame(25, $data->durationMinutes);
+        self::assertSame(28, $data->episodesCount);
+        self::assertSame(['JP'], $data->countries);
+        self::assertSame('http://www.world-art.ru/animation/img/12000/11466/1.jpg', $data->cover);
+        self::assertNotNull($data->datePremiere);
+        self::assertSame('2023-09-29', $data->datePremiere->format('Y-m-d'));
+        self::assertNotNull($data->dateEnd);
+        self::assertSame('2024-03-22', $data->dateEnd->format('Y-m-d'));
         self::assertNull($data->studios);
         self::assertNull($data->images);
+    }
+
+    public function testFillsMovieWithDemographic(): void
+    {
+        $this->queueFixture('card_1.html');
+
+        $data = $this->filler->findById('1');
+
+        self::assertNotNull($data);
+        self::assertSame('Акира', $data->title);
+        self::assertSame(['adventure', 'sci-fi', 'supernatural'], self::values($data->genres));
+        self::assertSame(['super-power', 'gore', 'delinquents', 'military'], self::values($data->themes));
+        self::assertSame('seinen', $data->demographic?->value);
+        self::assertSame('movie', $data->type?->value);
+        self::assertSame(124, $data->durationMinutes);
+        self::assertSame(1, $data->episodesCount);
+        self::assertSame(['JP'], $data->countries);
+        self::assertSame('http://www.world-art.ru/animation/img/1000/1/1.jpg', $data->cover);
+        self::assertNotNull($data->datePremiere);
+        self::assertSame('1988-07-16', $data->datePremiere->format('Y-m-d'));
+        self::assertNull($data->dateEnd);
     }
 
     public function testFreshCacheEntryMakesNoRequest(): void
@@ -81,13 +114,13 @@ final class WorldartFindByIdTest extends WorldartTestCase
 
     public function testInvalidIdsGiveNullWithoutRequest(): void
     {
-        foreach (['0', '-1', 'abc', '', '01', '1.5', ' 1', '1 '] as $id) {
+        foreach (['0', '-1', 'abc', '', '01', '1.5', ' 1', '1 ', "1\n"] as $id) {
             self::assertNull($this->filler->findById($id), $id);
         }
         self::assertSame([], $this->requests);
     }
 
-    public function testPageWithoutTitleGivesNull(): void
+    public function testPageThatIsNotACardGivesNullThroughClient(): void
     {
         $this->responses[] = $this->response(200, '<html><body><table><tr><td class="review"><b>Тип</b></td><td></td><td class="review">ТВ</td></tr></table></body></html>');
 
@@ -123,7 +156,9 @@ final class WorldartFindByIdTest extends WorldartTestCase
         $data = $this->filler->findById('42');
 
         self::assertNotNull($data?->datePremiere);
+        self::assertSame('2019-05-10', $data->datePremiere->format('Y-m-d'));
         self::assertNotNull($data->dateEnd);
+        self::assertSame('2020-05-10', $data->dateEnd->format('Y-m-d'));
     }
 
     public function testAlternativeNamesAreCleanAndDeduplicated(): void
@@ -156,8 +191,12 @@ final class WorldartFindByIdTest extends WorldartTestCase
             $data = $this->filler->findById($m[1]);
 
             self::assertNotNull($data, $name);
-            foreach ($data->countries ?? [] as $code) {
+            self::assertNotEmpty($data->countries, $name);
+            foreach ($data->countries as $code) {
                 self::assertMatchesRegularExpression('/^[A-Z]{2}$/', $code, $name);
+            }
+            if ('card_11466.html' === $name) {
+                self::assertSame(['JP'], $data->countries);
             }
             self::assertNull($data->studios, $name);
             self::assertNull($data->images, $name);
@@ -166,14 +205,40 @@ final class WorldartFindByIdTest extends WorldartTestCase
 
     public function testFillableFieldsMatchWhatIsFilled(): void
     {
-        $fields = $this->filler->getFillableFields();
+        $fillable = $this->filler->getFillableFields();
+        $filled = [];
+        $properties = [];
+        // card_1 has a demographic and no end date, card_11466 has an end date and no demographic
+        foreach (['card_1.html' => '1', 'card_11466.html' => '11466'] as $fixture => $id) {
+            $this->queueFixture($fixture);
+            $data = $this->filler->findById($id);
+            self::assertNotNull($data, $fixture);
+            $properties = array_map(static fn (\ReflectionProperty $p): string => $p->getName(), (new \ReflectionObject($data))->getProperties(\ReflectionProperty::IS_PUBLIC));
+            foreach ($properties as $property) {
+                if (null !== $data->{$property}) {
+                    $filled[$property] = true;
+                }
+            }
+        }
 
-        self::assertSame([
-            'title', 'alternativeNames', 'descriptions', 'genres', 'themes', 'demographic', 'type',
-            'datePremiere', 'dateEnd', 'durationMinutes', 'episodesCount', 'countries', 'cover', 'externalUrls',
-        ], $fields);
-        self::assertNotContains('studios', $fields);
-        self::assertNotContains('images', $fields);
+        self::assertNotContains('studios', $fillable);
+        self::assertNotContains('images', $fillable);
+        foreach ($properties as $property) {
+            self::assertSame(\in_array($property, $fillable, true), isset($filled[$property]), $property);
+        }
+        foreach ($fillable as $field) {
+            self::assertContains($field, $properties, $field);
+        }
+    }
+
+    /**
+     * @param list<\BackedEnum>|null $cases
+     *
+     * @return list<int|string>|null
+     */
+    private static function values(?array $cases): ?array
+    {
+        return null === $cases ? null : array_map(static fn (\BackedEnum $c): int|string => $c->value, $cases);
     }
 
     /**

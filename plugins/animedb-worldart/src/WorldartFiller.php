@@ -83,7 +83,7 @@ final class WorldartFiller implements FillerInterface
      */
     public function findById(string $externalId): ?PluginAnimeData
     {
-        $id = preg_match('/^[1-9][0-9]*$/', $externalId) === 1 ? filter_var($externalId, \FILTER_VALIDATE_INT) : false;
+        $id = preg_match('/^[1-9][0-9]*\z/', $externalId) === 1 ? filter_var($externalId, \FILTER_VALIDATE_INT) : false;
         if ($id === false) {
             return null;
         }
