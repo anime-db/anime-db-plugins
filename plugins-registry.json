@@ -1,5 +1,5 @@
 {
-    "sequence": 66,
+    "sequence": 67,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -633,6 +633,37 @@
                     "core": ">=0.0.1",
                     "sha256": "600704ae3a311a148bca4dd36332cfea94aef1928f9535c449587821b28578fa",
                     "plugin_contracts": "^0.5"
+                }
+            ]
+        },
+        {
+            "id": "animedb-worldart",
+            "manifest": {
+                "id": "animedb-worldart",
+                "name": "World-Art",
+                "version": "0.1.0",
+                "type": "integration",
+                "description": "Официальный плагин-источник World-Art: поиск по названию и распознавание ссылок.",
+                "author": "AnimeDB",
+                "features": {
+                    "filler": false,
+                    "sync": false,
+                    "related": false,
+                    "similar": false,
+                    "new": false
+                },
+                "require": {
+                    "core": ">=0.0.1",
+                    "php": ">=8.5",
+                    "plugin-contracts": "^0.26.2"
+                }
+            },
+            "versions": [
+                {
+                    "version": "0.1.0",
+                    "core": ">=0.0.1",
+                    "sha256": "57012010a6f8b455c38c1f2e5637e2499f116358d2f8c56ebd52ba6beed68fb1",
+                    "plugin_contracts": "^0.26.2"
                 }
             ]
         }
