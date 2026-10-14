@@ -31,6 +31,7 @@ use AnimeDb\PluginContracts\Model\NameRole;
 use AnimeDb\Plugins\AnimedbWorldart\Http\WorldartRequestException;
 use AnimeDb\Plugins\AnimedbWorldart\Tests\Support\CardFactory;
 use AnimeDb\Plugins\AnimedbWorldart\Tests\Support\WorldartTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Psr\Http\Client\ClientExceptionInterface;
 
 final class WorldartFindByIdTest extends WorldartTestCase
@@ -67,17 +68,98 @@ final class WorldartFindByIdTest extends WorldartTestCase
         self::assertNull($data->images);
     }
 
-    public function testSynopsisUpdateNoticeGivesNoDescription(): void
+    public function testSynopsisUpdateNoticeIsReplacedByTheSynopsisPageDescription(): void
     {
         $this->queueFixture('card_12242.html');
+        $this->queueFixture('synopsis_12242.html');
+
+        $data = $this->filler->findById('12242');
+
+        self::assertNotNull($data);
+        self::assertSame(['ru' => 'Текст краткого содержания заменён заглушкой.'], $data->descriptions);
+        self::assertSame('Фрирен [ТВ-2]', $data->title);
+        self::assertSame('tv', $data->type?->value);
+        self::assertSame(10, $data->episodesCount);
+        self::assertSame([
+            'http://www.world-art.ru/animation/animation.php?id=12242',
+            'http://www.world-art.ru/animation/animation_update_synopsis.php?id=12242',
+        ], $this->requests);
+    }
+
+    public function testCardWithDescriptionDoesNotRequestTheSynopsisPage(): void
+    {
+        $this->queueFixture('card_11466.html');
+
+        $this->filler->findById('11466');
+
+        self::assertSame(['http://www.world-art.ru/animation/animation.php?id=11466'], $this->requests);
+        self::assertSame([], glob($this->cacheDir.'/worldart-synopsis-*'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function unusableSynopsisAnswers(): iterable
+    {
+        yield 'not connect' => ["<html><head><meta http-equiv='refresh' content='0; url=/not_connect.html'></head></html>"];
+        yield 'no heading' => ['<html><body><p>stub</p></body></html>'];
+    }
+
+    public function testSynopsisPageWithoutVariantsGivesNoDescription(): void
+    {
+        $this->queueFixture('card_12242.html');
+        $this->responses[] = $this->response(200, "<html><body><h3>X &#151; страница редактирования кратких описаний</h3><div class='comment_block'>Войдите в систему</div></body></html>");
 
         $data = $this->filler->findById('12242');
 
         self::assertNotNull($data);
         self::assertNull($data->descriptions);
         self::assertSame('Фрирен [ТВ-2]', $data->title);
-        self::assertSame('tv', $data->type?->value);
+    }
+
+    #[DataProvider('unusableSynopsisAnswers')]
+    public function testUnusableSynopsisAnswerGivesNoDescriptionAndIsNotCached(string $answer): void
+    {
+        $this->queueFixture('card_12242.html');
+        $this->responses[] = $this->response(200, $answer);
+
+        $data = $this->filler->findById('12242');
+
+        self::assertNotNull($data);
+        self::assertNull($data->descriptions);
+        self::assertSame('Фрирен [ТВ-2]', $data->title);
         self::assertSame(10, $data->episodesCount);
+        self::assertFileDoesNotExist($this->cacheDir.'/worldart-synopsis-12242.html');
+    }
+
+    public function testSynopsisTransportFailureGivesNoDescription(): void
+    {
+        $this->queueFixture('card_12242.html');
+        $this->responses[] = new class('boom') extends \RuntimeException implements ClientExceptionInterface {
+        };
+
+        $data = $this->filler->findById('12242');
+
+        self::assertNotNull($data);
+        self::assertNull($data->descriptions);
+        self::assertSame('Фрирен [ТВ-2]', $data->title);
+        self::assertFileDoesNotExist($this->cacheDir.'/worldart-synopsis-12242.html');
+    }
+
+    public function testRepeatedFillWithinTtlMakesNoRequests(): void
+    {
+        $this->queueFixture('card_12242.html');
+        $this->queueFixture('synopsis_12242.html');
+        $this->filler->findById('12242');
+        self::assertCount(2, $this->requests);
+
+        $this->now += 3600;
+        touch($this->cardCachePath(12242), (int) ($this->now - 3600));
+        touch($this->cacheDir.'/worldart-synopsis-12242.html', (int) ($this->now - 3600));
+        $data = $this->filler->findById('12242');
+
+        self::assertCount(2, $this->requests);
+        self::assertSame(['ru' => 'Текст краткого содержания заменён заглушкой.'], $data?->descriptions);
     }
 
     public function testFillsMovieWithDemographic(): void

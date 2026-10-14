@@ -56,6 +56,24 @@ final class DescriptionMapper
         return $paragraphs === [] ? null : ['ru' => implode("\n\n", $paragraphs)];
     }
 
+    /**
+     * The card has no description of its own and shows the service notice instead: the only case
+     * in which the synopsis page is worth a request.
+     */
+    public static function hasOnlyServiceNotice(WorldartPage $page): bool
+    {
+        if (self::map($page) !== null) {
+            return false;
+        }
+        foreach ($page->descriptionParagraphs() as $paragraph) {
+            if (self::isServiceNotice($paragraph)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static function isServiceNotice(\Dom\Element $paragraph): bool
     {
         foreach ($paragraph->getElementsByTagName('a') as $link) {
