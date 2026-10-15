@@ -27,7 +27,8 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools;
 
-use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
+use AnimeDb\PluginContracts\LinkRules\LinkRulesExamplesChecker;
+use AnimeDb\PluginContracts\LinkRules\LinkRulesValidator;
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
 use AnimeDb\PluginContracts\Manifest\PluginType;
 use Composer\Semver\VersionParser;
@@ -380,6 +381,55 @@ final class PluginValidator
         $errors = [];
         foreach ((new LinkRulesValidator())->validate($data) as $error) {
             $errors[] = \sprintf('link-rules.yaml: %s: %s', $error->field, $error->message);
+        }
+
+        // Examples are judged against the rules only once the rules themselves are well-formed:
+        // the contract's checker requires a LinkRulesValidator-clean rule set.
+        if ($errors !== []) {
+            return $errors;
+        }
+
+        return $this->validateLinkRulesExamples($pluginDir, $data);
+    }
+
+    /**
+     * Behaviour check of `link-rules.yaml` on `link-rules.examples.yaml`; the semantics belong
+     * to the contract's {@see LinkRulesExamplesChecker}, nothing is applied here.
+     *
+     * @param array<array-key, mixed> $ruleFile decoded and validated `link-rules.yaml`
+     *
+     * @return list<string>
+     */
+    private function validateLinkRulesExamples(string $pluginDir, array $ruleFile): array
+    {
+        $file = $pluginDir.'/link-rules.examples.yaml';
+        if (!is_file($file) || is_link($file)) {
+            return ['Manifest declares "link_rules" but "link-rules.examples.yaml" is missing in the plugin root.'];
+        }
+
+        $content = file_get_contents($file);
+        if ($content === false) {
+            return ['link-rules.examples.yaml could not be read.'];
+        }
+
+        try {
+            $examples = Yaml::parse($content);
+        } catch (ParseException $e) {
+            return [\sprintf('link-rules.examples.yaml is not valid YAML: %s', $e->getMessage())];
+        }
+
+        if (!\is_array($examples) || ($examples !== [] && array_is_list($examples))) {
+            return ['link-rules.examples.yaml must be a mapping.'];
+        }
+
+        $rules = $ruleFile['rules'] ?? [];
+        if (!\is_array($rules)) {
+            return [];
+        }
+
+        $errors = [];
+        foreach ((new LinkRulesExamplesChecker())->check($rules, $examples) as $error) {
+            $errors[] = \sprintf('link-rules.examples.yaml: %s: %s', $error->field, $error->message);
         }
 
         return $errors;

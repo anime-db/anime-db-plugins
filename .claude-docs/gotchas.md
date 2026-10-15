@@ -119,11 +119,11 @@ related. That is the intended trigger, but it collides with the rule that an inc
 finding gets its own task rather than being folded into an in-flight one. When it happens,
 fix it in a separate PR.
 
-## `anime-db/plugin-contracts` is pinned `~0.14` on purpose — a *wide* range, not a typo
+## `anime-db/plugin-contracts` is pinned `>=0.26.4 <1.0` on purpose — a *wide* range, not a typo
 
-`~0.14` means `>=0.14.0 <1.0.0`, so every pre-1.0 minor of the contract flows in
-automatically. That is wider than `^0.14` (`>=0.14.0 <0.15.0`), and it is deliberate. Do not
-"tighten" it to `^0.14` to match the host.
+`>=0.26.4 <1.0` admits every pre-1.0 minor of the contract from the floor up, so new minors flow in
+automatically. That is wider than `^0.26` (`>=0.26.0 <0.27.0`), and it is deliberate. Do not
+"tighten" it to a caret range to match the host.
 
 Why a wide range is right *while the contract is pre-1.0*:
 
@@ -131,7 +131,7 @@ Why a wide range is right *while the contract is pre-1.0*:
   the policy. The `1.0` release is precisely where breaking changes start deserving a detailed
   BC review — and where `^1.0` will give this same "minors flow in" behaviour safely.
 - The tooling's contract surface is narrow: `ManifestValidator`, `PluginType` and
-  `LinkRulesValidator` (hence the floor `>=0.26.3`), nothing else. It is manifest validation, not the plugin runtime API that a breaking minor actually
+  `LinkRulesValidator` and `LinkRulesExamplesChecker` (hence the floor `>=0.26.4`), nothing else. It is manifest validation, not the plugin runtime API that a breaking minor actually
   churns.
 - Following the contract forward is the point. The constraint sat at `^0.6` for months while
   the contract reached `v0.14.0`, and nothing ever went red — the same "falls behind while CI
@@ -151,7 +151,7 @@ The rule is *implementers pin narrow, readers may float*:
 |---------------------------|---------------------------------------------------|------------|
 | `anime-db-desktop` (host) | **implements** it — 34 contract types in use      | `^0.14`    |
 | plugins (`manifest.json`) | **implement** it — that is what a plugin *is*     | `^0.14`    |
-| this repo (tooling)       | **reads** it — `ManifestValidator`, `PluginType`, `LinkRulesValidator` | `>=0.26.3 <1.0` |
+| this repo (tooling)       | **reads** it — `ManifestValidator`, `PluginType`, `LinkRulesValidator`, `LinkRulesExamplesChecker` | `>=0.26.4 <1.0` |
 
 The host sits on both sides of the contract: it implements the interfaces a plugin calls
 (`QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`,
@@ -359,10 +359,10 @@ watch. It suppresses only that direction. A signature that *disagrees* with what
 returns (`list<>` promised, arbitrary-keyed array returned) is still reported with the setting
 off — that is how the three findings in `animedb-shikimori` surfaced when PHPStan 2 landed.
 
-**Not a problem, and settled — do not re-open it:** the floating `~0.14` means a new contract
+**Not a problem, and settled — do not re-open it:** the floating `>=0.26.4 <1.0` means a new contract
 minor changes which signatures every plugin is judged by. The red only ever lands on the plugin
 a pull request is editing, and that is the prompt for its author to bring it up to the current
-contract. This is the same "following the contract forward is the point" the `~0.14` section
+contract. This is the same "following the contract forward is the point" the pinning section
 above already settles; the registry recording `plugin_contracts` per published version (issue
 #108) does not conflict with it either — that field describes releases already published, not
 the bar for the next change.
@@ -397,7 +397,7 @@ the rules on purpose. Four properties of that test are load-bearing:
   `list<SearchByPluginCandidate>` in `SearchByPluginChain` and normalised the plugin's result
   with an `array_values()` call that existed solely because the contract promised a
   possibly-keyed array. Fixed in the contract (`anime-db/anime-db-plugin-contracts#69`, minor
-  `v0.17.0`), which the floating `~0.14` picked up on its own; the host's `array_values()` went
+  `v0.17.0`), which the floating range picked up on its own; the host's `array_values()` went
   away with the same bump. The fixture's remaining drift is the widened parameter only.
 
   The general shape survives that fix and is worth knowing: `ContractConformanceRule` compares

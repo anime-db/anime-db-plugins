@@ -27,7 +27,8 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools\Tests;
 
-use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
+use AnimeDb\PluginContracts\LinkRules\LinkRulesExamplesChecker;
+use AnimeDb\PluginContracts\LinkRules\LinkRulesValidator;
 use AnimeDb\Plugins\Tools\PluginValidator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -35,6 +36,9 @@ use Symfony\Component\Yaml\Yaml;
 
 final class PluginValidatorTest extends TestCase
 {
+    private const SINGLE_RULE = "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n";
+    private const MATCHING_EXAMPLES = "version: 1\nexamples:\n  'https://example.com/1': 'https://example.com/item/1'\n";
+
     /** @var list<string> */
     private array $tempDirs = [];
 
@@ -323,6 +327,76 @@ final class PluginValidatorTest extends TestCase
         $errors = (new PluginValidator())->validate($pluginDir);
 
         self::assertTrue(self::hasErrorContaining($errors, $expected));
+    }
+
+    public function testLinkRulesWithoutExamplesFileIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: null);
+
+        self::assertContains('Manifest declares "link_rules" but "link-rules.examples.yaml" is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesExamplesSymlinkIsReportedAsMissing(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: null);
+        $target = \dirname($pluginDir).'/target.yaml';
+        file_put_contents($target, self::MATCHING_EXAMPLES);
+        symlink($target, $pluginDir.'/link-rules.examples.yaml');
+
+        self::assertContains('Manifest declares "link_rules" but "link-rules.examples.yaml" is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesExamplesWithBrokenYamlIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: "version: 1\nexamples: [unclosed\n");
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'link-rules.examples.yaml is not valid YAML'));
+    }
+
+    public function testLinkRulesExamplesWithDuplicateKeyIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: "version: 1\nversion: 1\nexamples: {}\n");
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'link-rules.examples.yaml is not valid YAML'));
+    }
+
+    public function testLinkRulesExamplesNotAMappingIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: "- a\n- b\n");
+
+        self::assertContains('link-rules.examples.yaml must be a mapping.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesExampleMismatchIsReportedWithContractText(): void
+    {
+        $examples = "version: 1\nexamples:\n  'https://example.com/1': 'https://example.com/item/2'\n";
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', self::SINGLE_RULE, examplesYaml: $examples);
+
+        $expected = (new LinkRulesExamplesChecker())->check(Yaml::parse(self::SINGLE_RULE)['rules'], Yaml::parse($examples))[0];
+
+        self::assertContains(
+            \sprintf('link-rules.examples.yaml: %s: %s', $expected->field, $expected->message),
+            (new PluginValidator())->validate($pluginDir),
+        );
+    }
+
+    public function testLinkRulesRuleWithoutExampleIsReported(): void
+    {
+        $rules = self::SINGLE_RULE."  'https://other\\.example/(\\d+)': 'https://other.example/item/$1'\n";
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', $rules);
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'no example matches this rule'));
+    }
+
+    public function testInvalidLinkRulesSkipExamplesCheck(): void
+    {
+        // The examples file is missing: it would be reported if the gate got that far.
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item'\n", examplesYaml: null);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'link-rules.yaml: '));
+        self::assertFalse(self::hasErrorContaining($errors, 'link-rules.examples.yaml'));
     }
 
     public function testSyntaxErrorIsReported(): void
@@ -1393,7 +1467,7 @@ final class PluginValidatorTest extends TestCase
         ];
     }
 
-    private function createLinkRulesPlugin(string $id, ?string $rulesYaml, bool $withSrc = false, string $pin = '^0.26.3'): string
+    private function createLinkRulesPlugin(string $id, ?string $rulesYaml, bool $withSrc = false, string $pin = '^0.26.3', ?string $examplesYaml = self::MATCHING_EXAMPLES): string
     {
         $manifest = $this->validManifest($id, 'local');
         unset($manifest['features']);
@@ -1402,6 +1476,9 @@ final class PluginValidatorTest extends TestCase
         $pluginDir = $this->createPluginDir($id, $manifest, $withSrc);
         if ($rulesYaml !== null) {
             file_put_contents($pluginDir.'/link-rules.yaml', $rulesYaml);
+        }
+        if ($examplesYaml !== null) {
+            file_put_contents($pluginDir.'/link-rules.examples.yaml', $examplesYaml);
         }
 
         return $pluginDir;
