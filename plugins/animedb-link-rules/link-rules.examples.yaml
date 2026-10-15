@@ -1,0 +1,57 @@
+version: 1
+examples:
+  # Wikipedia: mobile version, other languages, percent-encoded titles, extra parameters
+  'https://ru.m.wikipedia.org/wiki/Hikaru_no_Go': 'https://ru.wikipedia.org/wiki/Hikaru_no_Go'
+  'https://en.wikipedia.org/wiki/Cowboy_Bebop': 'https://en.wikipedia.org/wiki/Cowboy_Bebop'
+  'https://en.m.wikipedia.org/wiki/Cowboy_Bebop?action=raw': 'https://en.wikipedia.org/wiki/Cowboy_Bebop'
+  'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%82%A6%E3%83%9C%E3%83%BC%E3%82%A4%E3%83%93%E3%83%90%E3%83%83%E3%83%97': 'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%82%A6%E3%83%9C%E3%83%BC%E3%82%A4%E3%83%93%E3%83%90%E3%83%83%E3%83%97'
+  'https://ja.m.wikipedia.org/wiki/%E3%82%AB%E3%82%A6%E3%83%9C%E3%83%BC%E3%82%A4%E3%83%93%E3%83%90%E3%83%83%E3%83%97?oldid=1': 'https://ja.wikipedia.org/wiki/%E3%82%AB%E3%82%A6%E3%83%9C%E3%83%BC%E3%82%A4%E3%83%93%E3%83%90%E3%83%83%E3%83%97'
+
+  # allcinema
+  'https://allcinema.net/prog/show_c.php?num_c=241928': 'https://allcinema.net/cinema/241928'
+  'https://allcinema.net/prog/show_c.php?num_c=241928&x=1': 'https://allcinema.net/cinema/241928'
+  'https://allcinema.net/cinema/241928': 'https://allcinema.net/cinema/241928'
+  'https://allcinema.net/cinema/241928/review': 'https://allcinema.net/cinema/241928'
+
+  # AniDB
+  'https://anidb.net/perl-bin/animedb.pl?aid=959&show=anime': 'https://anidb.net/anime/959'
+  'https://anidb.net/perl-bin/animedb.pl?aid=959&lang=en&show=anime': 'https://anidb.net/anime/959'
+  'https://anidb.net/a959': 'https://anidb.net/anime/959'
+  'https://anidb.net/a959?foo=bar': 'https://anidb.net/anime/959'
+  'https://anidb.net/anime/959': 'https://anidb.net/anime/959'
+  'https://anidb.net/anime/959?foo=bar': 'https://anidb.net/anime/959'
+  'https://anidb.net/perl-bin/animedb.pl?aid=1&show=character': null
+
+  # Shikimori
+  'https://shikimori.org/animes/6746-durarara': 'https://shikimori.io/animes/6746'
+  'https://shikimori.one/animes/z6746-durarara': 'https://shikimori.io/animes/6746'
+  'https://shikimori.me/animes/z6746-durarara': 'https://shikimori.io/animes/6746'
+  'https://shikimori.io/animes/6746': 'https://shikimori.io/animes/6746'
+
+  # MyAnimeList
+  'https://myanimelist.net/anime/57': 'https://myanimelist.net/anime/57'
+  'https://myanimelist.net/anime/1/Cowboy_Bebop': 'https://myanimelist.net/anime/1'
+  'https://myanimelist.net/anime.php?id=1': 'https://myanimelist.net/anime/1'
+  'https://myanimelist.net/anime.php?id=1&page=2': 'https://myanimelist.net/anime/1'
+  'https://myanimelist.net/manga/1': null
+  'https://example.org/?u=https://myanimelist.net/anime/1': null
+
+  # AniList
+  'https://anilist.co/anime/1': 'https://anilist.co/anime/1'
+  'https://anilist.co/anime/1/Cowboy-Bebop': 'https://anilist.co/anime/1'
+
+  # syoboi
+  'https://cal.syoboi.jp/tid/115/time': 'https://cal.syoboi.jp/tid/115'
+
+  # World-Art
+  'https://world-art.ru/animation/animation.php?id=2425': 'https://world-art.ru/animation/animation.php?id=2425'
+
+  # Anime News Network
+  'https://animenewsnetwork.com/encyclopedia/anime.php?id=155': 'https://animenewsnetwork.com/encyclopedia/anime.php?id=155'
+
+  # Kinopoisk
+  'https://kinopoisk.ru/film/301': 'https://kinopoisk.ru/film/301'
+  'https://kinopoisk.ru/series/301': 'https://kinopoisk.ru/film/301'
+
+  # fansubs.ru
+  'https://fansubs.ru/base.php?id=1137': 'https://fansubs.ru/base.php?id=1137'
