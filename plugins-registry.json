@@ -1,5 +1,5 @@
 {
-    "sequence": 71,
+    "sequence": 72,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -154,6 +154,31 @@
                     "locales": [
                         "de"
                     ]
+                }
+            ]
+        },
+        {
+            "id": "animedb-link-rules",
+            "manifest": {
+                "id": "animedb-link-rules",
+                "name": "Link rules",
+                "version": "0.1.0",
+                "type": "local",
+                "description": "Официальный плагин AnimeDB: правила нормализации ссылок справочных сайтов для сравнения записей каталога.",
+                "author": "AnimeDB",
+                "link_rules": true,
+                "require": {
+                    "core": ">=0.0.1",
+                    "php": ">=8.5",
+                    "plugin-contracts": "^0.26.3"
+                }
+            },
+            "versions": [
+                {
+                    "version": "0.1.0",
+                    "core": ">=0.0.1",
+                    "sha256": "f80cba49f9c304b246f5d40c0bf4c8e721ccd00b492ca06bf58a77ca3a68749d",
+                    "plugin_contracts": "^0.26.3"
                 }
             ]
         },
