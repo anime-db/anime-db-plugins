@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools;
 
+use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
 use AnimeDb\PluginContracts\Manifest\PluginType;
 use Composer\Semver\VersionParser;
@@ -53,6 +54,12 @@ use Symfony\Component\Yaml\Yaml;
  *   contract level; this validator additionally requires or forbids it depending on shipped
  *   catalogs (see below). Otherwise `local` falls back to the same code-plugin
  *   checks as `integration`.
+ *   A `local` plugin that declares `link_rules: true` is a data-only plugin: its `src/`
+ *   directory is optional (when present it is checked as above, and any `*.php` file is still
+ *   linted), but `link-rules.yaml` is required in the plugin root. The file is parsed with
+ *   `symfony/yaml` (a parse error, including a duplicate key, is a gate error) and the parsed
+ *   map is handed to the contract's {@see LinkRulesValidator}; each of its errors becomes a
+ *   gate error. This validator has no format rules of its own for the file.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
  *   against), while a `translations/` directory and a non-empty manifest `locales` list are
@@ -159,7 +166,7 @@ final class PluginValidator
      *
      * @var list<string>
      */
-    private const OFFICIAL_PLUGIN_IDS = ['animedb-anidb', 'animedb-shikimori', 'animedb-language-pack', 'animedb-media-details', 'animedb-myanimelist', 'animedb-worldart'];
+    private const OFFICIAL_PLUGIN_IDS = ['animedb-anidb', 'animedb-shikimori', 'animedb-language-pack', 'animedb-media-details', 'animedb-myanimelist', 'animedb-worldart', 'animedb-link-rules'];
 
     /**
      * Extensions the application actually has a route for. A file under `assets/` with any
@@ -211,8 +218,14 @@ final class PluginValidator
         if ($pluginType === PluginType::Translation) {
             $errors = [...$errors, ...$this->validateTranslationSource($pluginDir, $manifestData)];
         } else {
-            $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
+            $linkRules = $pluginType === PluginType::Local && ($manifestData['link_rules'] ?? null) === true;
+            if (!$linkRules || is_dir($pluginDir.'/src')) {
+                $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
+            }
             $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
+            if ($linkRules) {
+                $errors = [...$errors, ...$this->validateLinkRules($pluginDir)];
+            }
         }
 
         // Каталоги переводов проверяются у плагина любого типа: у "translation" это его
@@ -324,6 +337,42 @@ final class PluginValidator
         $locales = $manifestData['locales'] ?? null;
         if (!\is_array($locales) || $locales === []) {
             $errors[] = 'Plugin of type "translation" must declare a non-empty "locales" list in manifest.json.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Checks `link-rules.yaml` of a plugin declaring `link_rules: true`: parsing is done here,
+     * the content is judged by the contract's {@see LinkRulesValidator} alone.
+     *
+     * @return list<string>
+     */
+    private function validateLinkRules(string $pluginDir): array
+    {
+        $file = $pluginDir.'/link-rules.yaml';
+        if (!is_file($file) || is_link($file)) {
+            return ['Manifest declares "link_rules" but "link-rules.yaml" is missing in the plugin root.'];
+        }
+
+        $content = file_get_contents($file);
+        if ($content === false) {
+            return ['link-rules.yaml could not be read.'];
+        }
+
+        try {
+            $data = Yaml::parse($content);
+        } catch (ParseException $e) {
+            return [\sprintf('link-rules.yaml is not valid YAML: %s', $e->getMessage())];
+        }
+
+        if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
+            return ['link-rules.yaml must be a mapping.'];
+        }
+
+        $errors = [];
+        foreach ((new LinkRulesValidator())->validate($data) as $error) {
+            $errors[] = \sprintf('link-rules.yaml: %s: %s', $error->field, $error->message);
         }
 
         return $errors;
