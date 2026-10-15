@@ -85,12 +85,21 @@ final class ReadmePluginsTableTest extends TestCase
         self::assertStringContainsString('animedb-b', $problems[1]);
     }
 
-    public function testLinkToMissingReadmeIsReported(): void
+    public function testMissingLinkIsReported(): void
     {
-        $dir = $this->makePlugins(['animedb-a' => 'integration'], false);
+        $dir = $this->makePlugins(['animedb-a' => 'integration']);
 
-        self::assertCount(1, $this->findProblems($this->readme(['| [`animedb-a`](plugins/animedb-a/README.md) | `integration` | x |']), $dir));
-        self::assertSame([], $this->findProblems($this->readme(['| `animedb-a` | `integration` | x |']), $dir));
+        $problems = $this->findProblems($this->readme(['| `animedb-a` | `integration` | x |']), $dir);
+
+        self::assertCount(1, $problems);
+        self::assertStringContainsString('missing', $problems[0]);
+    }
+
+    public function testLinkToAbsentReadmeFileIsNotReported(): void
+    {
+        $dir = $this->makePlugins(['animedb-a' => 'integration']);
+
+        self::assertSame([], $this->findProblems($this->readme(['| [`animedb-a`](plugins/animedb-a/README.md) | `integration` | x |']), $dir));
     }
 
     public function testDuplicateRowIsReported(): void
@@ -176,14 +185,13 @@ final class ReadmePluginsTableTest extends TestCase
                 );
             }
             if (isset($types[$id])) {
-                $hasReadme = is_file(\dirname($manifestPath).'/README.md');
-                $expectedHref = $hasReadme ? 'plugins/'.$id.'/README.md' : null;
+                $expectedHref = 'plugins/'.$id.'/README.md';
                 if ($links[$id] !== $expectedHref) {
                     $problems[] = \sprintf(
                         'Plugin "%s": README table link is %s, expected %s.',
                         $id,
                         $links[$id] ?? 'missing',
-                        $expectedHref ?? 'none (the plugin has no README.md)',
+                        $expectedHref,
                     );
                 }
             }
@@ -203,15 +211,12 @@ final class ReadmePluginsTableTest extends TestCase
     /**
      * @param array<string, string> $plugins id => type
      */
-    private function makePlugins(array $plugins, bool $withReadme = true): string
+    private function makePlugins(array $plugins): string
     {
         $dir = sys_get_temp_dir().'/readme-table-'.bin2hex(random_bytes(6));
         foreach ($plugins as $id => $type) {
             mkdir($dir.'/'.$id, 0o777, true);
             file_put_contents($dir.'/'.$id.'/manifest.json', json_encode(['id' => $id, 'type' => $type]));
-            if ($withReadme) {
-                file_put_contents($dir.'/'.$id.'/README.md', '# '.$id);
-            }
         }
         $this->tmp[] = $dir;
 
@@ -226,7 +231,6 @@ final class ReadmePluginsTableTest extends TestCase
         foreach ($this->tmp as $dir) {
             foreach (glob($dir.'/*/manifest.json') ?: [] as $f) {
                 unlink($f);
-                @unlink(\dirname($f).'/README.md');
                 rmdir(\dirname($f));
             }
             @rmdir($dir);
