@@ -324,4 +324,13 @@ key.
 A `local` plugin may omit `src/` if the manifest declares `link_rules: true`. The gate then
 requires a regular (non-symlink) `link-rules.yaml` in the plugin root, parses it as a YAML
 mapping and passes it to the contract's `LinkRulesValidator`. `require.plugin-contracts` must
-exclude versions below `0.26.3`. If anything named `src` exists, it is validated as usual.
+exclude versions below `0.26.3`.
+
+Once `link-rules.yaml` passes that shape check, the gate also requires a regular (non-symlink)
+`link-rules.examples.yaml` in the plugin root: a YAML mapping (`version: 1`, `examples:` link =>
+expected result, `null` meaning "no rule applies"), passed to the contract's
+`LinkRulesExamplesChecker`. It checks behaviour, not form: every example must produce its
+expected result and every rule must win for at least one example. Errors are reported as
+`link-rules.examples.yaml: <field>: <message>`. If `link-rules.yaml` itself is invalid, the
+examples are not checked. The plugin's own `require.plugin-contracts` pin stays at `0.26.3`:
+the application never reads the examples file. `tools/` applies no rules itself. If anything named `src` exists, it is validated as usual.
