@@ -298,6 +298,16 @@ final class PluginValidatorTest extends TestCase
         self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
     }
 
+    public function testLinkRulesOfficialPluginIdIsAllowedToUseReservedVendor(): void
+    {
+        $manifest = $this->validManifest('animedb-link-rules');
+        $pluginDir = $this->createPluginDir('animedb-link-rules', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
     public function testMyAnimeListOfficialPluginIdIsAllowedToUseReservedVendor(): void
     {
         $manifest = $this->validManifest('animedb-myanimelist');
