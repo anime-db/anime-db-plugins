@@ -70,6 +70,43 @@ final class ReadmePluginsTableTest extends TestCase
         self::assertStringContainsString('local', $problems[0]);
     }
 
+    public function testWrongLinkTargetIsReported(): void
+    {
+        $dir = $this->makePlugins(['animedb-a' => 'integration', 'animedb-b' => 'local']);
+        $readme = $this->readme([
+            '| [`animedb-a`](plugins/animedb-b/README.md) | `integration` | x |',
+            '| `animedb-b` | `local` | x |',
+        ]);
+
+        $problems = $this->findProblems($readme, $dir);
+
+        self::assertCount(2, $problems);
+        self::assertStringContainsString('animedb-a', $problems[0]);
+        self::assertStringContainsString('animedb-b', $problems[1]);
+    }
+
+    public function testLinkToMissingReadmeIsReported(): void
+    {
+        $dir = $this->makePlugins(['animedb-a' => 'integration'], false);
+
+        self::assertCount(1, $this->findProblems($this->readme(['| [`animedb-a`](plugins/animedb-a/README.md) | `integration` | x |']), $dir));
+        self::assertSame([], $this->findProblems($this->readme(['| `animedb-a` | `integration` | x |']), $dir));
+    }
+
+    public function testDuplicateRowIsReported(): void
+    {
+        $dir = $this->makePlugins(['animedb-a' => 'integration']);
+        $readme = $this->readme([
+            '| [`animedb-a`](plugins/animedb-a/README.md) | `local` | x |',
+            '| [`animedb-a`](plugins/animedb-a/README.md) | `integration` | x |',
+        ]);
+
+        $problems = $this->findProblems($readme, $dir);
+
+        self::assertNotEmpty($problems);
+        self::assertStringContainsString('more than one row', $problems[0]);
+    }
+
     public function testRowWithoutDirectoryAndForeignVendorAreIgnored(): void
     {
         $dir = $this->makePlugins(['animedb-a' => 'integration', 'johnsmith-example' => 'local']);
@@ -95,6 +132,8 @@ final class ReadmePluginsTableTest extends TestCase
     private function findProblems(string $readme, string $pluginsDir): array
     {
         $types = [];
+        $links = [];
+        $problems = [];
         $inSection = false;
         foreach (preg_split('/\R/', $readme) ?: [] as $line) {
             if (str_starts_with($line, '## ')) {
@@ -110,11 +149,16 @@ final class ReadmePluginsTableTest extends TestCase
                 continue;
             }
             if (preg_match('/`([^`]+)`/', $cells[0], $id) === 1 && preg_match('/`([^`]+)`/', $cells[1], $type) === 1) {
+                if (isset($types[$id[1]])) {
+                    $problems[] = \sprintf('Plugin "%s" has more than one row in the README "Плагины" table.', $id[1]);
+
+                    continue;
+                }
                 $types[$id[1]] = $type[1];
+                $links[$id[1]] = preg_match('/\]\(([^)]*)\)/', $cells[0], $href) === 1 ? $href[1] : null;
             }
         }
 
-        $problems = [];
         $manifests = glob($pluginsDir.'/animedb-*/manifest.json') ?: [];
         sort($manifests);
         foreach ($manifests as $manifestPath) {
@@ -130,6 +174,18 @@ final class ReadmePluginsTableTest extends TestCase
                     $types[$id],
                     (string) $expected,
                 );
+            }
+            if (isset($types[$id])) {
+                $hasReadme = is_file(\dirname($manifestPath).'/README.md');
+                $expectedHref = $hasReadme ? 'plugins/'.$id.'/README.md' : null;
+                if ($links[$id] !== $expectedHref) {
+                    $problems[] = \sprintf(
+                        'Plugin "%s": README table link is %s, expected %s.',
+                        $id,
+                        $links[$id] ?? 'missing',
+                        $expectedHref ?? 'none (the plugin has no README.md)',
+                    );
+                }
             }
         }
 
@@ -147,12 +203,15 @@ final class ReadmePluginsTableTest extends TestCase
     /**
      * @param array<string, string> $plugins id => type
      */
-    private function makePlugins(array $plugins): string
+    private function makePlugins(array $plugins, bool $withReadme = true): string
     {
         $dir = sys_get_temp_dir().'/readme-table-'.bin2hex(random_bytes(6));
         foreach ($plugins as $id => $type) {
             mkdir($dir.'/'.$id, 0o777, true);
             file_put_contents($dir.'/'.$id.'/manifest.json', json_encode(['id' => $id, 'type' => $type]));
+            if ($withReadme) {
+                file_put_contents($dir.'/'.$id.'/README.md', '# '.$id);
+            }
         }
         $this->tmp[] = $dir;
 
@@ -167,6 +226,7 @@ final class ReadmePluginsTableTest extends TestCase
         foreach ($this->tmp as $dir) {
             foreach (glob($dir.'/*/manifest.json') ?: [] as $f) {
                 unlink($f);
+                @unlink(\dirname($f).'/README.md');
                 rmdir(\dirname($f));
             }
             @rmdir($dir);

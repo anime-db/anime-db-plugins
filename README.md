@@ -46,7 +46,7 @@ StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\
 | [`animedb-anidb`](plugins/animedb-anidb/README.md)                 | `integration` | Источник метаданных AniDB: поиск по названию, распознавание ссылок, заполнение карточки   |
 | [`animedb-language-pack`](plugins/animedb-language-pack/README.md) | `translation` | Языковой пакет: языки интерфейса `de`, `ja`                                               |
 | [`animedb-link-rules`](plugins/animedb-link-rules/README.md)       | `local`       | Правила нормализации ссылок справочных сайтов для сравнения записей каталога              |
-| [`animedb-media-details`](plugins/animedb-media-details/README.md) | `local`       | Характеристики файлов записи: контейнер, дорожки, субтитры                                |
+| `animedb-media-details`                                            | `local`       | Характеристики файлов записи: контейнер, дорожки, субтитры                                |
 | [`animedb-myanimelist`](plugins/animedb-myanimelist/README.md)     | `integration` | Источник метаданных MyAnimeList: поиск, распознавание ссылок, заполнение карточек         |
 | [`animedb-shikimori`](plugins/animedb-shikimori/README.md)         | `integration` | Источник метаданных Shikimori: поиск, заполнение карточек, синхронизация, виджеты         |
 | [`animedb-worldart`](plugins/animedb-worldart/README.md)           | `integration` | Источник метаданных World-Art: поиск по названию, распознавание ссылок, заполнение записи |
