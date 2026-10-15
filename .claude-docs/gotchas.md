@@ -14,7 +14,11 @@ own `spl_autoload_register`, not via the plugin's `composer.json`:
 
 **Do not** make `PluginValidator` (or the README's description of "plugin shape") treat
 `composer.json` `autoload.psr-4` as a runtime loading mechanism. A plugin is `manifest.json`
-+ `src/*.php`; that's the full runtime contract.
++ `src/*.php`; that's the full runtime contract. The one exception is the data-only form: a
+`local` plugin declaring `link_rules: true` may ship `manifest.json` + `link-rules.yaml`
+without `src/` (if `src/` exists it is still checked). It needs `require.plugin-contracts`
+to exclude versions below `0.26.3`, and the rules are judged by the contract's
+`LinkRulesValidator`.
 
 `composer.json` in a plugin, if present, is a **dev-only artifact** — it pulls in
 `anime-db/plugin-contracts` and lets you run phpunit/phpstan/php-cs-fixer locally against
@@ -126,8 +130,8 @@ Why a wide range is right *while the contract is pre-1.0*:
 - Contract minors are breaking only because there has been no 1.0 yet. That is the phase, not
   the policy. The `1.0` release is precisely where breaking changes start deserving a detailed
   BC review — and where `^1.0` will give this same "minors flow in" behaviour safely.
-- The tooling's contract surface is narrow: `ManifestValidator` and `PluginType`, nothing
-  else. It is manifest validation, not the plugin runtime API that a breaking minor actually
+- The tooling's contract surface is narrow: `ManifestValidator`, `PluginType` and
+  `LinkRulesValidator` (hence the floor `~0.26.3`), nothing else. It is manifest validation, not the plugin runtime API that a breaking minor actually
   churns.
 - Following the contract forward is the point. The constraint sat at `^0.6` for months while
   the contract reached `v0.14.0`, and nothing ever went red — the same "falls behind while CI
@@ -147,7 +151,7 @@ The rule is *implementers pin narrow, readers may float*:
 |---------------------------|---------------------------------------------------|------------|
 | `anime-db-desktop` (host) | **implements** it — 34 contract types in use      | `^0.14`    |
 | plugins (`manifest.json`) | **implement** it — that is what a plugin *is*     | `^0.14`    |
-| this repo (tooling)       | **reads** it — `ManifestValidator` + `PluginType` | `~0.14`    |
+| this repo (tooling)       | **reads** it — `ManifestValidator`, `PluginType`, `LinkRulesValidator` | `~0.26.3` |
 
 The host sits on both sides of the contract: it implements the interfaces a plugin calls
 (`QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`,
