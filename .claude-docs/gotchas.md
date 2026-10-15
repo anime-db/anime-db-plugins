@@ -131,7 +131,7 @@ Why a wide range is right *while the contract is pre-1.0*:
   the policy. The `1.0` release is precisely where breaking changes start deserving a detailed
   BC review — and where `^1.0` will give this same "minors flow in" behaviour safely.
 - The tooling's contract surface is narrow: `ManifestValidator`, `PluginType` and
-  `LinkRulesValidator` (hence the floor `~0.26.3`), nothing else. It is manifest validation, not the plugin runtime API that a breaking minor actually
+  `LinkRulesValidator` (hence the floor `>=0.26.3`), nothing else. It is manifest validation, not the plugin runtime API that a breaking minor actually
   churns.
 - Following the contract forward is the point. The constraint sat at `^0.6` for months while
   the contract reached `v0.14.0`, and nothing ever went red — the same "falls behind while CI
@@ -151,7 +151,7 @@ The rule is *implementers pin narrow, readers may float*:
 |---------------------------|---------------------------------------------------|------------|
 | `anime-db-desktop` (host) | **implements** it — 34 contract types in use      | `^0.14`    |
 | plugins (`manifest.json`) | **implement** it — that is what a plugin *is*     | `^0.14`    |
-| this repo (tooling)       | **reads** it — `ManifestValidator`, `PluginType`, `LinkRulesValidator` | `~0.26.3` |
+| this repo (tooling)       | **reads** it — `ManifestValidator`, `PluginType`, `LinkRulesValidator` | `>=0.26.3 <1.0` |
 
 The host sits on both sides of the contract: it implements the interfaces a plugin calls
 (`QbittorrentDownloadService implements DownloadServiceInterface`, `PluginDataStore`,
