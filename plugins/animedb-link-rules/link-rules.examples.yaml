@@ -42,16 +42,27 @@ examples:
 
   # syoboi
   'https://cal.syoboi.jp/tid/115/time': 'https://cal.syoboi.jp/tid/115'
+  'https://cal.syoboi.jp/tid/115?foo=1': 'https://cal.syoboi.jp/tid/115'
 
   # World-Art
   'https://world-art.ru/animation/animation.php?id=2425': 'https://world-art.ru/animation/animation.php?id=2425'
+  'https://world-art.ru/animation/animation.php?id=2425&lang=ru': 'https://world-art.ru/animation/animation.php?id=2425'
+  'https://world-art.ru/animation/animation.php?aid=1&id=2425': 'https://world-art.ru/animation/animation.php?id=2425'
+  'https://world-art.ru/animation/animation.php?aid=2425': null
 
   # Anime News Network
   'https://animenewsnetwork.com/encyclopedia/anime.php?id=155': 'https://animenewsnetwork.com/encyclopedia/anime.php?id=155'
+  'https://animenewsnetwork.com/encyclopedia/anime.php?id=155&page=2': 'https://animenewsnetwork.com/encyclopedia/anime.php?id=155'
+  'https://animenewsnetwork.com/encyclopedia/anime.php?aid=1&id=155': 'https://animenewsnetwork.com/encyclopedia/anime.php?id=155'
+  'https://animenewsnetwork.com/encyclopedia/anime.php?aid=155': null
 
   # Kinopoisk
   'https://kinopoisk.ru/film/301': 'https://kinopoisk.ru/film/301'
+  'https://kinopoisk.ru/film/301/cast': 'https://kinopoisk.ru/film/301'
   'https://kinopoisk.ru/series/301': 'https://kinopoisk.ru/film/301'
 
   # fansubs.ru
   'https://fansubs.ru/base.php?id=1137': 'https://fansubs.ru/base.php?id=1137'
+  'https://fansubs.ru/base.php?id=1137&srt=1': 'https://fansubs.ru/base.php?id=1137'
+  'https://fansubs.ru/base.php?aid=1&id=1137': 'https://fansubs.ru/base.php?id=1137'
+  'https://fansubs.ru/base.php?aid=1137': null
