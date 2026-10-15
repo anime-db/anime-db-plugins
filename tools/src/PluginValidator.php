@@ -219,6 +219,8 @@ final class PluginValidator
         [$manifestErrors, $manifestId, $manifestData] = $this->validateManifest($pluginDir);
         $errors = [...$errors, ...$manifestErrors];
 
+        $errors = [...$errors, ...self::validateReadme($pluginDir)];
+
         $pluginId = $manifestId ?? basename($pluginDir);
         $pluginType = self::pluginType($manifestData);
 
@@ -249,6 +251,33 @@ final class PluginValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * Every plugin, whatever its type, must ship a non-empty `README.md` in its root.
+     * Only presence and non-emptiness are checked, never the content. A symlink counts
+     * as missing, like the other root files.
+     *
+     * @return list<string>
+     */
+    private static function validateReadme(string $pluginDir): array
+    {
+        $path = $pluginDir.'/README.md';
+
+        if (is_link($path) || !is_file($path)) {
+            return ['README.md is missing in the plugin root.'];
+        }
+
+        $content = @file_get_contents($path);
+        if ($content === false) {
+            return ['Failed to read "README.md".'];
+        }
+
+        if (trim($content) === '') {
+            return ['README.md must not be empty.'];
+        }
+
+        return [];
     }
 
     /**
