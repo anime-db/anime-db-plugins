@@ -1,0 +1,30 @@
+version: 1
+rules:
+  # Википедия: все языки одним правилом через группу языка; мобильная версия → обычная
+  'https://([a-z-]+)\.(?:m\.)?wikipedia\.org/wiki/([^?]+)(?:\?.*)?': 'https://$1.wikipedia.org/wiki/$2'
+  # allcinema: старый формат
+  'https://allcinema\.net/prog/show_c\.php\?(?:.*&)?num_c=(\d+)(?:&.*)?': 'https://allcinema.net/cinema/$1'
+  # allcinema: текущий формат
+  'https://allcinema\.net/cinema/(\d+)(?:[/?].*)?': 'https://allcinema.net/cinema/$1'
+  # AniDB: старый формат perl-bin; параметры запроса уже отсортированы — aid раньше show
+  'https://anidb\.net/perl-bin/animedb\.pl\?(?:.*&)?aid=(\d+)&(?:.*&)?show=anime(?:&.*)?': 'https://anidb.net/anime/$1'
+  # AniDB: короткий формат /aN
+  'https://anidb\.net/a(\d+)(?:\?.*)?': 'https://anidb.net/anime/$1'
+  # Shikimori: домены org/one/me/io → shikimori.io; префикс z и слаг отбрасываются
+  'https://shikimori\.(?:org|one|me|io)/animes/z?(\d+)(?:-[^/?]*)?(?:\?.*)?': 'https://shikimori.io/animes/$1'
+  # MAL: /anime/N и /anime/N/<slug>
+  'https://myanimelist\.net/anime/(\d+)(?:/[^/?]*)?(?:\?.*)?': 'https://myanimelist.net/anime/$1'
+  # MAL: старый формат anime.php?id=N
+  'https://myanimelist\.net/anime\.php\?(?:.*&)?id=(\d+)(?:&.*)?': 'https://myanimelist.net/anime/$1'
+  # AniList: /anime/N и /anime/N/<slug>
+  'https://anilist\.co/anime/(\d+)(?:/[^/?]*)?(?:\?.*)?': 'https://anilist.co/anime/$1'
+  # syoboi: /tid/N/... → /tid/N
+  'https://cal\.syoboi\.jp/tid/(\d+)(?:[/?].*)?': 'https://cal.syoboi.jp/tid/$1'
+  # World-Art
+  'https://world-art\.ru/animation/animation\.php\?(?:.*&)?id=(\d+)(?:&.*)?': 'https://world-art.ru/animation/animation.php?id=$1'
+  # ANN: форма как есть, кроме id всё отбрасывается
+  'https://animenewsnetwork\.com/encyclopedia/anime\.php\?(?:.*&)?id=(\d+)(?:&.*)?': 'https://animenewsnetwork.com/encyclopedia/anime.php?id=$1'
+  # Кинопоиск (формат пути не сверен с реальными ссылками)
+  'https://kinopoisk\.ru/film/(\d+)(?:[/?].*)?': 'https://kinopoisk.ru/film/$1'
+  # fansubs.ru
+  'https://fansubs\.ru/base\.php\?(?:.*&)?id=(\d+)(?:&.*)?': 'https://fansubs.ru/base.php?id=$1'
