@@ -10,6 +10,8 @@ rules:
   'https://anidb\.net/perl-bin/animedb\.pl\?(?:.*&)?aid=(\d+)&(?:.*&)?show=anime(?:&.*)?': 'https://anidb.net/anime/$1'
   # AniDB: короткий формат /aN
   'https://anidb\.net/a(\d+)(?:\?.*)?': 'https://anidb.net/anime/$1'
+  # AniDB: текущий формат /anime/N, параметры запроса отбрасываются
+  'https://anidb\.net/anime/(\d+)(?:\?.*)?': 'https://anidb.net/anime/$1'
   # Shikimori: домены org/one/me/io → shikimori.io; префикс z и слаг отбрасываются
   'https://shikimori\.(?:org|one|me|io)/animes/z?(\d+)(?:-[^/?]*)?(?:\?.*)?': 'https://shikimori.io/animes/$1'
   # MAL: /anime/N и /anime/N/<slug>
