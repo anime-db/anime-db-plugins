@@ -28,7 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools\Tests;
 
 use AnimeDb\PluginContracts\LinkRules\LinkRulesExamplesChecker;
-use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
+use AnimeDb\PluginContracts\LinkRules\LinkRulesValidator;
 use AnimeDb\Plugins\Tools\PluginValidator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -393,7 +393,10 @@ final class PluginValidatorTest extends TestCase
         // The examples file is missing: it would be reported if the gate got that far.
         $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item'\n", examplesYaml: null);
 
-        self::assertFalse(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'link-rules.examples.yaml'));
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, 'link-rules.yaml: '));
+        self::assertFalse(self::hasErrorContaining($errors, 'link-rules.examples.yaml'));
     }
 
     public function testSyntaxErrorIsReported(): void

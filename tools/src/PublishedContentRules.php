@@ -61,6 +61,14 @@ final class PublishedContentRules
     private const EXCLUDED_FILES = ['composer.lock'];
 
     /**
+     * Plugin-root files excluded from the archive: only a gate artifact, the application
+     * never reads them.
+     *
+     * @var list<string>
+     */
+    private const EXCLUDED_ROOT_FILES = ['link-rules.examples.yaml'];
+
+    /**
      * Basename prefixes excluded from the archive wherever they appear (covers `.git`,
      * `.gitignore`, `.gitattributes`, `.github`, `.php-cs-fixer.dist.php`, `.php-cs-fixer.cache`).
      *
@@ -84,6 +92,10 @@ final class PublishedContentRules
         }
 
         if (\in_array($basename, self::EXCLUDED_FILES, true)) {
+            return true;
+        }
+
+        if (\count($segments) === 1 && \in_array($basename, self::EXCLUDED_ROOT_FILES, true)) {
             return true;
         }
 

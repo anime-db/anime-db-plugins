@@ -43,6 +43,9 @@ final class PublishedContentRulesTest extends TestCase
         yield 'vendor/ is excluded' => ['vendor/some-dep/Dep.php', true];
         yield 'tests/ is excluded' => ['tests/WidgetTest.php', true];
         yield 'composer.lock is excluded' => ['composer.lock', true];
+        yield 'link-rules.examples.yaml at the root is excluded' => ['link-rules.examples.yaml', true];
+        yield 'link-rules.examples.yaml in a subdirectory is published' => ['src/link-rules.examples.yaml', false];
+        yield 'link-rules.yaml is published' => ['link-rules.yaml', false];
         yield '.gitignore is excluded' => ['.gitignore', true];
         yield '.php-cs-fixer.dist.php is excluded' => ['.php-cs-fixer.dist.php', true];
     }

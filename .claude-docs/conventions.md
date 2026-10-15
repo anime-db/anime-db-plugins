@@ -333,4 +333,5 @@ expected result, `null` meaning "no rule applies"), passed to the contract's
 expected result and every rule must win for at least one example. Errors are reported as
 `link-rules.examples.yaml: <field>: <message>`. If `link-rules.yaml` itself is invalid, the
 examples are not checked. The plugin's own `require.plugin-contracts` pin stays at `0.26.3`:
-the application never reads the examples file. `tools/` applies no rules itself. If anything named `src` exists, it is validated as usual.
+the application never reads the examples file, so `PublishedContentRules` excludes it from
+`plugin.zip` (plugin root only) and adding or changing examples does not require a `version` bump. `tools/` applies no rules itself. If anything named `src` exists, it is validated as usual.
