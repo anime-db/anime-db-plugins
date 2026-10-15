@@ -67,7 +67,8 @@ published versions` в `registry.yml` уже скачивает по тегу р
 
 ## Форма плагина
 
-Плагин с кодом (`integration`, `local`) — это `manifest.json` + `src/*.php`, без
+Плагин с кодом (`integration`, `local`) — это `manifest.json` + `src/*.php` (`local` с
+`link_rules: true` может состоять только из `manifest.json` + `link-rules.yaml`, без `src/`), без
 собственного DI-конфига, без класса бандла и без тегов: всё это хост-приложение
 настраивает само (регистрация сервисов, тегирование по контрактным интерфейсам,
 автозагрузка изолированного namespace). Контракт (`anime-db/plugin-contracts`) в

@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools;
 
+use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
 use AnimeDb\PluginContracts\Manifest\ManifestValidator;
 use AnimeDb\PluginContracts\Manifest\PluginType;
 use Composer\Semver\VersionParser;
@@ -53,6 +54,12 @@ use Symfony\Component\Yaml\Yaml;
  *   contract level; this validator additionally requires or forbids it depending on shipped
  *   catalogs (see below). Otherwise `local` falls back to the same code-plugin
  *   checks as `integration`.
+ *   A `local` plugin that declares `link_rules: true` is a data-only plugin: its `src/`
+ *   directory is optional (when present it is checked as above, and any `*.php` file is still
+ *   linted), but `link-rules.yaml` is required in the plugin root. The file is parsed with
+ *   `symfony/yaml` (a parse error, including a duplicate key, is a gate error) and the parsed
+ *   map is handed to the contract's {@see LinkRulesValidator}; each of its errors becomes a
+ *   gate error. This validator has no format rules of its own for the file.
  * - `translation` is a purely declarative resource with no code (see {@see PluginType}):
  *   a `src/` directory is an error (there is nothing to run PHP-syntax or namespace checks
  *   against), while a `translations/` directory and a non-empty manifest `locales` list are
@@ -177,6 +184,12 @@ final class PluginValidator
      */
     private const UI_CONTRACT_VERSION = '0.19.0';
 
+    /**
+     * Lowest `anime-db/plugin-contracts` version that knows `link_rules` and ships
+     * `LinkRulesValidator`; same pin rule as {@see self::UI_CONTRACT_VERSION}.
+     */
+    private const LINK_RULES_CONTRACT_VERSION = '0.26.3';
+
     public function __construct(
         private readonly ManifestValidator $manifestValidator = new ManifestValidator(),
     ) {
@@ -211,8 +224,15 @@ final class PluginValidator
         if ($pluginType === PluginType::Translation) {
             $errors = [...$errors, ...$this->validateTranslationSource($pluginDir, $manifestData)];
         } else {
-            $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
+            $linkRules = $pluginType === PluginType::Local && ($manifestData['link_rules'] ?? null) === true;
+            if (!$linkRules || file_exists($pluginDir.'/src') || is_link($pluginDir.'/src')) {
+                $errors = [...$errors, ...$this->validateSource($pluginDir, $pluginId)];
+            }
             $errors = [...$errors, ...$this->lintPhpFiles($pluginDir)];
+            if ($linkRules) {
+                $errors = [...$errors, ...$this->validateLinkRules($pluginDir)];
+                $errors = [...$errors, ...self::validateContractPin($manifestData, 'link_rules', self::LINK_RULES_CONTRACT_VERSION)];
+            }
         }
 
         // Каталоги переводов проверяются у плагина любого типа: у "translation" это его
@@ -324,6 +344,42 @@ final class PluginValidator
         $locales = $manifestData['locales'] ?? null;
         if (!\is_array($locales) || $locales === []) {
             $errors[] = 'Plugin of type "translation" must declare a non-empty "locales" list in manifest.json.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Checks `link-rules.yaml` of a plugin declaring `link_rules: true`: parsing is done here,
+     * the content is judged by the contract's {@see LinkRulesValidator} alone.
+     *
+     * @return list<string>
+     */
+    private function validateLinkRules(string $pluginDir): array
+    {
+        $file = $pluginDir.'/link-rules.yaml';
+        if (!is_file($file) || is_link($file)) {
+            return ['Manifest declares "link_rules" but "link-rules.yaml" is missing in the plugin root.'];
+        }
+
+        $content = file_get_contents($file);
+        if ($content === false) {
+            return ['link-rules.yaml could not be read.'];
+        }
+
+        try {
+            $data = Yaml::parse($content);
+        } catch (ParseException $e) {
+            return [\sprintf('link-rules.yaml is not valid YAML: %s', $e->getMessage())];
+        }
+
+        if (!\is_array($data) || ($data !== [] && array_is_list($data))) {
+            return ['link-rules.yaml must be a mapping.'];
+        }
+
+        $errors = [];
+        foreach ((new LinkRulesValidator())->validate($data) as $error) {
+            $errors[] = \sprintf('link-rules.yaml: %s: %s', $error->field, $error->message);
         }
 
         return $errors;
@@ -1305,7 +1361,7 @@ final class PluginValidator
         $ui = $manifestData['ui'] ?? null;
         if (\is_array($ui)) {
             $errors = [...$errors, ...$this->validateDeclaredUiPaths($pluginDir, $ui)];
-            $errors = [...$errors, ...self::validateUiContractPin($manifestData)];
+            $errors = [...$errors, ...self::validateContractPin($manifestData, 'ui', self::UI_CONTRACT_VERSION)];
         }
 
         $errors = [...$errors, ...$this->validateAssetsAllowlist($pluginDir)];
@@ -1359,32 +1415,34 @@ final class PluginValidator
     }
 
     /**
-     * A plugin declaring `ui` relies on a host new enough to read the field, so it must pin
-     * `require.plugin-contracts` to a range that excludes every version older than
-     * {@see self::UI_CONTRACT_VERSION} — an older pin promises a host that cannot read it. A
-     * pin newer than {@see self::UI_CONTRACT_VERSION} (e.g. `^0.21`) is not itself an error: it
+     * A plugin declaring `ui` (or `link_rules`) relies on a host new enough to read the field,
+     * so it must pin `require.plugin-contracts` to a range that excludes every version older
+     * than the one that introduced it ({@see self::UI_CONTRACT_VERSION},
+     * {@see self::LINK_RULES_CONTRACT_VERSION}) — an older pin promises a host that cannot
+     * read it. A pin newer than the minimum (e.g. `^0.21`) is not itself an error: it
      * is strictly safer than the minimum, since every version it admits already has the field.
      *
      * @param array<string, mixed> $manifestData
      *
      * @return list<string>
      */
-    private static function validateUiContractPin(array $manifestData): array
+    private static function validateContractPin(array $manifestData, string $field, string $minVersion): array
     {
         $require = $manifestData['require'] ?? null;
         $constraint = \is_array($require) ? ($require['plugin-contracts'] ?? null) : null;
 
         if (!\is_string($constraint) || $constraint === '') {
             return [\sprintf(
-                'Plugin declares "ui" but is missing a "require.plugin-contracts" constraint covering %s, the contract version that introduced the field.',
-                self::UI_CONTRACT_VERSION,
+                'Plugin declares "%s" but is missing a "require.plugin-contracts" constraint covering %s, the contract version that introduced the field.',
+                $field,
+                $minVersion,
             )];
         }
 
         try {
             $parser = new VersionParser();
             $admitsOlder = $parser->parseConstraints($constraint)
-                ->matches($parser->parseConstraints('<'.self::UI_CONTRACT_VERSION));
+                ->matches($parser->parseConstraints('<'.$minVersion));
         } catch (\UnexpectedValueException) {
             // Malformed constraint is already reported by ManifestValidator.
             return [];
@@ -1392,9 +1450,10 @@ final class PluginValidator
 
         if ($admitsOlder) {
             return [\sprintf(
-                'Plugin declares "ui" but "require.plugin-contracts" constraint "%s" admits a host older than %s, the contract version that introduced the field.',
+                'Plugin declares "%s" but "require.plugin-contracts" constraint "%s" admits a host older than %s, the contract version that introduced the field.',
+                $field,
                 $constraint,
-                self::UI_CONTRACT_VERSION,
+                $minVersion,
             )];
         }
 

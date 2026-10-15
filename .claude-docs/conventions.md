@@ -318,3 +318,10 @@ plugin's own `translations/` catalog (source: issue #60). A shape-based heuristi
 (`word.word`-looking values) was tried and reverted: it false-positived on real values
 like a plugin's own domain name (e.g. `MyAnimeList.net`), which is a plain literal, not a
 key.
+
+## Data-only `local` plugin (`link_rules`)
+
+A `local` plugin may omit `src/` if the manifest declares `link_rules: true`. The gate then
+requires a regular (non-symlink) `link-rules.yaml` in the plugin root, parses it as a YAML
+mapping and passes it to the contract's `LinkRulesValidator`. `require.plugin-contracts` must
+exclude versions below `0.26.3`. If anything named `src` exists, it is validated as usual.

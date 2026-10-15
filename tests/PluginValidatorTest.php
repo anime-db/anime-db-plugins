@@ -27,9 +27,11 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\Tools\Tests;
 
+use AnimeDb\PluginContracts\Manifest\LinkRulesValidator;
 use AnimeDb\Plugins\Tools\PluginValidator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 
 final class PluginValidatorTest extends TestCase
 {
@@ -227,6 +229,100 @@ final class PluginValidatorTest extends TestCase
         $errors = (new PluginValidator())->validate($pluginDir);
 
         self::assertContains('Plugin is missing a "src/" directory.', $errors);
+    }
+
+    public function testLocalLinkRulesPluginWithoutSrcIsValid(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n");
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLocalLinkRulesPluginWithSrcIsValid(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n", withSrc: true);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLocalLinkRulesPluginWithBrokenSrcIsStillChecked(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n", withSrc: true);
+        file_put_contents($pluginDir.'/src/Broken.php', "<?php\n\nnamespace Wrong\\Ns;\n\nfinal class Broken\n{\n}\n");
+
+        self::assertContains('File "src/Broken.php" declares namespace "Wrong\\Ns", expected "AnimeDb\\Plugins\\VendorRules".', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLocalWithoutSrcAndWithoutLinkRulesIsReported(): void
+    {
+        $manifest = $this->validManifest('vendor-rules', 'local');
+        $pluginDir = $this->createPluginDir('vendor-rules', $manifest, withSrc: false);
+
+        self::assertContains('Plugin is missing a "src/" directory.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesWithoutFileIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', null);
+
+        self::assertContains('Manifest declares "link_rules" but "link-rules.yaml" is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesSymlinkIsReportedAsMissing(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', null);
+        $target = \dirname($pluginDir).'/target.yaml';
+        file_put_contents($target, "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n");
+        symlink($target, $pluginDir.'/link-rules.yaml');
+
+        self::assertContains('Manifest declares "link_rules" but "link-rules.yaml" is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesWithOldContractPinIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n", pin: '^0.14');
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'Plugin declares "link_rules" but "require.plugin-contracts" constraint "^0.14" admits a host older than 0.26.3'));
+    }
+
+    public function testLinkRulesSrcThatIsAFileIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item/$1'\n");
+        file_put_contents($pluginDir.'/src', 'x');
+
+        self::assertNotSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesWithBrokenYamlIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nrules: [unclosed\n");
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'not valid YAML'));
+    }
+
+    public function testLinkRulesWithDuplicateKeyIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "version: 1\nversion: 1\nrules: {}\n");
+
+        self::assertTrue(self::hasErrorContaining((new PluginValidator())->validate($pluginDir), 'not valid YAML'));
+    }
+
+    public function testLinkRulesNotAMappingIsReported(): void
+    {
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', "- a\n- b\n");
+
+        self::assertContains('link-rules.yaml must be a mapping.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testLinkRulesViolatingContractValidatorIsReported(): void
+    {
+        $yaml = "version: 1\nrules:\n  'https://example\\.com/(\\d+)': 'https://example.com/item'\n";
+        $pluginDir = $this->createLinkRulesPlugin('vendor-rules', $yaml);
+
+        $expected = (new LinkRulesValidator())->validate(Yaml::parse($yaml))[0]->message;
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertTrue(self::hasErrorContaining($errors, $expected));
     }
 
     public function testSyntaxErrorIsReported(): void
@@ -1295,6 +1391,20 @@ final class PluginValidatorTest extends TestCase
                 'php' => '>=8.1',
             ],
         ];
+    }
+
+    private function createLinkRulesPlugin(string $id, ?string $rulesYaml, bool $withSrc = false, string $pin = '^0.26.3'): string
+    {
+        $manifest = $this->validManifest($id, 'local');
+        unset($manifest['features']);
+        $manifest['link_rules'] = true;
+        $manifest['require']['plugin-contracts'] = $pin;
+        $pluginDir = $this->createPluginDir($id, $manifest, $withSrc);
+        if ($rulesYaml !== null) {
+            file_put_contents($pluginDir.'/link-rules.yaml', $rulesYaml);
+        }
+
+        return $pluginDir;
     }
 
     /**
