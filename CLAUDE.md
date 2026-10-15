@@ -89,6 +89,12 @@ php tools/analyse-plugin.php plugins/<plugin-id>
   `.woff2`), whether or not it is declared in `ui` — `PublishedContentRules` does not
   exclude `assets/` from the ZIP, so it would ship dead weight. See
   [.claude-docs/conventions.md](.claude-docs/conventions.md).
+- Do not add a new official (`animedb-*`) plugin in a single PR. Use two: first an
+  infrastructure PR adding its row to the root `README.md` "Плагины" table, then the plugin PR.
+  The `tools/check-pr-changes.php` gate allows a PR to touch only one plugin inside
+  `plugins/<id>/`, so the README row cannot ship together with the plugin. In the opposite
+  order the plugin PR goes red on `tests/ReadmePluginsTableTest.php`, which checks directory →
+  row only (a row without a directory is fine; third-party vendors are not listed).
 
 ## Workflow
 
