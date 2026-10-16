@@ -1,5 +1,5 @@
 {
-    "sequence": 75,
+    "sequence": 76,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -10,9 +10,9 @@
             "manifest": {
                 "id": "animedb-anidb",
                 "name": "AniDB",
-                "version": "0.5.0",
+                "version": "0.5.1",
                 "type": "integration",
-                "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок и заполнение карточки.",
+                "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок, заполнение карточки и виджеты «Связанные аниме», «Похожие аниме», «Популярное сейчас на AniDB».",
                 "author": "AnimeDB",
                 "features": {
                     "filler": true,
