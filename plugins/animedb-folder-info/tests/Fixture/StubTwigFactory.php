@@ -55,7 +55,7 @@ final class StubTwigFactory
         $twig->addFunction(new TwigFunction('path', static fn (string $route, array $params = []): string => '/'.$route.'/'.implode('/', $params)));
         $twig->addFilter(new TwigFilter(
             'trans',
-            static fn (string $key, array $params = [], ?string $domain = null): string => $catalog[$key] ?? $key,
+            static fn (string $key, array $params = [], ?string $domain = null): string => $domain === 'animedb-folder-info' ? ($catalog[$key] ?? $key) : $key,
         ));
 
         return $twig;

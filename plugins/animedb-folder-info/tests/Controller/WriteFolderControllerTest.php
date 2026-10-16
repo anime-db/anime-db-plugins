@@ -49,6 +49,7 @@ final class WriteFolderControllerTest extends TestCase
 {
     private FakeFolderWriter $writer;
     private bool $csrfValid = true;
+    private ?string $postedToken = null;
 
     /**
      * @return iterable<string, array{\Throwable, string, bool}>
@@ -114,6 +115,46 @@ final class WriteFolderControllerTest extends TestCase
         self::assertSame([], $this->writer->calls);
     }
 
+    public function testUnexpectedWriteErrorWithFailingInspectStillRendersWidget(): void
+    {
+        $this->writer = new FakeFolderWriter();
+        $this->writer->throwOnWriteCover = new \RuntimeException();
+        $this->writer->throwOnInspect = new \RuntimeException();
+
+        $response = $this->post([]);
+        $html = (string) $response->getContent();
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Could not write the files', $html);
+        self::assertSame([], $this->writer->files);
+    }
+
+    public function testInvalidFormStillRendersWidgetWhenInspectFails(): void
+    {
+        $this->writer = new FakeFolderWriter();
+        $this->writer->throwOnInspect = new \RuntimeException();
+
+        $controller = $this->controller();
+        $response = $controller(new Request([], ['_token' => ['x']]), 7);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Invalid form submission', (string) $response->getContent());
+    }
+
+    public function testTokenRenderedInTheWidgetIsTheOneTheControllerAccepts(): void
+    {
+        $this->writer = new FakeFolderWriter();
+        $twig = StubTwigFactory::create();
+        $folder = new FolderService($this->writer, new FakeCatalog(new AnimeView('Title', [], null, [], [], null, [], null)), new FakePluginDataStore(), $twig);
+        $html = (new FolderWidget($folder, $twig))->render(new \AnimeDb\PluginContracts\Model\AnimeId(7));
+
+        self::assertSame(1, preg_match('/name="_token" value="([^"]+)"/', $html, $m));
+        $this->postedToken = $m[1];
+
+        self::assertStringContainsString('Written to the folder', (string) $this->post([])->getContent());
+        self::assertNotSame([], $this->writer->calls);
+    }
+
     public function testUnknownRecordIs404(): void
     {
         $this->writer = new FakeFolderWriter();
@@ -127,17 +168,22 @@ final class WriteFolderControllerTest extends TestCase
      */
     private function post(array $params, bool $recordExists = true): \Symfony\Component\HttpFoundation\Response
     {
+        return $this->controller($recordExists)(new Request([], ['_token' => $this->postedToken ?? 't'] + $params), 7);
+    }
+
+    private function controller(bool $recordExists = true): WriteFolderController
+    {
         $twig = StubTwigFactory::create();
         $view = $recordExists ? new AnimeView('Title', [], null, [], [], null, [], null) : null;
         $folder = new FolderService($this->writer, new FakeCatalog($view), new FakePluginDataStore(), $twig);
 
         $csrf = $this->createStub(CsrfTokenManagerInterface::class);
         $csrf->method('isTokenValid')->willReturnCallback(
-            fn (CsrfToken $token): bool => $this->csrfValid && $token->getId() === WriteFolderController::CSRF_TOKEN_ID,
+            fn (CsrfToken $token): bool => $this->csrfValid
+                && $token->getId() === WriteFolderController::CSRF_TOKEN_ID
+                && $token->getValue() === ($this->postedToken === null ? 't' : 'stub-csrf-token-for-'.$token->getId()),
         );
 
-        $controller = new WriteFolderController($folder, new FolderWidget($folder, $twig), $csrf);
-
-        return $controller(new Request([], ['_token' => 't'] + $params), 7);
+        return new WriteFolderController($folder, new FolderWidget($folder, $twig), $csrf);
     }
 }

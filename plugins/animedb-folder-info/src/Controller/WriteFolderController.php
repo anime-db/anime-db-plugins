@@ -30,6 +30,7 @@ namespace AnimeDb\Plugins\AnimedbFolderInfo\Controller;
 
 use AnimeDb\PluginContracts\Model\AnimeId;
 use AnimeDb\Plugins\AnimedbFolderInfo\Folder\FolderService;
+use AnimeDb\Plugins\AnimedbFolderInfo\Folder\FolderStatus;
 use AnimeDb\Plugins\AnimedbFolderInfo\Widget\FolderWidget;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -62,11 +63,11 @@ final class WriteFolderController
             $token = $request->request->getString('_token');
             $overwrite = $request->request->getString('overwrite') === '1';
         } catch (\Throwable) {
-            return new Response($this->widget->renderStatus($anime, $this->folder->status($anime), 'widget.folder.error.invalid_form'));
+            return new Response($this->widget->renderStatus($anime, $this->safeStatus($anime), 'widget.folder.error.invalid_form'));
         }
 
         if (!$this->csrfTokenManager->isTokenValid(new CsrfToken(self::CSRF_TOKEN_ID, $token))) {
-            return new Response($this->widget->renderStatus($anime, $this->folder->status($anime), 'widget.folder.error.invalid_csrf'));
+            return new Response($this->widget->renderStatus($anime, $this->safeStatus($anime), 'widget.folder.error.invalid_csrf'));
         }
 
         try {
@@ -74,9 +75,22 @@ final class WriteFolderController
         } catch (\DomainException) {
             return new Response('', Response::HTTP_NOT_FOUND);
         } catch (\Throwable) {
-            return new Response($this->widget->renderStatus($anime, $this->folder->status($anime), 'widget.folder.error.write_failed'));
+            return new Response($this->widget->renderStatus($anime, $this->safeStatus($anime), 'widget.folder.error.write_failed'));
         }
 
         return new Response($this->widget->renderStatus($anime, $status, null));
+    }
+
+    /**
+     * The status for an error response: inspecting the folder may fail for the very reason the
+     * request did, and the error handler must not turn that into a 500.
+     */
+    private function safeStatus(AnimeId $anime): FolderStatus
+    {
+        try {
+            return $this->folder->status($anime);
+        } catch (\Throwable) {
+            return FolderStatus::Unavailable;
+        }
     }
 }
