@@ -36,7 +36,7 @@ use Twig\TwigFunction;
 /**
  * A minimal stand-in for the host's Twig environment: the plugin's real templates plus stub
  * `csrf_token()` / `path()` and a `trans` filter resolving against the plugin's real catalog
- * of the requested locale.
+ * of the requested locale; keys of the application's `messages` domain come back as `app:<key>`.
  */
 final class StubTwigFactory
 {
@@ -55,7 +55,11 @@ final class StubTwigFactory
         $twig->addFunction(new TwigFunction('path', static fn (string $route, array $params = []): string => '/'.$route.'/'.implode('/', $params)));
         $twig->addFilter(new TwigFilter(
             'trans',
-            static fn (string $key, array $params = [], ?string $domain = null): string => $domain === 'animedb-folder-info' ? ($catalog[$key] ?? $key) : $key,
+            static fn (string $key, array $params = [], ?string $domain = null): string => match ($domain) {
+                'animedb-folder-info' => $catalog[$key] ?? $key,
+                'messages', null => 'app:'.$key,
+                default => $key,
+            },
         ));
 
         return $twig;

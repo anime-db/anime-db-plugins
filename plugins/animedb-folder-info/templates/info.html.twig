@@ -75,11 +75,11 @@ dd { margin: 0 0 .4rem 10rem; }
 {% endif %}
 {% if anime.genres|length > 0 %}
 <dt>{{ 'info.genres'|trans({}, t) }}</dt>
-<dd>{% for genre in anime.genres %}{{ genre.value|replace({'-': ' '})|capitalize }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+<dd>{% for genre in anime.genres %}{{ ('genre.' ~ genre.value)|trans }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
 {% endif %}
 {% if anime.themes|length > 0 %}
 <dt>{{ 'info.themes'|trans({}, t) }}</dt>
-<dd>{% for theme in anime.themes %}{{ theme.value|replace({'-': ' '})|capitalize }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+<dd>{% for theme in anime.themes %}{{ ('theme.' ~ theme.value)|trans }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
 {% endif %}
 </dl>
 {% if anime.description is not null and anime.description != '' %}

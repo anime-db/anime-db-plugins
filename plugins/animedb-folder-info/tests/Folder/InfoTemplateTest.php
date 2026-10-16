@@ -32,6 +32,7 @@ use AnimeDb\PluginContracts\Model\AnimeName;
 use AnimeDb\PluginContracts\Model\AnimeType;
 use AnimeDb\PluginContracts\Model\GenreCode;
 use AnimeDb\PluginContracts\Model\NameRole;
+use AnimeDb\PluginContracts\Model\ThemeCode;
 use AnimeDb\Plugins\AnimedbFolderInfo\Tests\Fixture\StubTwigFactory;
 use PHPUnit\Framework\TestCase;
 
@@ -44,7 +45,7 @@ final class InfoTemplateTest extends TestCase
             alternativeNames: [new AnimeName('Ковбой Бибоп', 'ru', NameRole::Official)],
             type: AnimeType::Tv,
             genres: [GenreCode::Action],
-            themes: [],
+            themes: [ThemeCode::AdultCast],
             episodesCount: 26,
             sources: ['https://secret.example/anime/1', 'https://another.example/x'],
             externalId: 'ext-77',
@@ -66,10 +67,21 @@ final class InfoTemplateTest extends TestCase
     {
         $html = $this->render('en', 'animedb-cover.png');
 
-        foreach (['Cowboy Bebop', 'Ковбой Бибоп', 'TV series', '26', '24 min.', '1998-04-03', '1999-04-24', 'Sunrise', 'JP', 'Action', 'First line'] as $expected) {
+        foreach (['Cowboy Bebop', 'Ковбой Бибоп', 'TV series', '26', '24 min.', '1998-04-03', '1999-04-24', 'Sunrise', 'JP', 'First line'] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
         self::assertStringContainsString('<img class="cover" src="animedb-cover.png"', $html);
+    }
+
+    public function testGenresAndThemesComeFromTheApplicationMessagesDomain(): void
+    {
+        foreach (['en', 'ru'] as $locale) {
+            $html = $this->render($locale, null);
+
+            self::assertStringContainsString('app:genre.action', $html);
+            self::assertStringContainsString('app:theme.adult-cast', $html);
+            self::assertStringNotContainsString('Adult cast', $html);
+        }
     }
 
     public function testDoesNotLeakSourcesExternalIdOrAnyUrl(): void
