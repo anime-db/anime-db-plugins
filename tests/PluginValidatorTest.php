@@ -399,6 +399,77 @@ final class PluginValidatorTest extends TestCase
         self::assertFalse(self::hasErrorContaining($errors, 'link-rules.examples.yaml'));
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function pluginKindProvider(): iterable
+    {
+        yield 'integration' => ['integration'];
+        yield 'local' => ['local'];
+        yield 'local link_rules' => ['link_rules'];
+        yield 'translation' => ['translation'];
+    }
+
+    private function createPluginOfKind(string $kind): string
+    {
+        if ($kind === 'link_rules') {
+            return $this->createLinkRulesPlugin('vendor-name', self::SINGLE_RULE);
+        }
+
+        if ($kind === 'translation') {
+            $pluginDir = $this->createPluginDir('vendor-name', $this->validTranslationManifest('vendor-name', ['en'], translationKeysCount: 1), withSrc: false);
+            mkdir($pluginDir.'/translations', 0o777, true);
+            file_put_contents($pluginDir.'/translations/messages.en.yaml', "greeting: Hello\n");
+
+            return $pluginDir;
+        }
+
+        $manifest = $this->validManifest('vendor-name', $kind);
+        if ($kind === 'local') {
+            unset($manifest['features']);
+        }
+
+        return $this->createPluginDir('vendor-name', $manifest);
+    }
+
+    #[DataProvider('pluginKindProvider')]
+    public function testMissingReadmeIsReported(string $kind): void
+    {
+        $pluginDir = $this->createPluginOfKind($kind);
+        unlink($pluginDir.'/README.md');
+
+        self::assertContains('README.md is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
+    #[DataProvider('pluginKindProvider')]
+    public function testEmptyReadmeIsReported(string $kind): void
+    {
+        $pluginDir = $this->createPluginOfKind($kind);
+
+        foreach (['', "  \n\t\r\n  "] as $content) {
+            file_put_contents($pluginDir.'/README.md', $content);
+            self::assertContains('README.md must not be empty.', (new PluginValidator())->validate($pluginDir));
+        }
+    }
+
+    #[DataProvider('pluginKindProvider')]
+    public function testNonEmptyReadmeIsAccepted(string $kind): void
+    {
+        $pluginDir = $this->createPluginOfKind($kind);
+
+        self::assertSame([], (new PluginValidator())->validate($pluginDir));
+    }
+
+    public function testReadmeSymlinkIsReportedAsMissing(): void
+    {
+        $pluginDir = $this->createPluginDir('vendor-name', $this->validManifest('vendor-name'));
+        unlink($pluginDir.'/README.md');
+        file_put_contents(\dirname($pluginDir).'/outside.md', 'text');
+        symlink(\dirname($pluginDir).'/outside.md', $pluginDir.'/README.md');
+
+        self::assertContains('README.md is missing in the plugin root.', (new PluginValidator())->validate($pluginDir));
+    }
+
     public function testSyntaxErrorIsReported(): void
     {
         $manifest = $this->validManifest('vendor-name');
@@ -1496,6 +1567,8 @@ final class PluginValidatorTest extends TestCase
         if ($manifest !== null) {
             file_put_contents($dir.'/manifest.json', json_encode($manifest, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR));
         }
+
+        file_put_contents($dir.'/README.md', "# {$dirName}\n\nPlugin description.\n");
 
         if ($withSrc) {
             mkdir($dir.'/src');
