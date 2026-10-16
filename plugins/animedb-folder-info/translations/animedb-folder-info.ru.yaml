@@ -1,0 +1,45 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+widget:
+    folder:
+        title: Папка
+        description: По кнопке записывает описание и обложку записи в её собственную папку.
+        written_at: записано
+        status:
+            written: Записано в папку
+            absent: Описание ещё не записано
+            modified: Файл изменён вне AnimeDB
+            no_folder: У записи нет своей папки
+            unavailable: Хранилище недоступно
+            not_writable: Хранилище только для чтения
+        button:
+            write: Записать описание в папку
+            overwrite: Перезаписать
+        error:
+            invalid_form: Некорректная отправка формы, перезагрузите страницу и повторите.
+            invalid_csrf: Недействительный CSRF-токен, перезагрузите страницу и повторите.
+            write_failed: Не удалось записать файлы, повторите попытку.
+info:
+    alternative_names: Альтернативные названия
+    type: Тип
+    type_value:
+        tv: ТВ-сериал
+        movie: Фильм
+        ova: OVA
+        ona: ONA
+        special: Спецвыпуск
+        music: Музыка
+    episodes: Серии
+    duration: Длительность
+    minutes: мин.
+    date_premiere: Премьера
+    date_end: Окончание
+    studios: Студии
+    countries: Страны
+    genres: Жанры
+    themes: Темы
+    description: Описание

@@ -1,0 +1,45 @@
+# AnimeDb package.
+#
+# @author    Peter Gribanov <info@peter-gribanov.ru>
+# @copyright Copyright (c) 2026, Peter Gribanov
+# @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+
+widget:
+    folder:
+        title: Folder
+        description: Writes the record description and cover into the record's own folder on demand.
+        written_at: written
+        status:
+            written: Written to the folder
+            absent: The description is not written yet
+            modified: The file was changed outside AnimeDB
+            no_folder: The record has no folder of its own
+            unavailable: The storage is unavailable
+            not_writable: The storage is read-only
+        button:
+            write: Write description to folder
+            overwrite: Overwrite
+        error:
+            invalid_form: Invalid form submission, please reload the page and try again.
+            invalid_csrf: Invalid CSRF token, please reload the page and try again.
+            write_failed: Could not write the files, please try again.
+info:
+    alternative_names: Alternative titles
+    type: Type
+    type_value:
+        tv: TV series
+        movie: Movie
+        ova: OVA
+        ona: ONA
+        special: Special
+        music: Music
+    episodes: Episodes
+    duration: Duration
+    minutes: min.
+    date_premiere: Premiere
+    date_end: Finished
+    studios: Studios
+    countries: Countries
+    genres: Genres
+    themes: Themes
+    description: Description
