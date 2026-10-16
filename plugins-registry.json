@@ -1,5 +1,5 @@
 {
-    "sequence": 79,
+    "sequence": 80,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -10,7 +10,7 @@
             "manifest": {
                 "id": "animedb-anidb",
                 "name": "AniDB",
-                "version": "0.5.1",
+                "version": "0.5.2",
                 "type": "integration",
                 "description": "Официальный плагин-источник AniDB: поиск по названию, распознавание ссылок, заполнение карточки и виджеты «Связанные аниме», «Похожие аниме», «Популярное сейчас на AniDB».",
                 "author": "AnimeDB",
@@ -28,10 +28,20 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.2"
+                    "plugin-contracts": "^0.26.2 || ^0.27"
                 }
             },
             "versions": [
+                {
+                    "version": "0.5.2",
+                    "core": ">=0.0.1",
+                    "sha256": "2348c52e56215aee5d0395b9eb6acd1d5c73965cfcc2bcade1949b7c70be27fb",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2 || ^0.27"
+                },
                 {
                     "version": "0.5.1",
                     "core": ">=0.0.1",
@@ -209,7 +219,7 @@
             "manifest": {
                 "id": "animedb-media-details",
                 "name": "Media details",
-                "version": "0.2.7",
+                "version": "0.2.8",
                 "type": "local",
                 "description": "Официальный плагин AnimeDB: характеристики файлов записи (размер, длительность, видео, звуковые дорожки, языки звука и субтитров).",
                 "author": "AnimeDB",
@@ -223,7 +233,7 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.25 || ^0.26"
+                    "plugin-contracts": "^0.25 || ^0.26 || ^0.27"
                 }
             },
             "versions": [
@@ -324,7 +334,7 @@
             "manifest": {
                 "id": "animedb-myanimelist",
                 "name": "MyAnimeList",
-                "version": "0.9.1",
+                "version": "0.9.2",
                 "type": "integration",
                 "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Рекомендуемые аниме», «Новинки».",
                 "author": "AnimeDB",
@@ -342,7 +352,7 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.2"
+                    "plugin-contracts": "^0.26.2 || ^0.27"
                 }
             },
             "versions": [
@@ -471,7 +481,7 @@
             "manifest": {
                 "id": "animedb-shikimori",
                 "name": "Shikimori",
-                "version": "0.12.2",
+                "version": "0.12.3",
                 "type": "integration",
                 "description": "Официальный плагин-источник Shikimori: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Похожие аниме», «Новинки».",
                 "author": "AnimeDB",
@@ -489,7 +499,7 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.2"
+                    "plugin-contracts": "^0.26.2 || ^0.27"
                 }
             },
             "versions": [
@@ -728,7 +738,7 @@
             "manifest": {
                 "id": "animedb-worldart",
                 "name": "World-Art",
-                "version": "0.3.0",
+                "version": "0.3.1",
                 "type": "integration",
                 "description": "Официальный плагин-источник World-Art: поиск по названию, распознавание ссылок и заполнение записи.",
                 "author": "AnimeDB",
@@ -742,7 +752,7 @@
                 "require": {
                     "core": ">=0.0.1",
                     "php": ">=8.5",
-                    "plugin-contracts": "^0.26.2"
+                    "plugin-contracts": "^0.26.2 || ^0.27"
                 }
             },
             "versions": [
