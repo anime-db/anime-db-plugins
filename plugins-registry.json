@@ -1,5 +1,5 @@
 {
-    "sequence": 81,
+    "sequence": 82,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -105,6 +105,41 @@
                     "core": ">=0.0.1",
                     "sha256": "f8081750345e966a6e2c85ad31c98a24da76e36cb5f83b82bffe902d04eb9e16",
                     "plugin_contracts": "^0.26.1"
+                }
+            ]
+        },
+        {
+            "id": "animedb-folder-info",
+            "manifest": {
+                "id": "animedb-folder-info",
+                "name": "Folder info",
+                "version": "0.1.0",
+                "type": "local",
+                "description": "Официальный плагин AnimeDB: записывает описание и обложку записи в её собственную папку по кнопке в карточке.",
+                "author": "AnimeDB",
+                "locales": [
+                    "en",
+                    "ru"
+                ],
+                "features": {
+                    "folder": false
+                },
+                "require": {
+                    "core": ">=0.0.1",
+                    "php": ">=8.5",
+                    "plugin-contracts": "^0.27"
+                }
+            },
+            "versions": [
+                {
+                    "version": "0.1.0",
+                    "core": ">=0.0.1",
+                    "sha256": "41c1c97d01cf2a8f76e31884615b33e30735fc7fe55d352f08335dc2d9731400",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.27"
                 }
             ]
         },
