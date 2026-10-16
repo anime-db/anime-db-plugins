@@ -1,9 +1,9 @@
 {
     "id": "animedb-myanimelist",
     "name": "MyAnimeList",
-    "version": "0.9.0",
+    "version": "0.9.1",
     "type": "integration",
-    "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
+    "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Рекомендуемые аниме», «Новинки».",
     "author": "AnimeDB",
     "features": {
         "filler": true,
