@@ -1,7 +1,7 @@
 {
     "id": "animedb-shikimori",
     "name": "Shikimori",
-    "version": "0.12.2",
+    "version": "0.12.3",
     "type": "integration",
     "description": "Официальный плагин-источник Shikimori: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Похожие аниме», «Новинки».",
     "author": "AnimeDB",
@@ -19,6 +19,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",
-        "plugin-contracts": "^0.26.2"
+        "plugin-contracts": "^0.26.2 || ^0.27"
     }
 }
