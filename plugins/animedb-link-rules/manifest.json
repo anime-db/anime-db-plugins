@@ -1,7 +1,7 @@
 {
     "id": "animedb-link-rules",
     "name": "Link rules",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "type": "local",
     "description": "Официальный плагин AnimeDB: правила нормализации ссылок справочных сайтов для сравнения записей каталога.",
     "author": "AnimeDB",
@@ -9,6 +9,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",
-        "plugin-contracts": "^0.26.3"
+        "plugin-contracts": "^0.26.3 || ^0.27"
     }
 }
