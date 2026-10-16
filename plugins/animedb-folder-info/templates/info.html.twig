@@ -1,0 +1,90 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://www.gnu.org/licenses/>.
+ #}
+
+{# Self-contained document: inline CSS, no scripts, no external resources. Only an allow-list of
+ # fields is printed (no sources, rating, watch status, notes, tags or storage). The cover is
+ # referenced by the bare file name the host returned from writeCover(), next to this file. #}
+{% set t = 'animedb-folder-info' %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ anime.title }}</title>
+<style>
+body { font-family: sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; color: #222; }
+img.cover { float: right; max-width: 14rem; margin: 0 0 1rem 1rem; }
+dt { font-weight: bold; float: left; clear: left; min-width: 10rem; }
+dd { margin: 0 0 .4rem 10rem; }
+</style>
+</head>
+<body>
+{% if coverFile is not null %}
+<img class="cover" src="{{ coverFile }}" alt="{{ anime.title }}">
+{% endif %}
+<h1>{{ anime.title }}</h1>
+<dl>
+{% if anime.alternativeNames|length > 0 %}
+<dt>{{ 'info.alternative_names'|trans({}, t) }}</dt>
+<dd>{% for name in anime.alternativeNames %}{{ name.name }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+{% endif %}
+{% if anime.type is not null %}
+<dt>{{ 'info.type'|trans({}, t) }}</dt>
+<dd>{{ ('info.type_value.' ~ anime.type.value)|trans({}, t) }}</dd>
+{% endif %}
+{% if anime.episodesCount is not null %}
+<dt>{{ 'info.episodes'|trans({}, t) }}</dt>
+<dd>{{ anime.episodesCount }}</dd>
+{% endif %}
+{% if anime.durationMinutes is not null %}
+<dt>{{ 'info.duration'|trans({}, t) }}</dt>
+<dd>{{ anime.durationMinutes }} {{ 'info.minutes'|trans({}, t) }}</dd>
+{% endif %}
+{% if anime.datePremiere is not null %}
+<dt>{{ 'info.date_premiere'|trans({}, t) }}</dt>
+<dd>{{ anime.datePremiere|date('Y-m-d') }}</dd>
+{% endif %}
+{% if anime.dateEnd is not null %}
+<dt>{{ 'info.date_end'|trans({}, t) }}</dt>
+<dd>{{ anime.dateEnd|date('Y-m-d') }}</dd>
+{% endif %}
+{% if anime.studios|length > 0 %}
+<dt>{{ 'info.studios'|trans({}, t) }}</dt>
+<dd>{{ anime.studios|join(', ') }}</dd>
+{% endif %}
+{% if anime.countries|length > 0 %}
+<dt>{{ 'info.countries'|trans({}, t) }}</dt>
+<dd>{{ anime.countries|join(', ') }}</dd>
+{% endif %}
+{% if anime.genres|length > 0 %}
+<dt>{{ 'info.genres'|trans({}, t) }}</dt>
+<dd>{% for genre in anime.genres %}{{ genre.value|replace({'-': ' '})|capitalize }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+{% endif %}
+{% if anime.themes|length > 0 %}
+<dt>{{ 'info.themes'|trans({}, t) }}</dt>
+<dd>{% for theme in anime.themes %}{{ theme.value|replace({'-': ' '})|capitalize }}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+{% endif %}
+</dl>
+{% if anime.description is not null and anime.description != '' %}
+<h2>{{ 'info.description'|trans({}, t) }}</h2>
+<p>{{ anime.description|nl2br }}</p>
+{% endif %}
+</body>
+</html>

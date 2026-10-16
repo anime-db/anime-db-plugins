@@ -1,0 +1,20 @@
+{
+    "id": "animedb-folder-info",
+    "name": "Folder info",
+    "version": "0.1.0",
+    "type": "local",
+    "description": "Официальный плагин AnimeDB: записывает описание и обложку записи в её собственную папку по кнопке в карточке.",
+    "author": "AnimeDB",
+    "locales": [
+        "en",
+        "ru"
+    ],
+    "features": {
+        "folder": false
+    },
+    "require": {
+        "core": ">=0.0.1",
+        "php": ">=8.5",
+        "plugin-contracts": "^0.27"
+    }
+}

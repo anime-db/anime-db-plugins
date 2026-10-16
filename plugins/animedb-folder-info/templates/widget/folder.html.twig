@@ -1,0 +1,42 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://www.gnu.org/licenses/>.
+ #}
+
+{# Raw fragment rendered by FolderWidget; the controller's HTMX response replaces #animedb-folder-info-<id>. #}
+<div id="animedb-folder-info-{{ animeId }}" class="animedb-folder-info">
+    {% if error %}
+        <p class="error">{{ error|trans({}, 'animedb-folder-info') }}</p>
+    {% endif %}
+    <p class="status status-{{ status }}">
+        {{ ('widget.folder.status.' ~ status)|trans({}, 'animedb-folder-info') }}
+        {% if writtenAt is not null %}
+            ({{ 'widget.folder.written_at'|trans({}, 'animedb-folder-info') }} {{ writtenAt|date('Y-m-d H:i') }})
+        {% endif %}
+    </p>
+    {% if canWrite %}
+        <form hx-post="{{ path('animedb_folder_info_write', {id: animeId}) }}" hx-target="#animedb-folder-info-{{ animeId }}" hx-swap="outerHTML">
+            <input type="hidden" name="_token" value="{{ csrf_token('animedb_folder_info_write') }}">
+            {% if overwrite %}
+                <input type="hidden" name="overwrite" value="1">
+            {% endif %}
+            <button type="submit">{{ (overwrite ? 'widget.folder.button.overwrite' : 'widget.folder.button.write')|trans({}, 'animedb-folder-info') }}</button>
+        </form>
+    {% endif %}
+</div>

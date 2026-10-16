@@ -1,0 +1,31 @@
+{
+    "name": "anime-db/animedb-folder-info",
+    "description": "Официальный плагин AnimeDB: запись описания и обложки в папку записи.",
+    "type": "anime-db-plugin",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": ">=8.5",
+        "anime-db/plugin-contracts": "^0.27"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "symfony/http-kernel": "8.1.*",
+        "symfony/http-foundation": "8.1.*",
+        "symfony/security-csrf": "8.1.*",
+        "symfony/yaml": "8.1.*",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbFolderInfo\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AnimeDb\\Plugins\\AnimedbFolderInfo\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
