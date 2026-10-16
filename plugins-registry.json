@@ -1,5 +1,5 @@
 {
-    "sequence": 80,
+    "sequence": 81,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -238,6 +238,16 @@
             },
             "versions": [
                 {
+                    "version": "0.2.8",
+                    "core": ">=0.0.1",
+                    "sha256": "d6ab6338e2ade28a0935b04329e5d271d5150578969f1e30963093e8318214da",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.25 || ^0.26 || ^0.27"
+                },
+                {
                     "version": "0.2.7",
                     "core": ">=0.0.1",
                     "sha256": "e38da7e37d1b32adac16732c35b7589828585401da93321a1aafcaf3a740388f",
@@ -356,6 +366,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.9.2",
+                    "core": ">=0.0.1",
+                    "sha256": "2f262ef9daa99e2274a5c0910961a8d16fe6a018edf1fb2cbdccecbabfdb431b",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2 || ^0.27"
+                },
                 {
                     "version": "0.9.1",
                     "core": ">=0.0.1",
@@ -503,6 +523,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.12.3",
+                    "core": ">=0.0.1",
+                    "sha256": "1f7d83ef09b64f12ab3d0d596b85134504735cbdfb962cc4898da59c944f7632",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2 || ^0.27"
+                },
                 {
                     "version": "0.12.2",
                     "core": ">=0.0.1",
@@ -756,6 +786,12 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.3.1",
+                    "core": ">=0.0.1",
+                    "sha256": "db5e0d4e57b3abf4cf4444632f1c7ae472cf85ce43fc2a13902f87b40984e81e",
+                    "plugin_contracts": "^0.26.2 || ^0.27"
+                },
                 {
                     "version": "0.3.0",
                     "core": ">=0.0.1",
