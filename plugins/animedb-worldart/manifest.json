@@ -1,7 +1,7 @@
 {
     "id": "animedb-worldart",
     "name": "World-Art",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "type": "integration",
     "description": "Официальный плагин-источник World-Art: поиск по названию, распознавание ссылок и заполнение записи.",
     "author": "AnimeDB",
@@ -15,6 +15,6 @@
     "require": {
         "core": ">=0.0.1",
         "php": ">=8.5",
-        "plugin-contracts": "^0.26.2"
+        "plugin-contracts": "^0.26.2 || ^0.27"
     }
 }
