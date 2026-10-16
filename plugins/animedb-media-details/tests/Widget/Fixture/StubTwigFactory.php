@@ -50,7 +50,7 @@ final class StubTwigFactory
      */
     private const CATALOG = [
         'widget.summary.title' => 'Media details',
-        'widget.summary.description' => "Shows container, track and subtitle details collected from the record's files.",
+        'widget.summary.description' => "Shows size, duration, video (codec, resolution, frame rate), audio tracks, and audio and subtitle languages collected from the record's files.",
         'widget.summary.pending' => 'Collecting file details…',
         'widget.summary.unavailable' => 'File details are unavailable.',
         'widget.summary.parse_failed' => 'Could not read details for any file.',

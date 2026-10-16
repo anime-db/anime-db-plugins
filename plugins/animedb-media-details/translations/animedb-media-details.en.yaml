@@ -7,7 +7,7 @@
 widget:
     summary:
         title: Media details
-        description: Shows container, track and subtitle details collected from the record's files.
+        description: Shows size, duration, video (codec, resolution, frame rate), audio tracks, and audio and subtitle languages collected from the record's files.
         pending: 'Collecting file details…'
         unavailable: 'File details are unavailable.'
         parse_failed: 'Could not read details for any file.'
