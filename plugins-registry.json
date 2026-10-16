@@ -1,5 +1,5 @@
 {
-    "sequence": 76,
+    "sequence": 77,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -32,6 +32,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.5.1",
+                    "core": ">=0.0.1",
+                    "sha256": "82d8e87b7591d96c70d822755c57c931a5b8214518918ec2ce516e4c28e02499",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2"
+                },
                 {
                     "version": "0.5.0",
                     "core": ">=0.0.1",
@@ -308,9 +318,9 @@
             "manifest": {
                 "id": "animedb-myanimelist",
                 "name": "MyAnimeList",
-                "version": "0.9.0",
+                "version": "0.9.1",
                 "type": "integration",
-                "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок и заполнение карточек аниме.",
+                "description": "Официальный плагин-источник MyAnimeList: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Рекомендуемые аниме», «Новинки».",
                 "author": "AnimeDB",
                 "features": {
                     "filler": true,
@@ -330,6 +340,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.9.1",
+                    "core": ">=0.0.1",
+                    "sha256": "fe60457e27f0fd80b6d59171e03079a82a78e9584a313799b5dac93ed6a15435",
+                    "locales": [
+                        "en",
+                        "ru"
+                    ],
+                    "plugin_contracts": "^0.26.2"
+                },
                 {
                     "version": "0.9.0",
                     "core": ">=0.0.1",
@@ -445,9 +465,9 @@
             "manifest": {
                 "id": "animedb-shikimori",
                 "name": "Shikimori",
-                "version": "0.12.1",
+                "version": "0.12.2",
                 "type": "integration",
-                "description": "Официальный плагин-источник Shikimori: поиск и заполнение карточек аниме.",
+                "description": "Официальный плагин-источник Shikimori: поиск, распознавание ссылок, заполнение карточек аниме, синхронизация списка просмотра и виджеты «Связанные аниме», «Похожие аниме», «Новинки».",
                 "author": "AnimeDB",
                 "locales": [
                     "en",
