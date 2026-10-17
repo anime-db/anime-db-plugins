@@ -12,3 +12,8 @@ animedb_folder_info_write:
     methods: [POST]
     requirements:
         id: '\d+'
+
+animedb_folder_info_settings:
+    path: /plugins/animedb-folder-info/settings
+    controller: AnimeDb\Plugins\AnimedbFolderInfo\Settings\FolderInfoSettingsController
+    methods: [POST]

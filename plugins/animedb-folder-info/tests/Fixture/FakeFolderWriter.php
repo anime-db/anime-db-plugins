@@ -51,6 +51,12 @@ final class FakeFolderWriter implements RecordFolderWriterInterface
 
     public ?\Throwable $throwOnWrite = null;
 
+    /** @var array<int, \Throwable> record id => what writeCover() throws for that record */
+    public array $throwOnWriteCoverFor = [];
+
+    /** @var (\Closure(AnimeId): void)|null called first in writeCover() */
+    public ?\Closure $onWriteCover = null;
+
     public ?\Throwable $throwOnInspect = null;
 
     public function write(AnimeId $anime, string $fileName, string $contents, bool $overwrite = false): void
@@ -66,6 +72,12 @@ final class FakeFolderWriter implements RecordFolderWriterInterface
     public function writeCover(AnimeId $anime, string $baseName, bool $overwrite = false): ?string
     {
         $this->calls[] = [$baseName, $overwrite];
+        if ($this->onWriteCover !== null) {
+            ($this->onWriteCover)($anime);
+        }
+        if (isset($this->throwOnWriteCoverFor[$anime->value])) {
+            throw $this->throwOnWriteCoverFor[$anime->value];
+        }
         if ($this->throwOnWriteCover !== null) {
             throw $this->throwOnWriteCover;
         }

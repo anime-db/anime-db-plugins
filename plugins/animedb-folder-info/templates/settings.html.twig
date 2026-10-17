@@ -1,0 +1,72 @@
+{#
+ # AnimeDb package.
+ #
+ # @author    Peter Gribanov <info@peter-gribanov.ru>
+ # @copyright Copyright (c) 2026, Peter Gribanov
+ # @license   https://www.gnu.org/licenses/gpl-3.0.html GPL-3.0-or-later
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation, either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with this program. If not, see <https://www.gnu.org/licenses/>.
+ #}
+{# Raw fragment, embedded by the host via `content|raw` — no `extends`, this is not a full page. #}
+<div id="animedb-folder-info-settings">
+    <form hx-post="{{ path('animedb_folder_info_settings') }}" hx-target="#animedb-folder-info-settings" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('animedb_folder_info_settings') }}">
+        <input type="hidden" name="action" value="save">
+
+        <label for="animedb-folder-info-auto">
+            <input type="checkbox" id="animedb-folder-info-auto" name="auto" value="1"{% if auto %} checked{% endif %}>
+            {{ 'settings.auto.label'|trans({}, 'animedb-folder-info') }}
+        </label>
+        <p class="hint">{{ 'settings.auto.hint'|trans({}, 'animedb-folder-info') }}</p>
+
+        <button type="submit">{{ 'settings.save_button'|trans({}, 'animedb-folder-info') }}</button>
+    </form>
+
+    <form hx-post="{{ path('animedb_folder_info_settings') }}" hx-target="#animedb-folder-info-settings" hx-swap="outerHTML">
+        <input type="hidden" name="_token" value="{{ csrf_token('animedb_folder_info_settings') }}">
+        <input type="hidden" name="action" value="fill_all">
+
+        <p class="hint">{{ 'settings.fill_all.hint'|trans({}, 'animedb-folder-info') }}</p>
+        <button type="submit">{{ 'settings.fill_all.button'|trans({}, 'animedb-folder-info') }}</button>
+    </form>
+
+    {% if message %}
+        <p class="success">{{ message|trans({}, 'animedb-folder-info') }}</p>
+    {% endif %}
+    {% if error %}
+        <p class="error">{{ error|trans({}, 'animedb-folder-info') }}</p>
+    {% endif %}
+
+    <div class="last-run">
+        <h3>{{ 'settings.summary.heading'|trans({}, 'animedb-folder-info') }}</h3>
+        {% if last is not null %}
+            <p class="finished-at">{{ 'settings.summary.finished_at'|trans({}, 'animedb-folder-info') }} {{ last.finished_at|date('Y-m-d H:i') }}</p>
+            <ul>
+                <li class="written">{{ 'settings.summary.written'|trans({'%count%': last.written}, 'animedb-folder-info') }}</li>
+                <li class="modified">{{ 'settings.summary.modified'|trans({'%count%': last.modified}, 'animedb-folder-info') }}</li>
+                <li class="no-folder">{{ 'settings.summary.no_folder'|trans({'%count%': last.no_folder}, 'animedb-folder-info') }}</li>
+                <li class="unavailable">{{ 'settings.summary.unavailable'|trans({'%count%': last.unavailable}, 'animedb-folder-info') }}</li>
+                <li class="not-writable">{{ 'settings.summary.not_writable'|trans({'%count%': last.not_writable}, 'animedb-folder-info') }}</li>
+                <li class="failed">{{ 'settings.summary.failed'|trans({'%count%': last.failed}, 'animedb-folder-info') }}</li>
+            </ul>
+            {% if last.not_writable > 0 %}
+                <p class="hint">{{ 'settings.summary.not_writable_hint'|trans({}, 'animedb-folder-info') }}</p>
+            {% endif %}
+        {% elseif running %}
+            <p class="status">{{ 'settings.summary.running'|trans({}, 'animedb-folder-info') }}</p>
+        {% else %}
+            <p class="status">{{ 'settings.summary.none'|trans({}, 'animedb-folder-info') }}</p>
+        {% endif %}
+    </div>
+</div>
