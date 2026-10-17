@@ -44,7 +44,7 @@ StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\
 | Плагин                                                             | Тип           | Назначение                                                                                                |
 |--------------------------------------------------------------------|---------------|-----------------------------------------------------------------------------------------------------------|
 | [`animedb-anidb`](plugins/animedb-anidb/README.md)                 | `integration` | Источник метаданных AniDB: поиск по названию, распознавание ссылок, заполнение карточки, виджеты          |
-| [`animedb-folder-info`](plugins/animedb-folder-info/README.md)     | `local`       | Описание записи и обложка в папке записи: `animedb-info.html` по кнопке на карточке                       |
+| [`animedb-folder-info`](plugins/animedb-folder-info/README.md)     | `local`       | Описание записи и обложка в папке записи: `animedb-info.html` автоматически и по кнопке                   |
 | [`animedb-language-pack`](plugins/animedb-language-pack/README.md) | `translation` | Языковой пакет: языки интерфейса `de`, `ja`                                                               |
 | [`animedb-link-rules`](plugins/animedb-link-rules/README.md)       | `local`       | Правила нормализации ссылок справочных сайтов для сравнения записей каталога                              |
 | [`animedb-media-details`](plugins/animedb-media-details/README.md) | `local`       | Характеристики файлов записи: размер, длительность, видео, звуковые дорожки, языки звука и субтитров      |
