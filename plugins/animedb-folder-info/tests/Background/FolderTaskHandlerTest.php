@@ -139,7 +139,7 @@ final class FolderTaskHandlerTest extends TestCase
     {
         $this->store->data += ['run_id' => 'r', 'run_cursor' => 100];
         $this->index->ids = range(101, 175);
-        $counters = ['written' => 4, 'modified' => 1, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0];
+        $counters = ['written' => 4, 'modified' => 1, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0, 'failed' => 0];
 
         $this->handler->handle(self::fillAll('r', 100, $counters));
 
@@ -148,7 +148,7 @@ final class FolderTaskHandlerTest extends TestCase
         self::assertCount(1, $this->queue->tasks);
         $next = $this->queue->tasks[0];
         self::assertSame('fill-all', $next->name);
-        self::assertSame(['written' => 54, 'modified' => 1, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0], $next->payload['counters']);
+        self::assertSame(['written' => 54, 'modified' => 1, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0, 'failed' => 0], $next->payload['counters']);
         self::assertSame('r', $next->payload['run']);
         self::assertSame(150, $next->payload['after']);
         self::assertSame(
@@ -164,26 +164,75 @@ final class FolderTaskHandlerTest extends TestCase
     public function testFillAllCountsEveryOutcome(): void
     {
         $this->store->data += ['run_id' => 'r', 'run_cursor' => null];
-        $this->index->ids = [1];
-        $this->writer->throwOnWriteCover = new StorageNotWritableException();
+        // 1 written, 2 modified, 3 no folder, 4 unavailable, 5 not writable, 6 failed: distinct counts.
+        $throwables = [
+            2 => new ForeignFileException(),
+            3 => new RecordHasNoFolderException(),
+            4 => new StorageUnavailableException(),
+            5 => new StorageNotWritableException(),
+            6 => new \RuntimeException('boom'),
+        ];
+        $id = 0;
+        $ids = [];
+        foreach ($throwables as $count => $throwable) {
+            for ($i = 0; $i < $count; ++$i) {
+                $ids[] = ++$id;
+                $this->writer->throwOnWriteCoverFor[$id] = $throwable;
+            }
+        }
+        $ids[] = ++$id;
+        $this->index->ids = $ids;
 
         $this->handler->handle(self::fillAll('r', null));
 
-        self::assertSame(1, $this->queue->tasks[0]->payload['counters']['not_writable']);
-        self::assertSame(0, $this->queue->tasks[0]->payload['counters']['written']);
+        self::assertSame(
+            ['written' => 1, 'modified' => 2, 'no_folder' => 3, 'unavailable' => 4, 'not_writable' => 5, 'failed' => 6],
+            $this->queue->tasks[0]->payload['counters'],
+        );
+    }
+
+    public function testFailureOfOneRecordDoesNotStopTheRun(): void
+    {
+        $this->store->data += ['run_id' => 'r', 'run_cursor' => null];
+        $this->index->ids = [1, 2, 3];
+        $this->writer->throwOnWriteCoverFor[2] = new \RuntimeException('boom');
+
+        $this->handler->handle(self::fillAll('r', null));
+
+        self::assertSame(3, $this->store->data['run_cursor']);
+        self::assertCount(1, $this->queue->tasks);
+        self::assertSame(
+            ['written' => 2, 'modified' => 0, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0, 'failed' => 1],
+            $this->queue->tasks[0]->payload['counters'],
+        );
+
+        $this->handler->handle($this->queue->tasks[0]);
+
+        self::assertCount(1, $this->queue->tasks);
+        self::assertNotNull($this->settings->lastRun());
+        self::assertSame(1, $this->settings->lastRun()['failed']);
+    }
+
+    public function testFillFailureDoesNotFailTheTask(): void
+    {
+        $this->writer->throwOnWriteCover = new \RuntimeException('boom');
+
+        $this->handler->handle(new BackgroundTask('fill', new AnimeId(3)));
+
+        self::assertSame([], $this->queue->tasks);
     }
 
     public function testEmptyBatchStoresTheSummaryAndQueuesNothing(): void
     {
         $this->store->data += ['run_id' => 'r', 'run_cursor' => 7];
-        $counters = ['written' => 5, 'modified' => 4, 'no_folder' => 3, 'unavailable' => 2, 'not_writable' => 1];
+        $counters = ['written' => 5, 'modified' => 4, 'no_folder' => 3, 'unavailable' => 2, 'not_writable' => 1, 'failed' => 6];
 
         $this->handler->handle(self::fillAll('r', 7, $counters));
 
         self::assertSame([], $this->queue->tasks);
         $last = $this->settings->lastRun();
         self::assertNotNull($last);
-        self::assertSame(['written' => 5, 'modified' => 4, 'no_folder' => 3, 'unavailable' => 2, 'not_writable' => 1], array_diff_key($last, ['finished_at' => 1]));
+        self::assertSame(['written' => 5, 'modified' => 4, 'no_folder' => 3, 'unavailable' => 2, 'not_writable' => 1, 'failed' => 6], array_diff_key($last, ['finished_at' => 1]));
         self::assertGreaterThan(0, $last['finished_at']);
     }
 
@@ -217,9 +266,21 @@ final class FolderTaskHandlerTest extends TestCase
     public function testClickDuringABatchDoesNotLetTheOldChainContinue(): void
     {
         $this->store->data += ['run_id' => 'r', 'run_cursor' => null];
+        $this->index->ids = [1, 2, 3];
+        $clicked = false;
+        $this->writer->onWriteCover = function (AnimeId $anime) use (&$clicked): void {
+            if ($anime->value === 2) {
+                $clicked = true;
+                $this->settings->startRun();
+            }
+        };
 
-        self::assertFalse($this->settings->advance('other', 9));
+        $this->handler->handle(self::fillAll('r', null));
+
+        self::assertTrue($clicked);
+        self::assertNotSame('r', $this->store->data['run_id']);
         self::assertNull($this->store->data['run_cursor']);
+        self::assertSame([], $this->queue->tasks);
     }
 
     /**

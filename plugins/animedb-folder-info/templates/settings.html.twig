@@ -58,6 +58,7 @@
                 <li class="no-folder">{{ 'settings.summary.no_folder'|trans({'%count%': last.no_folder}, 'animedb-folder-info') }}</li>
                 <li class="unavailable">{{ 'settings.summary.unavailable'|trans({'%count%': last.unavailable}, 'animedb-folder-info') }}</li>
                 <li class="not-writable">{{ 'settings.summary.not_writable'|trans({'%count%': last.not_writable}, 'animedb-folder-info') }}</li>
+                <li class="failed">{{ 'settings.summary.failed'|trans({'%count%': last.failed}, 'animedb-folder-info') }}</li>
             </ul>
             {% if last.not_writable > 0 %}
                 <p class="hint">{{ 'settings.summary.not_writable_hint'|trans({}, 'animedb-folder-info') }}</p>

@@ -76,7 +76,7 @@ final class FolderInfoSettingsControllerTest extends TestCase
         $task = $this->queue->tasks[0];
         self::assertSame('fill-all', $task->name);
         self::assertSame(['run' => $run, 'after' => null, 'counters' => [
-            'written' => 0, 'modified' => 0, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0,
+            'written' => 0, 'modified' => 0, 'no_folder' => 0, 'unavailable' => 0, 'not_writable' => 0, 'failed' => 0,
         ]], $task->payload);
     }
 

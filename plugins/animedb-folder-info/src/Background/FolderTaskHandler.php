@@ -56,6 +56,7 @@ final class FolderTaskHandler implements BackgroundTaskHandlerInterface
         'no_folder' => 0,
         'unavailable' => 0,
         'not_writable' => 0,
+        'failed' => 0,
     ];
 
     public function __construct(
@@ -69,10 +70,21 @@ final class FolderTaskHandler implements BackgroundTaskHandlerInterface
     public function handle(BackgroundTask $task): void
     {
         match ($task->name) {
-            self::FILL => $task->anime !== null ? $this->fill($task->anime) : null,
+            self::FILL => $task->anime !== null ? $this->fillQuietly($task->anime) : null,
             self::FILL_ALL => $this->fillAll($task->payload),
             default => null,
         };
+    }
+
+    /**
+     * A single automatic fill must never fail the task: the host would redeliver it over and over.
+     */
+    private function fillQuietly(AnimeId $anime): void
+    {
+        try {
+            $this->fill($anime);
+        } catch (\Throwable) {
+        }
     }
 
     /**
@@ -110,14 +122,19 @@ final class FolderTaskHandler implements BackgroundTaskHandlerInterface
         }
 
         foreach ($batch as $anime) {
-            $counter = match ($this->fill($anime)) {
-                FolderStatus::Written => 'written',
-                FolderStatus::Modified => 'modified',
-                FolderStatus::NoFolder => 'no_folder',
-                FolderStatus::Unavailable => 'unavailable',
-                FolderStatus::NotWritable => 'not_writable',
-                default => null,
-            };
+            // One broken record is counted and skipped, it must not stall the whole run.
+            try {
+                $counter = match ($this->fill($anime)) {
+                    FolderStatus::Written => 'written',
+                    FolderStatus::Modified => 'modified',
+                    FolderStatus::NoFolder => 'no_folder',
+                    FolderStatus::Unavailable => 'unavailable',
+                    FolderStatus::NotWritable => 'not_writable',
+                    default => null,
+                };
+            } catch (\Throwable) {
+                $counter = 'failed';
+            }
             if ($counter !== null) {
                 ++$counters[$counter];
             }

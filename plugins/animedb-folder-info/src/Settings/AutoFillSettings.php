@@ -125,7 +125,7 @@ final class AutoFillSettings
         }
 
         $result = [];
-        foreach (['written', 'modified', 'no_folder', 'unavailable', 'not_writable', 'finished_at'] as $key) {
+        foreach (['written', 'modified', 'no_folder', 'unavailable', 'not_writable', 'failed', 'finished_at'] as $key) {
             $value = $last[$key] ?? 0;
             $result[$key] = \is_int($value) ? $value : 0;
         }
