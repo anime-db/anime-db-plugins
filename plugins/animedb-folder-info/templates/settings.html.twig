@@ -19,8 +19,6 @@
  # along with this program. If not, see <https://www.gnu.org/licenses/>.
  #}
 {# Raw fragment, embedded by the host via `content|raw` — no `extends`, this is not a full page. #}
-<div id="animedb-shikimori-settings">
-{# Raw fragment, embedded by the host via `content|raw` — no `extends`, this is not a full page. #}
 <div id="animedb-folder-info-settings">
     <form hx-post="{{ path('animedb_folder_info_settings') }}" hx-target="#animedb-folder-info-settings" hx-swap="outerHTML">
         <input type="hidden" name="_token" value="{{ csrf_token('animedb_folder_info_settings') }}">

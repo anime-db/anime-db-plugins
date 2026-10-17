@@ -111,6 +111,15 @@ final class FolderInfoSettingsControllerTest extends TestCase
         self::assertStringContainsString('value="stub-csrf-token-for-animedb_folder_info_settings"', $html);
     }
 
+    public function testPageIsASingleFragmentRootedAtItsOwnContainer(): void
+    {
+        $html = $this->page([]);
+
+        self::assertStringStartsWith('<div id="animedb-folder-info-settings">', ltrim($html));
+        self::assertStringNotContainsString('shikimori', $html);
+        self::assertSame(substr_count($html, '<div'), substr_count($html, '</div>'));
+    }
+
     /**
      * @param array<string, mixed> $settings
      */
