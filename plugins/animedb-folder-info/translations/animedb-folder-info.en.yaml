@@ -43,3 +43,29 @@ info:
     genres: Genres
     themes: Themes
     description: Description
+settings:
+    auto:
+        label: Fill folders automatically
+        hint: When a folder appears or the description or cover changes, the files are written without a click. A file that was changed outside AnimeDB is never replaced; only the button in the record widget does that.
+    save_button: Save
+    saved: Saved.
+    fill_all:
+        button: Fill all folders
+        hint: Writes the files into every record folder in the background, also when the automation is off. Files changed outside AnimeDB are skipped.
+        started: The run is started.
+    summary:
+        heading: Last run
+        none: There was no run yet.
+        running: The run is in progress.
+        finished_at: Finished
+        written: 'Up to date: %count%'
+        modified: 'Changed outside AnimeDB: %count%'
+        no_folder: 'No folder of its own: %count%'
+        unavailable: 'Storage unavailable: %count%'
+        not_writable: 'Writing not allowed: %count%'
+        not_writable_hint: The storage is read-only or has not been scanned yet — scan it.
+    error:
+        invalid_form: Invalid form submission, please reload the page and try again.
+        invalid_csrf: Invalid CSRF token, please reload the page and try again.
+        concurrent_write: The settings are being saved right now, please try again.
+        save_failed: Could not save the settings, please try again.

@@ -56,7 +56,7 @@ final class StubTwigFactory
         $twig->addFilter(new TwigFilter(
             'trans',
             static fn (string $key, array $params = [], ?string $domain = null): string => match ($domain) {
-                'animedb-folder-info' => $catalog[$key] ?? $key,
+                'animedb-folder-info' => strtr($catalog[$key] ?? $key, array_map('strval', $params)),
                 'messages', null => 'app:'.$key,
                 default => $key,
             },
