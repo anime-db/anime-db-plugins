@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Guards tools/compile-plugin-container.php: the host registers every class of a plugin's
@@ -231,6 +232,79 @@ final class CompilePluginContainerCliTest extends TestCase
         }
 
         return $plugin;
+    }
+
+    public function testPrValidationWorkflowCompilesTheAffectedPluginAfterThePluginBoundaryGate(): void
+    {
+        $workflow = Yaml::parseFile(\dirname(__DIR__).'/.github/workflows/pr-validation.yml');
+        self::assertIsArray($workflow);
+
+        $steps = $workflow['jobs']['validate']['steps'] ?? null;
+        self::assertIsArray($steps, 'Job "validate" of pr-validation.yml has no steps.');
+
+        $boundaryGateIndex = null;
+        $analysisIndex = null;
+        $compileIndexes = [];
+
+        foreach ($steps as $index => $step) {
+            $run = \is_array($step) && \is_string($step['run'] ?? null) ? $step['run'] : '';
+
+            if (str_contains($run, 'tools/check-pr-changes.php')) {
+                $boundaryGateIndex = $index;
+            }
+
+            if (str_contains($run, 'tools/analyse-plugin.php')) {
+                $analysisIndex = $index;
+            }
+
+            if (!str_contains($run, 'tools/compile-plugin-container.php')) {
+                continue;
+            }
+
+            $compileIndexes[] = $index;
+
+            // Pinned exactly: on an infrastructural PR there is no affected plugin (and no
+            // affected-plugin.txt), and any status function — always(), cancelled(), failure(),
+            // even an explicit `success() || …` — drops the implicit success() and lets the step
+            // load the PR's plugin classes after the boundary gate that vets the PR had failed.
+            self::assertSame(
+                "steps.diff.outputs.touches_plugins == 'true'",
+                $step['if'] ?? null,
+                'The container gate must run on plugin PRs only and keep the implicit success().',
+            );
+
+            // With continue-on-error the gate turns advisory: a plugin whose container does not
+            // compile would pass CI.
+            self::assertFalse(
+                (bool) ($step['continue-on-error'] ?? false),
+                'The container gate must block the PR, not just report.',
+            );
+
+            self::assertStringContainsString(
+                'affected-plugin.txt',
+                $run,
+                'The container gate must compile the plugin the PR touches, not a fixed one.',
+            );
+        }
+
+        self::assertIsInt($boundaryGateIndex, 'pr-validation.yml no longer runs check-pr-changes.php.');
+        // Exactly one step: a duplicate placed before the boundary gate would otherwise hide
+        // behind the compliant one.
+        self::assertCount(1, $compileIndexes, 'pr-validation.yml must run compile-plugin-container.php in exactly one step.');
+        self::assertGreaterThan(
+            $boundaryGateIndex,
+            $compileIndexes[0],
+            'The container gate loads plugin code from the PR, so it must run after the boundary gate.',
+        );
+
+        // The step executes the plugin's top-level code (require, reflection), so it runs only
+        // once the static analysis has refused dangerous primitives — as Tests (plugin) does.
+        self::assertIsInt($analysisIndex, 'pr-validation.yml no longer runs analyse-plugin.php.');
+        self::assertGreaterThan(
+            $analysisIndex,
+            $compileIndexes[0],
+            'The container gate executes plugin code from the PR, so it must run after the static analysis.',
+        );
     }
 
     private function temporaryDirectory(): string
