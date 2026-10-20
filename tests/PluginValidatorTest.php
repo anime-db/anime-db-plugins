@@ -569,6 +569,16 @@ final class PluginValidatorTest extends TestCase
         self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
     }
 
+    public function testWikidataOfficialPluginIdIsAllowedToUseReservedVendor(): void
+    {
+        $manifest = $this->validManifest('animedb-wikidata');
+        $pluginDir = $this->createPluginDir('animedb-wikidata', $manifest);
+
+        $errors = (new PluginValidator())->validate($pluginDir);
+
+        self::assertFalse(self::hasErrorContaining($errors, 'reserved "animedb" vendor'));
+    }
+
     public function testUnrelatedReservedVendorIdIsStillRejected(): void
     {
         $manifest = $this->validManifest('animedb-media-details-fake');
