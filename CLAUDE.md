@@ -29,6 +29,10 @@ composer cs-check    # code style check (php-cs-fixer, --dry-run)
 # `composer phpstan` above covers tools/ only and never touches plugins/. No install
 # inside the plugin: the analysis environment is this repo's vendor/ on purpose.
 php tools/analyse-plugin.php plugins/<plugin-id>
+
+# Compile the plugin's DI container the way the host registers it (autowire + autoconfigure
+# of everything in src/); fails on e.g. an injected class with a private constructor.
+php tools/compile-plugin-container.php plugins/<plugin-id>
 ```
 
 ## Boundaries
