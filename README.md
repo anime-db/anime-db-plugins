@@ -50,6 +50,7 @@ StudlyCase, слитно, под общим префиксом `AnimeDb\Plugins\
 | [`animedb-media-details`](plugins/animedb-media-details/README.md) | `local`       | Характеристики файлов записи: размер, длительность, видео, звуковые дорожки, языки звука и субтитров      |
 | [`animedb-myanimelist`](plugins/animedb-myanimelist/README.md)     | `integration` | Источник метаданных MyAnimeList: поиск, распознавание ссылок, заполнение карточек, синхронизация, виджеты |
 | [`animedb-shikimori`](plugins/animedb-shikimori/README.md)         | `integration` | Источник метаданных Shikimori: поиск, распознавание ссылок, заполнение карточек, синхронизация, виджеты   |
+| [`animedb-wikidata`](plugins/animedb-wikidata/README.md)           | `integration` | Мост связывания через Wikidata: по ссылке IMDb/Кинопоиска добавляет ссылки на MAL, AniDB, ANN, AniList    |
 | [`animedb-worldart`](plugins/animedb-worldart/README.md)           | `integration` | Источник метаданных World-Art: поиск по названию, распознавание ссылок, заполнение записи                 |
 
 Колонка «Тип» — это поле `type` манифеста, и оно определяет не только назначение, но и
