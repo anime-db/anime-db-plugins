@@ -20,7 +20,8 @@
         "symfony/security-csrf": "8.1.*",
         "twig/twig": "^3.0",
         "symfony/dependency-injection": "8.1.*",
-        "symfony/config": "8.1.*"
+        "symfony/config": "8.1.*",
+        "symfony/event-dispatcher": "8.1.*"
     },
     "autoload": {
         "psr-4": {

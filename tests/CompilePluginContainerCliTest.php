@@ -107,6 +107,46 @@ final class CompilePluginContainerCliTest extends TestCase
         self::assertSame(0, $exitCode, $output);
     }
 
+    public function testExternalTypeOutsideTheHostSurfaceFails(): void
+    {
+        $plugin = $this->plugin([
+            'Bridge.php' => 'final class Bridge implements \AnimeDb\PluginContracts\Filler\FillerInterface { use FillerStub; '
+                .'public function __construct(\DateTimeImmutable $now) {} }',
+        ]);
+
+        [$exitCode, $output] = $this->compile($plugin);
+
+        self::assertSame(1, $exitCode, $output);
+        self::assertStringContainsString('DateTimeImmutable', $output);
+    }
+
+    public function testSymlinkedFileUnderSrcIsRefused(): void
+    {
+        $plugin = $this->plugin([
+            'Bridge.php' => 'final class Bridge implements \AnimeDb\PluginContracts\Filler\FillerInterface { use FillerStub; }',
+        ]);
+        symlink('/etc/hostname', $plugin.'/src/Smuggled.php');
+
+        [$exitCode, $output] = $this->compile($plugin);
+
+        self::assertSame(1, $exitCode, $output);
+        self::assertStringContainsString('contains a symlink', $output);
+    }
+
+    public function testSrcThatIsASymlinkIsRefused(): void
+    {
+        $real = $this->temporaryDirectory().'/real-src';
+        mkdir($real);
+        $plugin = $this->temporaryDirectory().'/animedb-fx';
+        mkdir($plugin);
+        symlink($real, $plugin.'/src');
+
+        [$exitCode, $output] = $this->compile($plugin);
+
+        self::assertSame(1, $exitCode, $output);
+        self::assertStringContainsString('contains a symlink', $output);
+    }
+
     public function testPluginWithoutSrcPasses(): void
     {
         $plugin = $this->temporaryDirectory().'/animedb-fx';

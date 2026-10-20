@@ -43,10 +43,16 @@ declare(strict_types=1);
  *    tagged iterator (what the host's pass does), and so are `#[AsController]` services and
  *    `EventSubscriberInterface` implementations (kept by the framework). Without roots an
  *    unused service is removed on compile and the error would never surface;
- *  - everything the constructors of plugin services ask for from outside the plugin namespace
- *    (PSR interfaces, plugin contracts, Twig, ...) is the host's to provide, so it is
- *    registered as a synthetic service. Classes of the plugin namespace are never replaced:
- *    those are exactly what is being checked.
+ *  - what the constructors of plugin services ask for from outside the plugin namespace is
+ *    registered as a synthetic service only if it is on the allow-list of the host's surface
+ *    (PSR interfaces, plugin contracts, Twig\Environment, CsrfTokenManagerInterface); any other external type stays
+ *    unresolved and fails compilation, as it does in the host. Classes of the plugin
+ *    namespace are never replaced: those are exactly what is being checked.
+ *
+ * Known limits: only constructor parameters of plain and union types are scanned. Members of
+ * intersection / DNF types, `#[Required]` setters and `#[Autowire]` are not, so a plugin that
+ * injects an allow-listed host service that way fails this gate although the host would
+ * compile it.
  *
  * As in analyse-plugin.php / test-plugin.php, the environment is this repository's vendor/;
  * the plugin's own autoloading is only its `src/` mapped to `AnimeDb\Plugins\<StudlyId>\`.
@@ -91,6 +97,25 @@ const ROOT_TAG = 'animedb.plugin_container_gate.root';
 function studly(string $id): string
 {
     return implode('', array_map(ucfirst(...), preg_split('/[^A-Za-z0-9]+/', $id, -1, \PREG_SPLIT_NO_EMPTY) ?: []));
+}
+
+/** What the host is known to provide to plugin services; anything else is not injectable. */
+const HOST_SERVICE_PREFIXES = ['Psr\\', 'AnimeDb\\PluginContracts\\'];
+const HOST_SERVICES = [Twig\Environment::class, Symfony\Component\Security\Csrf\CsrfTokenManagerInterface::class];
+
+function isHostService(string $name): bool
+{
+    if (\in_array($name, HOST_SERVICES, true)) {
+        return true;
+    }
+
+    foreach (HOST_SERVICE_PREFIXES as $prefix) {
+        if (str_starts_with($name, $prefix)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function containsSymlink(string $directory): bool
@@ -191,8 +216,9 @@ try {
     $loader = new PhpFileLoader($container, new FileLocator($srcDir));
     $loader->registerClasses($prototype, $namespacePrefix, $srcDir.'/*');
 
-    // What the host provides: every class or interface a plugin service asks for in its
-    // constructor from outside the plugin namespace.
+    // What the host provides: the classes and interfaces from HOST_SERVICES a plugin service
+    // asks for in its constructor. Anything else outside the plugin namespace stays unresolved,
+    // so compile() fails the way the host does.
     foreach ($container->getDefinitions() as $definition) {
         $class = $definition->getClass();
         if ($class === null || !str_starts_with($class, $namespacePrefix) || !class_exists($class)) {
@@ -218,7 +244,7 @@ try {
                     continue;
                 }
 
-                if (class_exists($name) || interface_exists($name)) {
+                if (isHostService($name) && (class_exists($name) || interface_exists($name))) {
                     $container->register($name, $name)->setSynthetic(true);
                 }
             }
