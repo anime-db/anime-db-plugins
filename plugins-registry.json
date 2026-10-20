@@ -1,5 +1,5 @@
 {
-    "sequence": 84,
+    "sequence": 85,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -813,12 +813,12 @@
             "manifest": {
                 "id": "animedb-wikidata",
                 "name": "Wikidata",
-                "version": "0.1.0",
+                "version": "0.2.0",
                 "type": "integration",
-                "description": "Официальный плагин-мост Wikidata: распознавание ссылок Wikidata, IMDb и Кинопоиска и клиент Wikidata.",
+                "description": "Официальный плагин-мост Wikidata: распознавание ссылок Wikidata, IMDb и Кинопоиска и заполнение ссылок на аниме-каталоги и другие страницы тайтла.",
                 "author": "AnimeDB",
                 "features": {
-                    "filler": false,
+                    "filler": true,
                     "sync": false,
                     "related": false,
                     "similar": false,
@@ -831,6 +831,12 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.2.0",
+                    "core": ">=0.0.1",
+                    "sha256": "b87f4fe0a13b01ff9333bae6f207e6c07a91f4d772bc1b492bd8f8793a4d5b06",
+                    "plugin_contracts": "^0.26.2 || ^0.27"
+                },
                 {
                     "version": "0.1.0",
                     "core": ">=0.0.1",
