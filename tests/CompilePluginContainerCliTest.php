@@ -243,7 +243,7 @@ final class CompilePluginContainerCliTest extends TestCase
         self::assertIsArray($steps, 'Job "validate" of pr-validation.yml has no steps.');
 
         $boundaryGateIndex = null;
-        $compileIndex = null;
+        $compileIndexes = [];
 
         foreach ($steps as $index => $step) {
             $run = \is_array($step) && \is_string($step['run'] ?? null) ? $step['run'] : '';
@@ -256,7 +256,7 @@ final class CompilePluginContainerCliTest extends TestCase
                 continue;
             }
 
-            $compileIndex = $index;
+            $compileIndexes[] = $index;
 
             $condition = $step['if'] ?? null;
             self::assertIsString($condition, 'The container gate step must be conditional.');
@@ -269,12 +269,13 @@ final class CompilePluginContainerCliTest extends TestCase
                 'The container gate must be skipped on purely infrastructural PRs.',
             );
 
-            // The step loads the PR's plugin classes. `!cancelled()` would drop the implicit
-            // success() and let it run after the boundary gate that vets the PR had failed.
-            self::assertStringNotContainsString(
-                'cancelled()',
+            // The step loads the PR's plugin classes. Any status function other than success()
+            // — always(), cancelled(), failure() — drops the implicit success() and lets it run
+            // after the boundary gate that vets the PR had failed.
+            self::assertDoesNotMatchRegularExpression(
+                '/\\b(always|cancelled|failure)\\s*\\(/',
                 $condition,
-                'The container gate must not run once an earlier gate has failed.',
+                'The container gate must keep the implicit success(): it must not run once an earlier gate has failed.',
             );
 
             self::assertStringContainsString(
@@ -285,10 +286,12 @@ final class CompilePluginContainerCliTest extends TestCase
         }
 
         self::assertIsInt($boundaryGateIndex, 'pr-validation.yml no longer runs check-pr-changes.php.');
-        self::assertIsInt($compileIndex, 'pr-validation.yml does not run compile-plugin-container.php.');
+        // Exactly one step: a duplicate placed before the boundary gate would otherwise hide
+        // behind the compliant one.
+        self::assertCount(1, $compileIndexes, 'pr-validation.yml must run compile-plugin-container.php in exactly one step.');
         self::assertGreaterThan(
             $boundaryGateIndex,
-            $compileIndex,
+            $compileIndexes[0],
             'The container gate loads plugin code from the PR, so it must run after the boundary gate.',
         );
     }
