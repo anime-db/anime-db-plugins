@@ -243,6 +243,7 @@ final class CompilePluginContainerCliTest extends TestCase
         self::assertIsArray($steps, 'Job "validate" of pr-validation.yml has no steps.');
 
         $boundaryGateIndex = null;
+        $analysisIndex = null;
         $compileIndexes = [];
 
         foreach ($steps as $index => $step) {
@@ -252,30 +253,31 @@ final class CompilePluginContainerCliTest extends TestCase
                 $boundaryGateIndex = $index;
             }
 
+            if (str_contains($run, 'tools/analyse-plugin.php')) {
+                $analysisIndex = $index;
+            }
+
             if (!str_contains($run, 'tools/compile-plugin-container.php')) {
                 continue;
             }
 
             $compileIndexes[] = $index;
 
-            $condition = $step['if'] ?? null;
-            self::assertIsString($condition, 'The container gate step must be conditional.');
-
-            // On an infrastructural PR there is no affected plugin, and affected-plugin.txt
-            // does not exist at all.
-            self::assertStringContainsString(
+            // Pinned exactly: on an infrastructural PR there is no affected plugin (and no
+            // affected-plugin.txt), and any status function — always(), cancelled(), failure(),
+            // even an explicit `success() || …` — drops the implicit success() and lets the step
+            // load the PR's plugin classes after the boundary gate that vets the PR had failed.
+            self::assertSame(
                 "steps.diff.outputs.touches_plugins == 'true'",
-                $condition,
-                'The container gate must be skipped on purely infrastructural PRs.',
+                $step['if'] ?? null,
+                'The container gate must run on plugin PRs only and keep the implicit success().',
             );
 
-            // The step loads the PR's plugin classes. Any status function other than success()
-            // — always(), cancelled(), failure() — drops the implicit success() and lets it run
-            // after the boundary gate that vets the PR had failed.
-            self::assertDoesNotMatchRegularExpression(
-                '/\\b(always|cancelled|failure)\\s*\\(/',
-                $condition,
-                'The container gate must keep the implicit success(): it must not run once an earlier gate has failed.',
+            // With continue-on-error the gate turns advisory: a plugin whose container does not
+            // compile would pass CI.
+            self::assertFalse(
+                (bool) ($step['continue-on-error'] ?? false),
+                'The container gate must block the PR, not just report.',
             );
 
             self::assertStringContainsString(
@@ -293,6 +295,15 @@ final class CompilePluginContainerCliTest extends TestCase
             $boundaryGateIndex,
             $compileIndexes[0],
             'The container gate loads plugin code from the PR, so it must run after the boundary gate.',
+        );
+
+        // The step executes the plugin's top-level code (require, reflection), so it runs only
+        // once the static analysis has refused dangerous primitives — as Tests (plugin) does.
+        self::assertIsInt($analysisIndex, 'pr-validation.yml no longer runs analyse-plugin.php.');
+        self::assertGreaterThan(
+            $analysisIndex,
+            $compileIndexes[0],
+            'The container gate executes plugin code from the PR, so it must run after the static analysis.',
         );
     }
 

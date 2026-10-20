@@ -156,7 +156,11 @@ jobs:
       #
       # Стоит после гейта «один плагин / только его код» по той же причине, что и анализ:
       # скрипт загружает классы плагина из PR, значит tools/ должен быть содержимым базовой
-      # ветки. Симлинки под src/ скрипт отклоняет сам. Плагин без src/ — SKIP, шаг зелёный.
+      # ветки. И после самого анализа: загрузка (require, рефлексия) исполняет верхнеуровневый
+      # код файлов плагина, поэтому он исполняется в раннере только после того, как
+      # NoDangerousPrimitivesRule его пропустил, — так же устроен «Tests (plugin)». Условие —
+      # только touches_plugins с неявным success(), без continue-on-error: гейт блокирующий.
+      # Симлинки под src/ скрипт отклоняет сам. Плагин без src/ — SKIP, шаг зелёный.
       - name: Gate — plugin container compiles
         if: steps.diff.outputs.touches_plugins == 'true'
         run: php tools/compile-plugin-container.php "plugins/$(cat affected-plugin.txt)"
