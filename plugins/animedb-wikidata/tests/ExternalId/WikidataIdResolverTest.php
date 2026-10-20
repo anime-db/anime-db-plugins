@@ -29,9 +29,9 @@ namespace AnimeDb\Plugins\AnimedbWikidata\Tests\ExternalId;
 
 use AnimeDb\Plugins\AnimedbWikidata\WikidataBridge;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use AnimeDb\Plugins\AnimedbWikidata\Tests\Support\WikidataTestCase;
 
-final class WikidataIdResolverTest extends TestCase
+final class WikidataIdResolverTest extends WikidataTestCase
 {
     /**
      * @return iterable<string, array{list<string>, string|null}>
@@ -78,12 +78,12 @@ final class WikidataIdResolverTest extends TestCase
     #[DataProvider('cases')]
     public function testResolve(array $urls, ?string $expected): void
     {
-        self::assertSame($expected, (new WikidataBridge())->resolveExternalId($urls));
+        self::assertSame($expected, (new WikidataBridge($this->client))->resolveExternalId($urls));
     }
 
     public function testFindIsAlwaysEmpty(): void
     {
-        $bridge = new WikidataBridge();
+        $bridge = new WikidataBridge($this->client);
 
         self::assertSame([], $bridge->find('Arrietty'));
         self::assertSame([], $bridge->find(''));

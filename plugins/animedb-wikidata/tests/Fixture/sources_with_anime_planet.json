@@ -1,0 +1,131 @@
+[
+ {
+  "name": "MyAnimeList",
+  "property": "P4086",
+  "url": "https://myanimelist.net/anime/{id}",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": true,
+  "example": {
+   "id": "7711",
+   "url": "https://myanimelist.net/anime/7711"
+  }
+ },
+ {
+  "name": "AniDB",
+  "property": "P5646",
+  "url": "https://anidb.net/anime/{id}",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": true,
+  "example": {
+   "id": "7258",
+   "url": "https://anidb.net/anime/7258"
+  }
+ },
+ {
+  "name": "Anime News Network",
+  "property": "P1985",
+  "url": "https://www.animenewsnetwork.com/encyclopedia/anime.php?id={id}",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": true,
+  "example": {
+   "id": "11212",
+   "url": "https://www.animenewsnetwork.com/encyclopedia/anime.php?id=11212"
+  }
+ },
+ {
+  "name": "AniList",
+  "property": "P8729",
+  "url": "https://anilist.co/anime/{id}",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": true,
+  "example": {
+   "id": "7711",
+   "url": "https://anilist.co/anime/7711"
+  }
+ },
+ {
+  "name": "allcinema",
+  "property": "P2465",
+  "url": "https://www.allcinema.net/cinema/{id}",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": false,
+  "example": {
+   "id": "335800",
+   "url": "https://www.allcinema.net/cinema/335800"
+  }
+ },
+ {
+  "name": "IMDb",
+  "property": "P345",
+  "url": "https://www.imdb.com/title/{id}/",
+  "id": "^tt[1-9][0-9]*\\z",
+  "catalog": false,
+  "example": {
+   "id": "tt1568921",
+   "url": "https://www.imdb.com/title/tt1568921/"
+  }
+ },
+ {
+  "name": "Кинопоиск",
+  "property": "P2603",
+  "url": "https://www.kinopoisk.ru/film/{id}/",
+  "id": "^[1-9][0-9]*\\z",
+  "catalog": false,
+  "example": {
+   "id": "492366",
+   "url": "https://www.kinopoisk.ru/film/492366/"
+  }
+ },
+ {
+  "name": "Официальный сайт",
+  "property": "P856",
+  "url": "{id}",
+  "id": "^https?://[^\\s]+\\z",
+  "catalog": false,
+  "example": {
+   "id": "http://www.karigurashi.jp",
+   "url": "http://www.karigurashi.jp"
+  }
+ },
+ {
+  "name": "Википедия (ru)",
+  "sitelink": "ruwiki",
+  "id": "^https://ru\\.wikipedia\\.org/[^\\s]+\\z",
+  "catalog": false,
+  "example": {
+   "id": "https://ru.wikipedia.org/wiki/Test",
+   "url": "https://ru.wikipedia.org/wiki/Test"
+  }
+ },
+ {
+  "name": "Википедия (en)",
+  "sitelink": "enwiki",
+  "id": "^https://en\\.wikipedia\\.org/[^\\s]+\\z",
+  "catalog": false,
+  "example": {
+   "id": "https://en.wikipedia.org/wiki/Test",
+   "url": "https://en.wikipedia.org/wiki/Test"
+  }
+ },
+ {
+  "name": "Википедия (ja)",
+  "sitelink": "jawiki",
+  "id": "^https://ja\\.wikipedia\\.org/[^\\s]+\\z",
+  "catalog": false,
+  "example": {
+   "id": "https://ja.wikipedia.org/wiki/Test",
+   "url": "https://ja.wikipedia.org/wiki/Test"
+  }
+ },
+ {
+  "name": "Anime-Planet",
+  "property": "P11349",
+  "url": "https://www.anime-planet.com/anime/{id}",
+  "id": "^[a-z0-9-]+\\z",
+  "catalog": true,
+  "example": {
+   "id": "test-anime",
+   "url": "https://www.anime-planet.com/anime/test-anime"
+  }
+ }
+]

@@ -86,6 +86,8 @@ abstract class WikidataTestCase extends TestCase
                     $this->now += $seconds;
                 },
             ),
+            $cache,
+            fn (): float => $this->now,
         );
     }
 

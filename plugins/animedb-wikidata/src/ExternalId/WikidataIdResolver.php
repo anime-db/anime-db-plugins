@@ -27,13 +27,15 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbWikidata\ExternalId;
 
+use AnimeDb\Plugins\AnimedbWikidata\Source\SourceTable;
+
 /**
  * Pure URL parsing for {@see \AnimeDb\Plugins\AnimedbWikidata\WikidataBridge::resolveExternalId()}:
  * no network, no database.
  *
- * A record that already carries a link to MAL, AniDB, Shikimori, World-Art, ANN or AniList
- * (recognized by host, with `www.`; Shikimori with any subdomain) gets null: the bridge is needed
- * only by records without anime-catalog links. Otherwise the first kind present wins, in this
+ * A record that already carries a link to an anime catalog gets null: the bridge is needed only by
+ * records without anime-catalog links. The catalogs are the hosts of the `catalog: true` rows of the
+ * source table (with or without `www.`) plus Shikimori (any subdomain) and World-Art. Otherwise the first kind present wins, in this
  * priority, and inside one kind the first link in the order of `$urls`:
  *
  * 1. `wikidata.org/wiki/Q…` (also `m.wikidata.org` and `/entity/Q…`) gives `Q699835`;
@@ -45,7 +47,10 @@ namespace AnimeDb\Plugins\AnimedbWikidata\ExternalId;
  */
 final class WikidataIdResolver
 {
-    private const ANIME_CATALOG_HOSTS = '/^(?:(?:www\.)?(?:myanimelist\.net|anidb\.net|world-art\.ru|animenewsnetwork\.com|anilist\.co)|(?:.+\.)?shikimori\.(?:io|one|org))$/i';
+    /**
+     * Anime catalogs that have no property in Wikidata, so the source table cannot list them.
+     */
+    private const EXTRA_ANIME_CATALOG_HOSTS = '/^(?:(?:www\.)?world-art\.ru|(?:.+\.)?shikimori\.(?:io|one|org))$/i';
 
     private function __construct()
     {
@@ -54,8 +59,9 @@ final class WikidataIdResolver
     /**
      * @param string[] $urls
      */
-    public static function resolve(array $urls): ?string
+    public static function resolve(array $urls, ?SourceTable $table = null): ?string
     {
+        $catalogHosts = ($table ?? SourceTable::default())->catalogHosts();
         $found = ['wikidata' => null, 'imdb' => null, 'kinopoisk' => null];
 
         foreach ($urls as $url) {
@@ -69,7 +75,8 @@ final class WikidataIdResolver
             }
             $host = rtrim($host, '.');
 
-            if (preg_match(self::ANIME_CATALOG_HOSTS, $host) === 1) {
+            if (\in_array(preg_replace('/^www\./i', '', strtolower($host)), $catalogHosts, true)
+                || preg_match(self::EXTRA_ANIME_CATALOG_HOSTS, $host) === 1) {
                 return null;
             }
 
