@@ -449,3 +449,26 @@ without it, the test passed even with the `ftp_close()` call deleted from
 `FtpMirrorTransport::connect()` (PR #126, follow-up review). Any future fixture built the same
 way (assert a resource was released by observing the peer side) needs to check for the specific
 protocol-level signal the close function sends, not merely "the connection is no longer open".
+
+## `compile-plugin-container.php` models the host's service registration — keep it in sync
+
+The host registers a code plugin's `src/` as
+`->defaults()->autowire()->autoconfigure()->load($namespacePrefix, $srcDir)` (the DI wiring in
+`anime-db-desktop`, where plugins are loaded; check there before changing the gate). Services
+nobody consumes are removed on compile, so `tools/compile-plugin-container.php` tags the
+implementations of the plugin interfaces (plus `#[AsController]` and `EventSubscriberInterface`)
+and consumes them through a tagged iterator; without that, a broken constructor would never
+surface.
+
+- External types are injectable only if they are on the gate's exact allow-list
+  (`HOST_SERVICES`: the host's aliases and scope-pass services — logger, PSR-18 client, PSR-17
+  request/stream/URI factories, download/media/catalog/background/cache/settings/plugin-data/
+  folder-index/folder-writer/own-manifest contract interfaces, `Twig\Environment`, `CsrfTokenManagerInterface`).
+  It is deliberately not prefix-based: DTOs such as `PluginAnimeData` and role interfaces such as
+  `FillerInterface` (many implementations, no alias) are not host services. Making every
+  external class synthetic would let `DateTimeImmutable` or a vendor class pass the gate and break
+  the user's container at install time. When the host starts providing a new service, extend the list.
+- Only constructor parameters of plain and union types are scanned; intersection/DNF members,
+  `#[Required]` setters and `#[Autowire]` are not.
+- `symfony/dependency-injection`, `symfony/config` and `symfony/event-dispatcher` sit in
+  `require-dev` because the script uses them directly.

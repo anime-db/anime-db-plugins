@@ -3,6 +3,7 @@ parameters:
     paths:
         - tools/src
         - tools/analyse-plugin.php
+        - tools/compile-plugin-container.php
         - tools/validate-plugin.php
         - tools/check-pr-changes.php
         - tools/check-version-bump.php
