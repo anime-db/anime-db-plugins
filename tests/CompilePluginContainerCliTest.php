@@ -28,6 +28,7 @@ declare(strict_types=1);
 namespace AnimeDb\Plugins\Tools\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Guards tools/compile-plugin-container.php: the host registers every class of a plugin's
@@ -231,6 +232,65 @@ final class CompilePluginContainerCliTest extends TestCase
         }
 
         return $plugin;
+    }
+
+    public function testPrValidationWorkflowCompilesTheAffectedPluginAfterThePluginBoundaryGate(): void
+    {
+        $workflow = Yaml::parseFile(\dirname(__DIR__).'/.github/workflows/pr-validation.yml');
+        self::assertIsArray($workflow);
+
+        $steps = $workflow['jobs']['validate']['steps'] ?? null;
+        self::assertIsArray($steps, 'Job "validate" of pr-validation.yml has no steps.');
+
+        $boundaryGateIndex = null;
+        $compileIndex = null;
+
+        foreach ($steps as $index => $step) {
+            $run = \is_array($step) && \is_string($step['run'] ?? null) ? $step['run'] : '';
+
+            if (str_contains($run, 'tools/check-pr-changes.php')) {
+                $boundaryGateIndex = $index;
+            }
+
+            if (!str_contains($run, 'tools/compile-plugin-container.php')) {
+                continue;
+            }
+
+            $compileIndex = $index;
+
+            $condition = $step['if'] ?? null;
+            self::assertIsString($condition, 'The container gate step must be conditional.');
+
+            // On an infrastructural PR there is no affected plugin, and affected-plugin.txt
+            // does not exist at all.
+            self::assertStringContainsString(
+                "steps.diff.outputs.touches_plugins == 'true'",
+                $condition,
+                'The container gate must be skipped on purely infrastructural PRs.',
+            );
+
+            // The step loads the PR's plugin classes. `!cancelled()` would drop the implicit
+            // success() and let it run after the boundary gate that vets the PR had failed.
+            self::assertStringNotContainsString(
+                'cancelled()',
+                $condition,
+                'The container gate must not run once an earlier gate has failed.',
+            );
+
+            self::assertStringContainsString(
+                'affected-plugin.txt',
+                $run,
+                'The container gate must compile the plugin the PR touches, not a fixed one.',
+            );
+        }
+
+        self::assertIsInt($boundaryGateIndex, 'pr-validation.yml no longer runs check-pr-changes.php.');
+        self::assertIsInt($compileIndex, 'pr-validation.yml does not run compile-plugin-container.php.');
+        self::assertGreaterThan(
+            $boundaryGateIndex,
+            $compileIndex,
+            'The container gate loads plugin code from the PR, so it must run after the boundary gate.',
+        );
     }
 
     private function temporaryDirectory(): string
