@@ -47,13 +47,27 @@ final class WikidataBridge implements FillerInterface
 {
     private const PROPERTY_HAS_PARTS = 'P527';
 
-    private readonly SourceTable $sources;
+    private SourceTable $sources;
 
+    /**
+     * The public constructor takes only autowirable services: the host registers every class
+     * of the plugin as a service, and `SourceTable` has a private constructor.
+     */
     public function __construct(
         private readonly WikidataClient $client,
-        ?SourceTable $sources = null,
     ) {
-        $this->sources = $sources ?? SourceTable::default();
+        $this->sources = SourceTable::default();
+    }
+
+    /**
+     * Builds a bridge over a custom source table (not used by autowiring).
+     */
+    public static function withSources(WikidataClient $client, SourceTable $sources): self
+    {
+        $bridge = new self($client);
+        $bridge->sources = $sources;
+
+        return $bridge;
     }
 
     /**

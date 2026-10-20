@@ -171,7 +171,7 @@ final class WikidataBridgeTest extends WikidataTestCase
     public function testNewTableRowNeedsNoCodeChange(): void
     {
         $table = SourceTable::fromFile(__DIR__.'/Fixture/sources_with_anime_planet.json');
-        $bridge = new WikidataBridge($this->client, $table);
+        $bridge = WikidataBridge::withSources($this->client, $table);
         $this->entity('Q10', ['P11349' => ['test-anime']]);
 
         $data = $bridge->findById('Q10');
