@@ -99,23 +99,34 @@ function studly(string $id): string
     return implode('', array_map(ucfirst(...), preg_split('/[^A-Za-z0-9]+/', $id, -1, \PREG_SPLIT_NO_EMPTY) ?: []));
 }
 
-/** What the host is known to provide to plugin services; anything else is not injectable. */
-const HOST_SERVICE_PREFIXES = ['Psr\\', 'AnimeDb\\PluginContracts\\'];
-const HOST_SERVICES = [Twig\Environment::class, Symfony\Component\Security\Csrf\CsrfTokenManagerInterface::class];
+/** What the host provides to plugin services (exact names); anything else is not injectable. */
+const HOST_SERVICES = [
+    Twig\Environment::class,
+    Symfony\Component\Security\Csrf\CsrfTokenManagerInterface::class,
+    // PSR interfaces the host aliases.
+    Psr\Log\LoggerInterface::class,
+    Psr\Http\Client\ClientInterface::class,
+    Psr\Http\Message\RequestFactoryInterface::class,
+    Psr\Http\Message\StreamFactoryInterface::class,
+    Psr\Http\Message\UriFactoryInterface::class,
+    // Host aliases in services.yaml.
+    AnimeDb\PluginContracts\Download\DownloadServiceInterface::class,
+    AnimeDb\PluginContracts\Media\MediaLibraryInterface::class,
+    AnimeDb\PluginContracts\Media\MediaProbeInterface::class,
+    // Services injected by the host's scope passes.
+    AnimeDb\PluginContracts\Catalog\CatalogReaderInterface::class,
+    AnimeDb\PluginContracts\Background\BackgroundTaskQueueInterface::class,
+    AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface::class,
+    AnimeDb\PluginContracts\Settings\SettingsStoreInterface::class,
+    AnimeDb\PluginContracts\PluginData\PluginDataStoreInterface::class,
+    AnimeDb\PluginContracts\Folder\RecordFolderIndexInterface::class,
+    AnimeDb\PluginContracts\Folder\RecordFolderWriterInterface::class,
+    AnimeDb\PluginContracts\Manifest\OwnManifestInterface::class,
+];
 
 function isHostService(string $name): bool
 {
-    if (\in_array($name, HOST_SERVICES, true)) {
-        return true;
-    }
-
-    foreach (HOST_SERVICE_PREFIXES as $prefix) {
-        if (str_starts_with($name, $prefix)) {
-            return true;
-        }
-    }
-
-    return false;
+    return \in_array($name, HOST_SERVICES, true);
 }
 
 function containsSymlink(string $directory): bool

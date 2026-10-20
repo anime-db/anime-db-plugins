@@ -120,6 +120,32 @@ final class CompilePluginContainerCliTest extends TestCase
         self::assertStringContainsString('DateTimeImmutable', $output);
     }
 
+    public function testContractDtoAndRoleInterfaceAreNotHostServices(): void
+    {
+        foreach (['PluginAnimeData' => 'Filler\PluginAnimeData', 'FillerInterface' => 'Filler\FillerInterface'] as $name => $type) {
+            $plugin = $this->plugin([
+                'Bridge.php' => 'final class Bridge implements \AnimeDb\PluginContracts\Filler\FillerInterface { use FillerStub; '
+                    .'public function __construct(\AnimeDb\PluginContracts\\'.$type.' $x) {} }',
+            ]);
+
+            [$exitCode, $output] = $this->compile($plugin);
+
+            self::assertSame(1, $exitCode, $name.': '.$output);
+        }
+    }
+
+    public function testHostAliasedContractInterfaceIsInjectable(): void
+    {
+        $plugin = $this->plugin([
+            'Bridge.php' => 'final class Bridge implements \AnimeDb\PluginContracts\Filler\FillerInterface { use FillerStub; '
+                .'public function __construct(\AnimeDb\PluginContracts\Download\DownloadServiceInterface $d, \Psr\Log\LoggerInterface $l) {} }',
+        ]);
+
+        [$exitCode, $output] = $this->compile($plugin);
+
+        self::assertSame(0, $exitCode, $output);
+    }
+
     public function testSymlinkedFileUnderSrcIsRefused(): void
     {
         $plugin = $this->plugin([

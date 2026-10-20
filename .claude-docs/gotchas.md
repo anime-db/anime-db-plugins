@@ -460,11 +460,14 @@ implementations of the plugin interfaces (plus `#[AsController]` and `EventSubsc
 and consumes them through a tagged iterator; without that, a broken constructor would never
 surface.
 
-- External types are injectable only if they are on the gate's allow-list
-  (`HOST_SERVICE_PREFIXES` / `HOST_SERVICES`: PSR, plugin contracts, `Twig\Environment`,
-  `CsrfTokenManagerInterface`). Making every external class synthetic would let
-  `DateTimeImmutable` or a vendor class pass the gate and break the user's container at install
-  time. When the host starts providing a new service, extend the allow-list.
+- External types are injectable only if they are on the gate's exact allow-list
+  (`HOST_SERVICES`: the host's aliases and scope-pass services — logger, PSR-18 client, PSR-17
+  request/stream/URI factories, download/media/catalog/background/cache/settings/plugin-data/
+  folder-index/folder-writer/own-manifest contract interfaces, `Twig\Environment`, `CsrfTokenManagerInterface`).
+  It is deliberately not prefix-based: DTOs such as `PluginAnimeData` and role interfaces such as
+  `FillerInterface` (many implementations, no alias) are not host services. Making every
+  external class synthetic would let `DateTimeImmutable` or a vendor class pass the gate and break
+  the user's container at install time. When the host starts providing a new service, extend the list.
 - Only constructor parameters of plain and union types are scanned; intersection/DNF members,
   `#[Required]` setters and `#[Autowire]` are not.
 - `symfony/dependency-injection`, `symfony/config` and `symfony/event-dispatcher` sit in
