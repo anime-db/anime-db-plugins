@@ -1,12 +1,12 @@
 {
     "id": "animedb-wikidata",
     "name": "Wikidata",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "type": "integration",
-    "description": "Официальный плагин-мост Wikidata: распознавание ссылок Wikidata, IMDb и Кинопоиска и клиент Wikidata.",
+    "description": "Официальный плагин-мост Wikidata: распознавание ссылок Wikidata, IMDb и Кинопоиска и заполнение ссылок на аниме-каталоги и другие страницы тайтла.",
     "author": "AnimeDB",
     "features": {
-        "filler": false,
+        "filler": true,
         "sync": false,
         "related": false,
         "similar": false,

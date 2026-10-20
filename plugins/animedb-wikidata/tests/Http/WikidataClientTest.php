@@ -79,8 +79,10 @@ final class WikidataClientTest extends WikidataTestCase
         self::assertArrayHasKey('P345', $entity['claims']);
         self::assertSame('wbgetentities', $this->query(0)['action']);
         self::assertSame('Q699835', $this->query(0)['ids']);
-        self::assertSame('claims|labels', $this->query(0)['props']);
+        self::assertSame('claims|labels|sitelinks/urls', $this->query(0)['props']);
         self::assertSame('ja|en|ru', $this->query(0)['languages']);
+        self::assertSame('ruwiki|enwiki|jawiki', $this->query(0)['sitefilter']);
+        self::assertSame('https://en.wikipedia.org/wiki/Arrietty', $entity['sitelinks']['enwiki']['url']);
     }
 
     public function testFetchSeriesEntityHasParts(): void
@@ -194,5 +196,50 @@ final class WikidataClientTest extends WikidataTestCase
 
         self::assertEqualsWithDelta(2.0, $this->now - $start, 0.001);
         self::assertFileExists($this->cacheDir.'/wikidata.lock');
+    }
+
+    public function testEntityIsCachedForTwentyFourHours(): void
+    {
+        $this->queueFixture('entity_Q699835.json');
+
+        $first = $this->client->fetchEntity('Q699835');
+        $this->now += 86399;
+        $second = $this->client->fetchEntity('Q699835');
+
+        self::assertCount(1, $this->requests);
+        self::assertSame($first, $second);
+        self::assertFileExists($this->cacheDir.'/wikidata-entity-Q699835.json');
+
+        $this->now += 2;
+        $this->queueFixture('entity_Q699835.json');
+        $this->client->fetchEntity('Q699835');
+        self::assertCount(2, $this->requests, 'expired after 24 hours');
+    }
+
+    public function testMissingEntityAndSearchResultsAreNotCached(): void
+    {
+        $missing = '{"entities":{"Q999999999":{"id":"Q999999999","missing":""}}}';
+        $this->responses[] = $this->response(200, $missing);
+        $this->responses[] = $this->response(200, $missing);
+        $this->client->fetchEntity('Q999999999');
+        $this->client->fetchEntity('Q999999999');
+        self::assertCount(2, $this->requests);
+
+        $this->queueFixture('search_imdb_tt1568921.json');
+        $this->queueFixture('search_imdb_tt1568921.json');
+        $this->client->findItemByProperty('P345', 'tt1568921');
+        $this->client->findItemByProperty('P345', 'tt1568921');
+        self::assertCount(4, $this->requests);
+        self::assertSame([], glob($this->cacheDir.'/wikidata-entity-*'));
+    }
+
+    public function testRedirectedItemGivesTheTargetEntity(): void
+    {
+        $this->queueFixture('entity_redirect_Q123.json');
+
+        $entity = $this->client->fetchEntity('Q123');
+
+        self::assertNotNull($entity);
+        self::assertSame('Q699835', $entity['id']);
     }
 }

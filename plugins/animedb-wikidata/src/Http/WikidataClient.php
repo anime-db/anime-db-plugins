@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 namespace AnimeDb\Plugins\AnimedbWikidata\Http;
 
+use AnimeDb\PluginContracts\Cache\PluginCacheDirectoryInterface;
 use AnimeDb\PluginContracts\Manifest\OwnManifestInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -51,13 +52,18 @@ final class WikidataClient
     public const PROPERTY_EXTERNAL_ID_IMDB = 'P345';
     public const PROPERTY_EXTERNAL_ID_KINOPOISK = 'P2603';
 
+    public const ENTITY_CACHE_TTL_SECONDS = 86400;
+
     private const LANGUAGES = 'ja|en|ru';
+    private const SITEFILTER = 'ruwiki|enwiki|jawiki';
 
     public function __construct(
         private readonly ClientInterface $httpClient,
         private readonly RequestFactoryInterface $requestFactory,
         private readonly OwnManifestInterface $ownManifest,
         private readonly RequestLimiter $limiter,
+        private readonly PluginCacheDirectoryInterface $cacheDirectory,
+        private readonly ?\Closure $clock = null,
     ) {
     }
 
@@ -100,8 +106,12 @@ final class WikidataClient
     }
 
     /**
-     * The entity (`labels` in ja/en/ru and `claims`) as decoded by the API, or null when the item
-     * does not exist.
+     * The entity (`labels` in ja/en/ru, `claims` and the `sitelinks` of ruwiki/enwiki/jawiki with
+     * urls) as decoded by the API, or null when the item does not exist. A merged item (a redirect)
+     * gives the entity it points to; its `id` is then the target's.
+     *
+     * Only a found entity is cached, for {@see self::ENTITY_CACHE_TTL_SECONDS}, in the plugin's cache
+     * directory; "not found" is never cached.
      *
      * @param callable(): void|null $onHeartbeat called while waiting for a limiter slot
      *
@@ -115,14 +125,26 @@ final class WikidataClient
             throw new \InvalidArgumentException(\sprintf('Invalid Wikidata item id "%s".', $id));
         }
 
+        $cached = $this->readCache($id);
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $data = $this->call([
             'action' => 'wbgetentities',
             'ids' => $id,
-            'props' => 'claims|labels',
+            'props' => 'claims|labels|sitelinks/urls',
             'languages' => self::LANGUAGES,
+            'sitefilter' => self::SITEFILTER,
         ], $onHeartbeat);
 
-        $entity = $data['entities'][$id] ?? null;
+        $key = $id;
+        $redirect = $data['redirects'] ?? null;
+        if (\is_array($redirect) && ($redirect['from'] ?? null) === $id && \is_string($redirect['to'] ?? null)) {
+            $key = $redirect['to'];
+        }
+
+        $entity = $data['entities'][$key] ?? null;
         if (!\is_array($entity)) {
             throw new WikidataRequestException('Unexpected Wikidata entity response.');
         }
@@ -130,7 +152,55 @@ final class WikidataClient
             return null;
         }
 
+        $this->writeCache($id, $entity);
+
         return $entity;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function readCache(string $id): ?array
+    {
+        $path = $this->cachePath($id);
+        $json = is_file($path) ? @file_get_contents($path) : false;
+        if ($json === false) {
+            return null;
+        }
+        $stored = json_decode($json, true);
+        if (!\is_array($stored) || !\is_int($stored['at'] ?? null) || !\is_array($stored['entity'] ?? null)) {
+            return null;
+        }
+        $age = $this->now() - $stored['at'];
+        if ($age < 0 || $age >= self::ENTITY_CACHE_TTL_SECONDS) {
+            return null;
+        }
+
+        return $stored['entity'];
+    }
+
+    /**
+     * @param array<string, mixed> $entity
+     */
+    private function writeCache(string $id, array $entity): void
+    {
+        $path = $this->cachePath($id);
+        $temp = $path.'.'.bin2hex(random_bytes(4)).'.tmp';
+        $json = json_encode(['at' => $this->now(), 'entity' => $entity], \JSON_UNESCAPED_UNICODE);
+        // the cache is an optimization: a write failure must not fail the call
+        if ($json !== false && @file_put_contents($temp, $json) !== false && !@rename($temp, $path)) {
+            @unlink($temp);
+        }
+    }
+
+    private function cachePath(string $id): string
+    {
+        return $this->cacheDirectory->path().'/wikidata-entity-'.$id.'.json';
+    }
+
+    private function now(): int
+    {
+        return (int) ($this->clock !== null ? ($this->clock)() : microtime(true));
     }
 
     /**
