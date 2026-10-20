@@ -3,7 +3,7 @@
   "name": "MyAnimeList",
   "property": "P4086",
   "url": "https://myanimelist.net/anime/{id}",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": true,
   "example": {
    "id": "7711",
@@ -14,7 +14,7 @@
   "name": "AniDB",
   "property": "P5646",
   "url": "https://anidb.net/anime/{id}",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": true,
   "example": {
    "id": "7258",
@@ -25,7 +25,7 @@
   "name": "Anime News Network",
   "property": "P1985",
   "url": "https://www.animenewsnetwork.com/encyclopedia/anime.php?id={id}",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": true,
   "example": {
    "id": "11212",
@@ -36,7 +36,7 @@
   "name": "AniList",
   "property": "P8729",
   "url": "https://anilist.co/anime/{id}",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": true,
   "example": {
    "id": "7711",
@@ -47,7 +47,7 @@
   "name": "allcinema",
   "property": "P2465",
   "url": "https://www.allcinema.net/cinema/{id}",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": false,
   "example": {
    "id": "335800",
@@ -58,7 +58,7 @@
   "name": "IMDb",
   "property": "P345",
   "url": "https://www.imdb.com/title/{id}/",
-  "id": "^tt[1-9]\\d*\\z",
+  "id": "^tt[1-9][0-9]*\\z",
   "catalog": false,
   "example": {
    "id": "tt1568921",
@@ -69,7 +69,7 @@
   "name": "Кинопоиск",
   "property": "P2603",
   "url": "https://www.kinopoisk.ru/film/{id}/",
-  "id": "^[1-9]\\d*\\z",
+  "id": "^[1-9][0-9]*\\z",
   "catalog": false,
   "example": {
    "id": "492366",

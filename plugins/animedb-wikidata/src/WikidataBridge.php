@@ -99,7 +99,7 @@ final class WikidataBridge implements FillerInterface
             return null;
         }
 
-        $entityId = \is_string($entity['id'] ?? null) ? $entity['id'] : $itemId;
+        $entityId = \is_string($entity['id'] ?? null) && preg_match('/^Q[1-9][0-9]*\z/', $entity['id']) === 1 ? $entity['id'] : $itemId;
         $links['urls'][] = 'https://www.wikidata.org/wiki/'.$entityId;
 
         return new PluginAnimeData(title: self::title($entity, $entityId), externalUrls: $links['urls']);

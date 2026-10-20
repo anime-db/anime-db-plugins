@@ -59,6 +59,12 @@ final class EntityLinksTest extends TestCase
         self::assertSame([], $this->mal([['abc', 'normal']]));
     }
 
+    public function testNonAsciiDigitsAreRejected(): void
+    {
+        self::assertSame([], $this->mal([["1\u{0663}", 'normal']]));
+        self::assertSame([], $this->mal([["\u{FF17}\u{FF17}", 'normal']]));
+    }
+
     public function testUnreadableStatementStillCountsAsAValue(): void
     {
         $entity = ['claims' => ['P4086' => [

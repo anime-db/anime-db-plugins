@@ -177,10 +177,24 @@ final class WikidataBridgeTest extends WikidataTestCase
         $data = $bridge->findById('Q10');
 
         self::assertSame(['https://www.anime-planet.com/anime/test-anime', 'https://www.wikidata.org/wiki/Q10'], $data?->externalUrls);
-        self::assertSame('Q123', $bridge->resolveExternalId(['https://www.anime-planet.com/anime/x', 'https://www.wikidata.org/wiki/Q123']) ?? 'Q123');
+        self::assertNull($bridge->resolveExternalId(['https://www.anime-planet.com/anime/x', 'https://www.wikidata.org/wiki/Q123']));
         self::assertNull($bridge->resolveExternalId(['https://anime-planet.com/anime/x', 'https://www.wikidata.org/wiki/Q123']));
         // the shipped table knows nothing of that host
         self::assertSame('Q123', $this->bridge()->resolveExternalId(['https://anime-planet.com/anime/x', 'https://www.wikidata.org/wiki/Q123']));
+    }
+
+    public function testInvalidEntityIdInAnswerFallsBackToRequestedId(): void
+    {
+        $bridge = $this->bridge();
+        $this->entity('Q10', ['P4086' => ['7711']]);
+        $this->responses[0] = $this->response(200, json_encode(['entities' => ['Q10' => [
+            'id' => '../Q1?x#',
+            'claims' => ['P4086' => [['rank' => 'normal', 'mainsnak' => ['snaktype' => 'value', 'datavalue' => ['value' => '7711', 'type' => 'string']]]]],
+        ]]], \JSON_THROW_ON_ERROR));
+
+        $data = $bridge->findById('Q10');
+
+        self::assertSame(['https://myanimelist.net/anime/7711', 'https://www.wikidata.org/wiki/Q10'], $data?->externalUrls);
     }
 
     private function bridge(): WikidataBridge
