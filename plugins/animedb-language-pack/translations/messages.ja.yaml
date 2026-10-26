@@ -620,3 +620,109 @@ anime_edit:
     cover_reselect: カバーは保存されていません。エラーを修正したあと、もう一度ファイルを選択してください。
     flash_request_too_large: ファイルが大きすぎるため、何も保存されていません。
     filter_studios: 制作会社を名前で絞り込む
+download_status:
+    pending: ダウンロード中
+    completed: 完了
+    failed: エラー
+queue_purge:
+    success: 'メッセージキューを空にしました（削除件数: %count%）。'
+explorer_open:
+    error_invalid_path: フォルダーを開けませんでした。有効な絶対パスではありません。
+downloads:
+    title: ダウンロード — AnimeDB
+    heading: ダウンロード
+    empty: ダウンロードはまだありません。
+    qbittorrent_unavailable: トレントクライアントに接続できませんでした。リアルタイムの項目なしで、データベースの一覧を表示しています。
+    no_card_badge: エントリなし
+    column_name: 名前
+    column_status: 状態
+    column_size: サイズ
+    column_progress: 進捗
+    column_download_speed: ダウンロード
+    column_upload_speed: アップロード
+    column_eta: 残り時間
+    column_peers: シード/ピア
+    column_storage: ストレージ
+    column_actions: 操作
+    action_pause: 一時停止
+    action_resume: 再開
+    action_retry: 再試行
+    action_stop_seeding: シードを停止
+    action_delete: 削除
+    action_delete_from_client: クライアントから削除
+    action_adopt: エントリに関連付ける
+    action_delete_files_label: ダウンロード済みのデータを削除
+    action_error_conflict: このダウンロードの状態が変わりました。ページを更新してください。
+    action_error_refused: このダウンロードに対して、この操作はもう利用できません。
+    action_stale_hint: 状態が変わりました。ページを更新してください。
+    status_pending: 待機中
+    status_linking: 完了、関連付け中…
+    status_storage_unavailable: ストレージを利用できません
+    status_client_error: トレントクライアントのエラー
+    status_missing_files: ファイルが見つかりません
+    status_outside_storage: ファイルがストレージの外にあります。ダウンロードを削除して、もう一度追加してください
+    status_completed: 完了し、関連付け済み
+    status_seeding_stopped: シードを停止しました
+    status_missing_from_client: トレントクライアントにありません
+    status_no_card: エントリなし
+    status_failed_disk_space: 'エラー: ディスクの空き容量が足りません。'
+    status_failed_storage_conflict: 'エラー: ストレージの競合。'
+    status_failed_name_conflict: 'エラー: 名前の競合。'
+    status_failed_move_failed: 'エラー: ファイルを移動できませんでした。'
+    status_failed_legacy_layout: 'エラー: 古いストレージ構成。'
+    status_failed_unexpected_layout: 'エラー: ダウンロードの構成を認識できません。'
+    status_failed_generic: エラー
+    unit_b: '%value% B'
+    unit_kb: '%value% KB'
+    unit_mb: '%value% MB'
+    unit_gb: '%value% GB'
+    unit_tb: '%value% TB'
+    speed: '%value%/秒'
+download_new:
+    title: ダウンロードを追加 — AnimeDB
+    heading: ダウンロードを追加
+    field_anime_label: カタログのエントリ
+    field_anime_placeholder: タイトルを入力…
+    field_magnet_label: マグネットリンク
+    field_torrent_file_label: トレントファイル
+    drop_zone_hint: ファイルをここにドラッグできます
+    field_storage_label: ストレージ
+    submit_button: ダウンロードを追加
+    unlink_hint: 関連付けはそのページで解除できます。
+    info_already_in_downloads: このリリースは、このエントリのダウンロードにすでに含まれています。
+    error_anime_required: カタログのエントリを選択してください。
+    error_storage_required: ストレージを選択してください。
+    warning_preset_unavailable: 既定のストレージを準備できませんでした。別のストレージを選択してください。
+    no_storages_available: ダウンロードに使えるストレージがありません。ストレージのページで追加してください。
+    no_storages_link: ストレージ
+    error_source_required: マグネットリンクを指定するか、トレントファイルを選択してください。
+    error_unreadable_source: リリースを読み取れませんでした。
+    error_insufficient_space: '必要な容量: %needed%、「%path%」の空き容量: %free%。'
+    error_already_linked: このリリースはすでにエントリに関連付けられています
+    error_already_in_client: このトレントはすでにエントリなしでトレントクライアントにあります。選択したエントリに関連付けることができます。トレントは現在の場所に残り、選択したストレージは使用されません。
+    error_already_in_client_link: 「ダウンロード」を開く
+    action_adopt_selected: 選択したエントリに関連付ける
+    error_storage_unavailable: ストレージを利用できません。
+    error_client_unavailable: トレントクライアントを利用できません。後でもう一度お試しください。
+    error_file_too_large: ファイルが 16 MB を超えています。
+download_adopt:
+    title: エントリに関連付ける — AnimeDB
+    heading: トレントをエントリに関連付ける
+    storage_hint: ストレージはファイルの場所から決まります。トレントは現在の場所に残ります。
+    submit_button: 関連付ける
+    back_button: ダウンロードに戻る
+    error_not_in_client: このトレントはトレントクライアントにありません。
+    error_path_is_root: トレントのファイルがストレージのルート直下にあるため、関連付けるものがありません。
+    error_bare_incoming: トレントのファイルが専用フォルダーなしで一時フォルダーにあるため、関連付けできません。
+    error_foreign_incoming: トレントのファイルが別のトレントの一時フォルダーにあるため、関連付けできません。
+    error_hidden_segment: トレントのファイルが隠しフォルダーにあるため、関連付けできません。
+    error_hash_folder: トレントのファイルが、トレントのハッシュ名が付いた旧構成のフォルダーにあるため、関連付けできません。
+    error_unexpected_depth: トレントのファイルがストレージの最上位にないため、関連付けできません。
+    error_shared_folder: ファイルは共有フォルダー「%path%」にあります。関連付けできるのは、このトレント用に作成されたフォルダーのみです。
+    error_no_storage: トレントのファイルがどのストレージにも含まれていません。ドライブ間の移動には対応していません。
+    error_anime_not_found: カタログのエントリが見つかりません。
+    error_already_linked: 'このトレントはすでにエントリ #%id% に関連付けられています。'
+    error_folder_occupied: 'フォルダー「%path%」はすでにエントリ #%id% に関連付けられています。'
+    error_anime_has_folder: このエントリにはすでにフォルダー「%path%」があります。
+    error_incoming_target_exists: ストレージにはすでに「%path%」があります。一時フォルダーから移動すると名前の競合が発生します。
+    error_storage_mismatch: ダウンロードのファイルが、そのストレージ「%storage%」にないため、関連付けできません。
