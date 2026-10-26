@@ -301,6 +301,38 @@ anime_list:
     error: Die Liste konnte nicht geladen werden.
     no_cover: Kein Cover
     search_placeholder: Nach Titel suchen…
+    sort_label: Sortierung
+    sort_field_name: Nach Titel
+    sort_field_date_update: Nach Aktualisierungsdatum
+    sort_field_user_rating: Nach meiner Bewertung
+    sort_field_date_premiere: Nach Premierendatum
+    sort_field_date_end: Nach Enddatum
+    sort_direction_asc: Aufsteigend
+    sort_direction_desc: Absteigend
+    filters_toggle_button: Filter
+    filter_apply_button: Filtern
+    filter_reset_all_button: Alle zurücksetzen
+    filter_shown_count: 'Angezeigt: %shown% von %total%.'
+    filter_chip_remove_button: Filter „%label%“ entfernen
+    filter_section_watch_status: Sehstatus
+    filter_section_type: Typ
+    filter_section_date_premiere: Premierendatum
+    filter_section_user_rating: Bewertung
+    filter_section_labels: Labels
+    filter_section_genres: Genres
+    filter_section_themes: Themen
+    filter_section_studios: Studios
+    filter_section_source: Link
+    filter_section_empty: Im Katalog gibt es keine Werte für diesen Abschnitt.
+    filter_section_more_button: Mehr (%count%)
+    filter_section_search_placeholder: Studios suchen…
+    filter_no_rating: Nicht bewertet
+    filter_no_date_premiere: Ohne Premierendatum
+    filter_decade_label: '%decade%er'
+    filter_value_instant_hint: Sofort zusammen mit den markierten Werten anwenden
+    filter_value_accumulate_hint: Markieren, um es später mit der Schaltfläche „Filtern“ anzuwenden
+    filter_value_instant_label: 'Sofort anwenden: %name%'
+    pagination_label: Katalogseiten
 
 storage_list:
     title: Speicherorte — AnimeDB
@@ -382,6 +414,53 @@ anime_detail:
     fill_source_label: Quelle
     error_fill_not_found: Die Quelle hat keine Übereinstimmung für diesen Anime gefunden.
     error_fill_image_rejected: Die Quelle hat ein Bild zurückgegeben, das nicht gespeichert werden konnte.
+    back_link: Katalog
+    my_heading: Meine Liste
+    info_heading: Informationen
+    labels_chip_remove_button: Label „%label%“ entfernen
+    source_count_title: 'Einträge mit diesem Link: %url%'
+    watched_episodes_label: Gesehene Folgen
+    watch_status_label: Sehstatus
+    error_fill_date_range_rejected: Die Quelle hat ein Datum zurückgegeben, das mit dem bereits gespeicherten kollidiert.
+    downloads_heading: Downloads zu diesem Eintrag
+    downloads_manage_link: Auf der Seite „Downloads“ verwalten
+    downloads_unlink_button: Verknüpfung lösen
+    downloads_unlink_conflict_error: Der Zustand hat sich geändert, bitte laden Sie die Seite neu.
+    download_new_link: Download hinzufügen
+    field_dates: Ausstrahlungsdaten
+    files_heading: Dateien
+    files_not_linked: Nicht verknüpft
+    files_link: Verknüpfen…
+    files_change: Ändern…
+    files_pick_folder: Ordner…
+    files_pick_video: Videodatei…
+    files_video_filter: Video
+    files_unlink: Verknüpfung lösen
+    files_unlink_confirm: Die Verknüpfung des Eintrags mit seinen Dateien wird entfernt. Die Dateien selbst bleiben unberührt. Fortfahren?
+    files_unlinked: Die Verknüpfung mit den Dateien wurde entfernt.
+    files_relocate_confirm: Der Speicherort „%name%“ befindet sich jetzt hier – Pfad aktualisieren?
+    files_request_failed: Die Anfrage ist fehlgeschlagen. Laden Sie die Seite neu und versuchen Sie es erneut.
+    files_linked: 'Verknüpft: „%name%“ im Speicherort „%storage%“.'
+    files_linked_top_level: Verknüpft wurde der Ordner „%name%“ im Speicherort „%storage%“ – er enthält den ausgewählten Ordner.
+    files_create_storage: Speicherort erstellen
+    files_error_invalid_path: Erforderlich ist ein absoluter Pfad zu einem Ordner oder einer Datei.
+    files_error_outside_storages: Der Ordner liegt in keinem Speicherort.
+    files_error_storage_root: Ein Speicherort lässt sich nicht als Ganzes verknüpfen.
+    files_error_scan_running: Dieser Speicherort wird gerade gescannt, versuchen Sie es nach dem Ende erneut.
+    files_error_storage_has_downloads: Der Pfad des Speicherorts „%storage%“ kann nicht aktualisiert werden, solange Downloads dorthin laufen.
+    files_error_ambiguous_name: Im Speicherort gibt es mehrere Ordner „%name%“, die sich nur in der Groß-/Kleinschreibung unterscheiden – eine eindeutige Verknüpfung ist nicht möglich.
+    files_error_entry_not_found: Der Ordner oder die Datei „%name%“ wurde im Speicherort „%storage%“ nicht gefunden oder ist nicht lesbar.
+    files_error_entry_not_visible: '„%name%“ würde beim Scan nicht gefunden: Der Name beginnt mit einem Punkt, oder es ist weder ein Ordner noch eine Videodatei.'
+    files_error_occupied: 'Der Ordner oder die Datei „%name%“ im Speicherort „%storage%“ ist bereits mit einem anderen Eintrag verknüpft:'
+    notes_add_button: Notiz hinzufügen
+    notes_edit_button: Bearbeiten
+    rating_star_label: 'Bewertung: %rating%'
+    menu_button: Aktionen für den Eintrag
+    menu_edit: Bearbeiten
+    menu_delete: Löschen
+    menu_change_type: Typ ändern…
+    menu_saturate: Aus Links ergänzen
+    flash_saturate_started: Das Ergänzen aus den Links dieses Eintrags wurde im Hintergrund gestartet.
 
 anime_new:
     title: Neuer Eintrag — AnimeDB
@@ -391,6 +470,12 @@ anime_new:
     field_watch_status: Sehstatus
     submit_button: Erstellen
     error_invalid: Geben Sie einen Titel ein und wählen Sie Typ und Sehstatus aus.
+    type_placeholder: '— auswählen —'
+    type_hint: Der Typ lässt sich nach dem Erstellen des Eintrags nicht mehr ändern.
+    cancel_button: Abbrechen
+    error_entry_missing: Der Ordner existiert nicht mehr.
+    error_storage_unavailable: Der Speicherort „%name%“ ist gerade nicht verfügbar – schließen Sie den Datenträger an und versuchen Sie es erneut.
+    error_storage_path_taken: Dieser Ordner ist bereits mit einem anderen Eintrag verknüpft.
 
 storage_new:
     title: Neuer Speicherort — AnimeDB
@@ -431,3 +516,107 @@ plugin_widget:
 
 app_notification:
     close_button: Schließen
+
+anime_name_role:
+    official: Offiziell
+    synonym: Synonym
+    short: Kurzform
+
+catalog_stage:
+    error_unreadable: Das Katalogarchiv „%path%“ konnte nicht gelesen werden.
+    error_missing_manifest: Das Archiv „%path%“ sieht nicht wie eine Katalogsicherung aus.
+    error_unsupported_format_version: Das Katalogarchiv „%path%“ hat eine nicht unterstützte Formatversion (%formatVersion%).
+    error_missing_database: Das Katalogarchiv „%path%“ enthält keine data.db.
+    error_unsafe_entry: Das Katalogarchiv „%path%“ enthält einen unsicheren Eintragspfad „%entry%“.
+    success: 'Das Katalogarchiv wurde nach %stagingDir% entpackt (Anime: %animeCount%, Mediendateien: %mediaFileCount%).'
+
+anime_type_change:
+    title: Typ ändern
+    field_type: Neuer Typ
+    hint: 'Der Eintrag hat derzeit den Typ: %type%. Es bleibt derselbe Eintrag: Downloads und Links bleiben erhalten.'
+    loss_intro: 'Beim Ändern geht Folgendes verloren, und das lässt sich nicht rückgängig machen:'
+    lost_episodes: 'Folgen: %number%'
+    lost_watched: 'gesehen: %number%'
+    lost_date_end: 'Enddatum: %date%'
+    lost_nothing: Anzahl der Folgen und Enddatum sind nicht festgelegt
+    loss_warning: Wenn Sie den Typ zurückändern, wird das Enddatum der Serie nicht wiederhergestellt.
+    confirm_loss: Mir ist bewusst, dass sich das nicht rückgängig machen lässt
+    submit: Typ ändern
+    cancel: Abbrechen
+    flash_changed: 'Der Typ wurde geändert auf: %type%.'
+    flash_not_confirmed: 'Der Typ wurde nicht geändert: Bestätigen Sie, dass sich die verlorenen Daten nicht wiederherstellen lassen.'
+    flash_sync_running: Eine Synchronisierung läuft, versuchen Sie es später erneut.
+    flash_invalid: Der Typ lässt sich so nicht ändern.
+
+anime_delete:
+    confirm: „%title%“ löschen? Gelöscht wird nur der Katalogeintrag.
+    confirm_storage: Die Videodateien im Speicherort bleiben unberührt.
+    confirm_downloads: Abgeschlossene und fehlgeschlagene Torrents werden aus dem Download-Client entfernt und das Seeding wird beendet; die heruntergeladenen Dateien bleiben erhalten.
+    flash_deleted: Der Eintrag „%title%“ wurde aus dem Katalog gelöscht.
+    flash_pending_downloads: 'Der Eintrag „%title%“ wurde nicht gelöscht: Brechen Sie zuerst seine Downloads ab.'
+    downloads_link: Zu den Downloads
+    flash_sync_running: Eine Synchronisierung läuft, versuchen Sie es später erneut.
+    remove_from_sources: Auch aus den Listen bei den Quellen löschen
+    sources_removed: 'Wird aus der Liste gelöscht bei: %sources%.'
+    sources_kept: 'Bleibt bestehen bei: %source% (%reason%).'
+    kept_no_removal: das Plugin kann keine Listeneinträge löschen
+    kept_inactive: die Synchronisierung dafür ist ausgeschaltet
+    dialog_cancel: Abbrechen
+    dialog_submit: Löschen
+
+anime_edit:
+    title: '%title% bearbeiten — AnimeDB'
+    heading: 'Bearbeiten: %title%'
+    back_link: Zurück zum Eintrag
+    field_title: Titel
+    field_names: Alternative Titel
+    field_name: Titel
+    field_locale: Sprache
+    field_role: Rolle
+    field_descriptions: Beschreibungen
+    field_description_text: Beschreibungstext
+    description_source_manual: manuell
+    description_source_plugin: von %name%
+    field_genres: Genres
+    field_themes: Themen
+    field_studios: Studios
+    field_new_studios: Neues Studio
+    field_demographic: Zielgruppe
+    demographic_none: Keine
+    field_date_premiere: Premierendatum
+    field_date_end: Enddatum
+    field_duration_minutes: Dauer, Min.
+    field_episodes_count: Anzahl Folgen
+    field_countries: Länder
+    field_sources: Links zu Quellen
+    field_notes: Notizen
+    add_button: Hinzufügen
+    add_locale_button: Sprache hinzufügen
+    remove_button: Entfernen
+    save_button: Speichern
+    cancel_button: Abbrechen
+    error_summary: Einige Felder sind ungültig. Es wurde nichts gespeichert.
+    error_title_required: Geben Sie einen Titel ein.
+    error_name_required: Geben Sie einen Titel ein.
+    error_too_long: Zu lang (höchstens 256 Zeichen).
+    error_role_invalid: Wählen Sie eine Rolle aus.
+    error_locale_invalid: Geben Sie einen Sprachcode ein, zum Beispiel en oder ru.
+    error_locale_duplicate: Diese Sprache wird bereits verwendet.
+    error_choice_invalid: Wählen Sie einen Wert aus der Liste aus.
+    error_date_invalid: Geben Sie ein gültiges Datum ein.
+    error_date_range: Das Enddatum darf nicht vor dem Premierendatum liegen.
+    error_date_end_completed: Für einen als „Gesehen“ markierten Eintrag ist ein Enddatum erforderlich, das nicht in der Zukunft liegt.
+    error_number_invalid: Geben Sie eine ganze Zahl ein, null oder größer.
+    error_episodes_below_watched: Die Anzahl der Folgen darf nicht kleiner sein als die Anzahl der gesehenen Folgen.
+    error_country_invalid: Verwenden Sie zweistellige Ländercodes, durch Kommas getrennt.
+    error_url_invalid: Geben Sie eine gültige http- oder https-Adresse ein (höchstens 512 Zeichen).
+    field_cover: Titelbild
+    cover_hint: PNG, JPEG oder WebP, bis zu %size% MB. Leer lassen, um das aktuelle Cover beizubehalten.
+    cover_remove: Cover entfernen
+    error_cover_too_large: Die Datei ist zu groß.
+    error_cover_upload: Die Datei konnte nicht hochgeladen werden.
+    error_cover_invalid: Die Datei ist kein PNG-, JPEG- oder WebP-Bild.
+    error_cover_save: Das Cover konnte nicht gespeichert werden.
+    cover_reselect: 'Das Cover wurde nicht gespeichert: Wählen Sie die Datei nach der Korrektur der Fehler erneut aus.'
+    flash_request_too_large: Die Datei ist zu groß, es wurde nichts gespeichert.
+    filter_studios: Studios nach Namen filtern
