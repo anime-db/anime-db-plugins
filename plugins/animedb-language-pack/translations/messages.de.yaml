@@ -605,7 +605,7 @@ anime_edit:
     error_choice_invalid: Wählen Sie einen Wert aus der Liste aus.
     error_date_invalid: Geben Sie ein gültiges Datum ein.
     error_date_range: Das Enddatum darf nicht vor dem Premierendatum liegen.
-    error_date_end_completed: Für einen abgeschlossenen Eintrag ist ein Enddatum erforderlich, das nicht in der Zukunft liegt.
+    error_date_end_completed: Für einen als „Gesehen“ markierten Eintrag ist ein Enddatum erforderlich, das nicht in der Zukunft liegt.
     error_number_invalid: Geben Sie eine ganze Zahl ein, null oder größer.
     error_episodes_below_watched: Die Anzahl der Folgen darf nicht kleiner sein als die Anzahl der gesehenen Folgen.
     error_country_invalid: Verwenden Sie zweistellige Ländercodes, durch Kommas getrennt.
