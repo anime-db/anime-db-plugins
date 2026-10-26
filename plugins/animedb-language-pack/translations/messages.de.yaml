@@ -620,3 +620,109 @@ anime_edit:
     cover_reselect: 'Das Cover wurde nicht gespeichert: Wählen Sie die Datei nach der Korrektur der Fehler erneut aus.'
     flash_request_too_large: Die Datei ist zu groß, es wurde nichts gespeichert.
     filter_studios: Studios nach Namen filtern
+download_status:
+    pending: Wird heruntergeladen
+    completed: Abgeschlossen
+    failed: Fehler
+queue_purge:
+    success: 'Nachrichtenwarteschlange geleert (gelöscht: %count%).'
+explorer_open:
+    error_invalid_path: 'Der Ordner konnte nicht geöffnet werden: Es ist kein gültiger absoluter Pfad.'
+downloads:
+    title: Downloads — AnimeDB
+    heading: Downloads
+    empty: Noch keine Downloads vorhanden.
+    qbittorrent_unavailable: Der Torrent-Client ist nicht erreichbar. Angezeigt wird die Liste aus der Datenbank ohne Live-Felder.
+    no_card_badge: Ohne Eintrag
+    column_name: Name
+    column_status: Status
+    column_size: Größe
+    column_progress: Fortschritt
+    column_download_speed: Empfang
+    column_upload_speed: Upload
+    column_eta: Verbleibend
+    column_peers: Seeds/Peers
+    column_storage: Speicherort
+    column_actions: Aktionen
+    action_pause: Pausieren
+    action_resume: Fortsetzen
+    action_retry: Wiederholen
+    action_stop_seeding: Seeding beenden
+    action_delete: Löschen
+    action_delete_from_client: Aus dem Client entfernen
+    action_adopt: Mit Eintrag verknüpfen
+    action_delete_files_label: Heruntergeladene Daten löschen
+    action_error_conflict: Der Status dieses Downloads hat sich geändert, bitte aktualisieren Sie die Seite.
+    action_error_refused: Diese Aktion ist für diesen Download nicht mehr verfügbar.
+    action_stale_hint: Der Status hat sich geändert — bitte aktualisieren Sie die Seite.
+    status_pending: Wartet
+    status_linking: Fertig, wird verknüpft…
+    status_storage_unavailable: Speicherort nicht verfügbar
+    status_client_error: Fehler des Torrent-Clients
+    status_missing_files: Dateien nicht gefunden
+    status_outside_storage: Die Dateien liegen außerhalb des Speicherorts — löschen Sie den Download und fügen Sie ihn erneut hinzu
+    status_completed: Fertig und verknüpft
+    status_seeding_stopped: Seeding beendet
+    status_missing_from_client: Nicht im Torrent-Client
+    status_no_card: Ohne Eintrag
+    status_failed_disk_space: 'Fehler: nicht genug Speicherplatz.'
+    status_failed_storage_conflict: 'Fehler: Speicherort-Konflikt.'
+    status_failed_name_conflict: 'Fehler: Namenskonflikt.'
+    status_failed_move_failed: 'Fehler: Dateien konnten nicht verschoben werden.'
+    status_failed_legacy_layout: 'Fehler: veraltete Speicherort-Struktur.'
+    status_failed_unexpected_layout: 'Fehler: Struktur des Downloads nicht erkannt.'
+    status_failed_generic: Fehler
+    unit_b: '%value% B'
+    unit_kb: '%value% KB'
+    unit_mb: '%value% MB'
+    unit_gb: '%value% GB'
+    unit_tb: '%value% TB'
+    speed: '%value%/s'
+download_new:
+    title: Download hinzufügen — AnimeDB
+    heading: Download hinzufügen
+    field_anime_label: Katalogeintrag
+    field_anime_placeholder: Titel eingeben…
+    field_magnet_label: Magnet-Link
+    field_torrent_file_label: Torrent-Datei
+    drop_zone_hint: Sie können eine Datei hierher ziehen
+    field_storage_label: Speicherort
+    submit_button: Download hinzufügen
+    unlink_hint: Die Verknüpfung können Sie auf der zugehörigen Seite aufheben.
+    info_already_in_downloads: Dieser Torrent ist bereits in den Downloads für diesen Eintrag vorhanden.
+    error_anime_required: Wählen Sie einen Katalogeintrag aus.
+    error_storage_required: Wählen Sie einen Speicherort aus.
+    warning_preset_unavailable: Der Standard-Speicherort konnte nicht vorbereitet werden. Wählen Sie einen anderen aus.
+    no_storages_available: Für Downloads sind keine Speicherorte verfügbar. Fügen Sie auf der Seite der Speicherorte einen hinzu.
+    no_storages_link: Speicherorte
+    error_source_required: Geben Sie einen Magnet-Link an oder wählen Sie eine Torrent-Datei aus.
+    error_unreadable_source: Der Torrent konnte nicht gelesen werden.
+    error_insufficient_space: 'Benötigt: %needed%, frei in „%path%“: %free%.'
+    error_already_linked: Dieser Torrent ist bereits mit einem Eintrag verknüpft
+    error_already_in_client: 'Dieser Torrent befindet sich bereits ohne Eintrag im Torrent-Client. Sie können ihn mit dem ausgewählten Eintrag verknüpfen: Der Torrent bleibt, wo er ist, und der ausgewählte Speicherort wird nicht verwendet.'
+    error_already_in_client_link: „Downloads“ öffnen
+    action_adopt_selected: Mit dem ausgewählten Eintrag verknüpfen
+    error_storage_unavailable: Der Speicherort ist nicht verfügbar.
+    error_client_unavailable: Der Torrent-Client ist nicht verfügbar, versuchen Sie es später erneut.
+    error_file_too_large: Die Datei ist größer als 16 MB.
+download_adopt:
+    title: Mit Eintrag verknüpfen — AnimeDB
+    heading: Torrent mit einem Eintrag verknüpfen
+    storage_hint: Der Speicherort ergibt sich aus dem Ablageort der Dateien. Der Torrent bleibt, wo er ist.
+    submit_button: Verknüpfen
+    back_button: Zurück zu den Downloads
+    error_not_in_client: Dieser Torrent befindet sich nicht im Torrent-Client.
+    error_path_is_root: Die Dateien des Torrents liegen direkt im Stammverzeichnis des Speicherorts — es gibt nichts zu verknüpfen.
+    error_bare_incoming: Die Dateien des Torrents liegen im temporären Ordner ohne eigenen Ordner — sie können nicht verknüpft werden.
+    error_foreign_incoming: Die Dateien des Torrents liegen im temporären Ordner eines anderen Torrents — sie können nicht verknüpft werden.
+    error_hidden_segment: Die Dateien des Torrents liegen in einem versteckten Ordner — sie können nicht verknüpft werden.
+    error_hash_folder: Die Dateien des Torrents liegen in einem Ordner der alten Struktur, der nach dem Torrent-Hash benannt ist — sie können nicht verknüpft werden.
+    error_unexpected_depth: Die Dateien des Torrents liegen nicht auf der obersten Ebene des Speicherorts — sie können nicht verknüpft werden.
+    error_shared_folder: Die Datei liegt im gemeinsamen Ordner „%path%“. Verknüpft werden kann nur ein Ordner, der für diesen Torrent angelegt wurde.
+    error_no_storage: Die Dateien des Torrents liegen außerhalb aller Speicherorte. Das Verschieben zwischen Laufwerken wird nicht unterstützt.
+    error_anime_not_found: Katalogeintrag nicht gefunden.
+    error_already_linked: 'Dieser Torrent ist bereits mit Eintrag #%id% verknüpft.'
+    error_folder_occupied: 'Der Ordner „%path%“ ist bereits mit Eintrag #%id% verknüpft.'
+    error_anime_has_folder: Der Eintrag hat bereits den Ordner „%path%“.
+    error_incoming_target_exists: „%path%“ existiert im Speicherort bereits — das Verschieben aus dem temporären Ordner würde mit einem Namenskonflikt enden.
+    error_storage_mismatch: Die Dateien des Downloads liegen nicht in dessen Speicherort „%storage%“ — sie können nicht verknüpft werden.
