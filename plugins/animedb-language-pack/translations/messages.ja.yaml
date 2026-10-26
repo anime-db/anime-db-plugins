@@ -301,6 +301,38 @@ anime_list:
     error: 一覧を読み込めませんでした。
     no_cover: カバー画像なし
     search_placeholder: 作品名で検索…
+    sort_label: 並べ替え
+    sort_field_name: タイトル順
+    sort_field_date_update: 更新日順
+    sort_field_user_rating: 自分の評価順
+    sort_field_date_premiere: 初放送日順
+    sort_field_date_end: 終了日順
+    sort_direction_asc: 昇順
+    sort_direction_desc: 降順
+    filters_toggle_button: フィルター
+    filter_apply_button: 絞り込む
+    filter_reset_all_button: すべてリセット
+    filter_shown_count: '表示中: %shown% / %total%'
+    filter_chip_remove_button: フィルター「%label%」を削除
+    filter_section_watch_status: 視聴状況
+    filter_section_type: 種類
+    filter_section_date_premiere: 初放送日
+    filter_section_user_rating: 評価
+    filter_section_labels: ラベル
+    filter_section_genres: ジャンル
+    filter_section_themes: テーマ
+    filter_section_studios: 制作会社
+    filter_section_source: リンク
+    filter_section_empty: このセクションに該当する値はカタログにありません。
+    filter_section_more_button: さらに表示 (%count%)
+    filter_section_search_placeholder: 制作会社を検索…
+    filter_no_rating: 未評価
+    filter_no_date_premiere: 初放送日なし
+    filter_decade_label: '%decade%年代'
+    filter_value_instant_hint: チェックした値とともにすぐに適用
+    filter_value_accumulate_hint: チェックして、あとで「絞り込む」ボタンで適用
+    filter_value_instant_label: 'すぐに適用: %name%'
+    pagination_label: カタログのページ
 
 storage_list:
     title: ストレージ — AnimeDB
@@ -382,6 +414,53 @@ anime_detail:
     fill_source_label: ソース
     error_fill_not_found: ソースではこの作品に一致するものが見つかりませんでした。
     error_fill_image_rejected: 取得元から返された画像を保存できませんでした。
+    back_link: カタログ
+    my_heading: マイリスト
+    info_heading: 情報
+    labels_chip_remove_button: ラベル「%label%」を削除
+    source_count_title: 'このリンクを持つ作品: %url%'
+    watched_episodes_label: 視聴済みの話数
+    watch_status_label: 視聴状況
+    error_fill_date_range_rejected: ソースから返された日付が、すでに保存されている日付と矛盾しています。
+    downloads_heading: この作品のダウンロード
+    downloads_manage_link: 「ダウンロード」ページで管理
+    downloads_unlink_button: 関連付けを解除
+    downloads_unlink_conflict_error: 状態が変更されました。ページを再読み込みしてください。
+    download_new_link: ダウンロードを追加
+    field_dates: 放送日
+    files_heading: ファイル
+    files_not_linked: 未関連付け
+    files_link: 関連付ける…
+    files_change: 変更…
+    files_pick_folder: フォルダー…
+    files_pick_video: 動画ファイル…
+    files_video_filter: 動画
+    files_unlink: 関連付けを解除
+    files_unlink_confirm: 作品とファイルの関連付けを解除します。ファイル自体は変更されません。続行しますか？
+    files_unlinked: ファイルとの関連付けを解除しました。
+    files_relocate_confirm: ストレージ「%name%」は現在ここにあります。パスを更新しますか？
+    files_request_failed: リクエストに失敗しました。ページを再読み込みして、もう一度お試しください。
+    files_linked: '関連付けました: ストレージ「%storage%」の「%name%」。'
+    files_linked_top_level: ストレージ「%storage%」のフォルダー「%name%」を関連付けました。選択したフォルダーはこのフォルダーに含まれています。
+    files_create_storage: ストレージを作成
+    files_error_invalid_path: フォルダーまたはファイルの絶対パスが必要です。
+    files_error_outside_storages: このフォルダーはどのストレージにも含まれていません。
+    files_error_storage_root: ストレージ全体を関連付けることはできません。
+    files_error_scan_running: このストレージはスキャン中です。完了してからもう一度お試しください。
+    files_error_storage_has_downloads: ストレージ「%storage%」へのダウンロードが進行中のため、パスを更新できません。
+    files_error_ambiguous_name: ストレージ内に、大文字小文字だけが異なるフォルダー「%name%」が複数あるため、一意に関連付けられません。
+    files_error_entry_not_found: フォルダーまたはファイル「%name%」がストレージ「%storage%」に見つからないか、読み取れません。
+    files_error_entry_not_visible: 「%name%」はスキャンでは検出されません。名前がドットで始まっているか、フォルダーでも動画ファイルでもありません。
+    files_error_occupied: 'ストレージ「%storage%」のフォルダーまたはファイル「%name%」は、すでに別の作品に関連付けられています:'
+    notes_add_button: メモを追加
+    notes_edit_button: 編集
+    rating_star_label: '評価: %rating%'
+    menu_button: 作品の操作
+    menu_edit: 編集
+    menu_delete: 削除
+    menu_change_type: 種類を変更…
+    menu_saturate: リンクから補完
+    flash_saturate_started: この作品のリンクからの補完をバックグラウンドで開始しました。
 
 anime_new:
     title: 新規作品 — AnimeDB
@@ -391,6 +470,12 @@ anime_new:
     field_watch_status: 視聴状況
     submit_button: 作成
     error_invalid: 作品名を入力し、種類と視聴状況を選択してください。
+    type_placeholder: '— 選択してください —'
+    type_hint: 種類は作品の作成後に変更できません。
+    cancel_button: キャンセル
+    error_entry_missing: フォルダーが存在しません。
+    error_storage_unavailable: ストレージ「%name%」は現在利用できません。ディスクを接続してから、もう一度お試しください。
+    error_storage_path_taken: このフォルダーはすでに別の作品に関連付けられています。
 
 storage_new:
     title: 新規ストレージ — AnimeDB
@@ -431,3 +516,107 @@ plugin_widget:
 
 app_notification:
     close_button: 閉じる
+
+anime_name_role:
+    official: 公式
+    synonym: 同義語
+    short: 略称
+
+catalog_stage:
+    error_unreadable: カタログアーカイブ「%path%」を読み込めませんでした。
+    error_missing_manifest: アーカイブ「%path%」はカタログのバックアップではないようです。
+    error_unsupported_format_version: カタログアーカイブ「%path%」は未対応のフォーマットバージョン（%formatVersion%）です。
+    error_missing_database: カタログアーカイブ「%path%」に data.db がありません。
+    error_unsafe_entry: カタログアーカイブ「%path%」に安全でないエントリのパス「%entry%」が含まれています。
+    success: 'カタログアーカイブを %stagingDir% に展開しました（作品: %animeCount%、メディアファイル: %mediaFileCount%）。'
+
+anime_type_change:
+    title: 種類の変更
+    field_type: 新しい種類
+    hint: 'この作品の現在の種類: %type%。作品自体は同じままで、ダウンロードとリンクは保持されます。'
+    loss_intro: 'この変更により次の情報が失われ、元に戻すことはできません:'
+    lost_episodes: '話数: %number%'
+    lost_watched: '視聴済み: %number%'
+    lost_date_end: '終了日: %date%'
+    lost_nothing: 話数と終了日は設定されていません
+    loss_warning: 種類を元に戻しても、シリーズの終了日は復元されません。
+    confirm_loss: 元に戻せないことを理解しました
+    submit: 種類を変更
+    cancel: キャンセル
+    flash_changed: '種類を変更しました: %type%。'
+    flash_not_confirmed: 種類は変更されませんでした。失われるデータを復元できないことを確認してください。
+    flash_sync_running: 同期の実行中です。しばらくしてからもう一度お試しください。
+    flash_invalid: この方法では種類を変更できません。
+
+anime_delete:
+    confirm: 「%title%」を削除しますか？ 削除されるのはカタログの項目のみです。
+    confirm_storage: ストレージ内の動画ファイルは変更されません。
+    confirm_downloads: 完了したトレントと失敗したトレントはダウンロードクライアントから削除され、シードも停止します。ダウンロード済みのファイルは残ります。
+    flash_deleted: 「%title%」をカタログから削除しました。
+    flash_pending_downloads: 「%title%」は削除されませんでした。先にこの作品のダウンロードをキャンセルしてください。
+    downloads_link: ダウンロードへ移動
+    flash_sync_running: 同期の実行中です。しばらくしてからもう一度お試しください。
+    remove_from_sources: ソース側のリストからも削除する
+    sources_removed: '次のリストから削除されます: %sources%。'
+    sources_kept: '次には残ります: %source%（%reason%）。'
+    kept_no_removal: プラグインがリストの項目を削除できないため
+    kept_inactive: 同期がオフになっているため
+    dialog_cancel: キャンセル
+    dialog_submit: 削除
+
+anime_edit:
+    title: '%title% を編集 — AnimeDB'
+    heading: '編集: %title%'
+    back_link: 作品に戻る
+    field_title: タイトル
+    field_names: 別タイトル
+    field_name: タイトル
+    field_locale: 言語
+    field_role: 区分
+    field_descriptions: あらすじ
+    field_description_text: あらすじの本文
+    description_source_manual: 手動
+    description_source_plugin: '%name% から'
+    field_genres: ジャンル
+    field_themes: テーマ
+    field_studios: 制作会社
+    field_new_studios: 新しい制作会社
+    field_demographic: 対象層
+    demographic_none: なし
+    field_date_premiere: 初放送日
+    field_date_end: 終了日
+    field_duration_minutes: 再生時間（分）
+    field_episodes_count: 話数
+    field_countries: 国
+    field_sources: ソースへのリンク
+    field_notes: メモ
+    add_button: 追加
+    add_locale_button: 言語を追加
+    remove_button: 削除
+    save_button: 保存
+    cancel_button: キャンセル
+    error_summary: 正しくない項目があります。何も保存されていません。
+    error_title_required: タイトルを入力してください。
+    error_name_required: タイトルを入力してください。
+    error_too_long: 長すぎます（256 文字以内）。
+    error_role_invalid: 区分を選択してください。
+    error_locale_invalid: '言語コードを入力してください（例: en、ru）。'
+    error_locale_duplicate: この言語はすでに使用されています。
+    error_choice_invalid: 一覧から値を選択してください。
+    error_date_invalid: 正しい日付を入力してください。
+    error_date_range: 終了日を初放送日より前にすることはできません。
+    error_date_end_completed: 視聴済みの作品には、今日以前の終了日が必要です。
+    error_number_invalid: 0 以上の整数を入力してください。
+    error_episodes_below_watched: 話数を視聴済みの話数より少なくすることはできません。
+    error_country_invalid: 2 文字の国コードをカンマで区切って入力してください。
+    error_url_invalid: 正しい http または https の URL を入力してください（512 文字以内）。
+    field_cover: カバー画像
+    cover_hint: PNG、JPEG、WebP 形式、%size% MB まで。空のままにすると現在のカバーが維持されます。
+    cover_remove: カバーを削除
+    error_cover_too_large: ファイルが大きすぎます。
+    error_cover_upload: ファイルをアップロードできませんでした。
+    error_cover_invalid: このファイルは PNG、JPEG、WebP のいずれの画像でもありません。
+    error_cover_save: カバーを保存できませんでした。
+    cover_reselect: カバーは保存されていません。エラーを修正したあと、もう一度ファイルを選択してください。
+    flash_request_too_large: ファイルが大きすぎるため、何も保存されていません。
+    filter_studios: 制作会社を名前で絞り込む
