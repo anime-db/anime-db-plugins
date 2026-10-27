@@ -100,12 +100,6 @@ watch_status:
     dropped: 視聴中止
     on_hold: 一時中断
 
-anime_name_type:
-    original: 原題
-    english: 英題
-    russian: ロシア語題
-    synonym: 別名
-
 storage_type:
     folder: フォルダー
     external: 外部メディア
@@ -125,19 +119,8 @@ production_status:
 settings:
     title: 設定 — AnimeDB
     heading: 設定
-    labels_link: ラベル
-    market_link: プラグインマーケット
-    plugins_link: プラグイン
-    plugin_widgets_link: プラグインウィジェット
-    sync_review_link: 要確認
-    sync_review_badge: '要確認: %count%'
-    proxy_link: プロキシサーバー
     language_label: 表示言語
     language_plugin_translation_note: プラグインのインターフェースはそれぞれの作者が翻訳しています。アプリに組み込まれた言語以外では、プラグインの一部の画面が未翻訳のままになることがあります。
-    search_reindex_heading: 検索インデックス
-    search_reindex_button: 再インデックス
-    search_reindex_success: 検索インデックスを再構築しました。
-    search_reindex_error: 検索インデックスを再構築できませんでした。Meilisearch が起動しているか確認してください。
     language_unavailable_option: '%language% — 利用不可'
     theme_label: 'カラーテーマ'
     theme_option_system: 'システム'
@@ -171,14 +154,11 @@ settings_nav:
 
 settings_labels:
     title: ラベル — 設定 — AnimeDB
-    back_link: ← 設定
     heading: ラベル
     empty_name_error: ラベル名を空にはできません。
     name_placeholder: ラベル名
     add_button: 追加
     empty: ラベルはまだありません。
-    name_column: 名前
-    actions_column: 操作
     save_button: 保存
     delete_confirm: ラベル「%name%」を削除しますか？
     delete_button: 削除
@@ -191,7 +171,6 @@ settings_labels:
 
 settings_plugin_widgets:
     title: プラグインウィジェット — 設定 — AnimeDB
-    back_link: ← 設定
     heading: プラグインウィジェット
     busy_retry_error: プラグイン設定は現在ほかの更新処理で使用中です。少し時間をおいてからもう一度お試しください。
     plugin_column: プラグイン
@@ -216,7 +195,6 @@ settings_plugin_widgets:
 
 settings_sync_review:
     title: 要確認 — 設定 — AnimeDB
-    back_link: ← 設定
     heading: 要確認
     empty: 確認が必要な項目はありません。
     kind_potential_duplicate: 重複の可能性
@@ -227,7 +205,6 @@ settings_sync_review:
     candidate_updated_at: '%date% に更新'
     auto_applied_winner: 自動で解決済み
     correct_button: 修正
-    resolve_button: 対応済み
     empty_hint: '同期にあなたの判断が必要なレコードがここに表示されます。'
     keep_button: 'カタログに残す'
     not_duplicate_button: '重複ではない'
@@ -241,9 +218,6 @@ settings_sync_review:
 
 settings_plugins:
     title: プラグイン — 設定 — AnimeDB
-    back_link: ← 設定
-    heading: プラグイン
-    widgets_link: プラグインウィジェット
     installed_heading: インストール済みプラグイン
     installed_empty: プラグインはまだインストールされていません。
     name_column: 名前
@@ -295,7 +269,6 @@ settings_plugins:
 
 settings_market:
     title: プラグインマーケット — 設定 — AnimeDB
-    back_link: ← 設定
     heading: プラグインマーケット
     empty: マーケットにはまだプラグインがありません。
     incompatible_plugins_summary: 現在のアプリのバージョンでは利用できないプラグインがあります。アプリを更新すると利用できるようになる場合があります。
@@ -337,7 +310,6 @@ settings_market:
 
 settings_plugin_page:
     title_suffix: プラグイン設定 — AnimeDB
-    back_link: ← プラグイン
     render_error: このプラグインの設定ページを表示できませんでした。しばらくしてからもう一度お試しください。
     oauth_fixed_port_warning: '一部のプラグインでは OAuth によるサインインを利用できません。ポート 41813 が別のプログラムで使用されています。'
     sync_seed_started: 'このプラグインとの初回同期をキューに追加しました。アカウントが未接続の場合は、プラグインの設定で接続してから、このページをもう一度開いてください。結果は「要確認」に表示されます。'
@@ -426,7 +398,6 @@ settings_backup:
 
 settings_proxy:
     title: プロキシサーバー — 設定 — AnimeDB
-    back_link: ← 設定
     heading: プロキシサーバー
     save_success: プロキシの設定を保存しました。
     torrent_proxy_error: 設定は保存しましたが、SOCKS5 プロキシをトレントクライアントに適用できませんでした。プロキシが確認できるまで、トレントは一時停止のままです。
@@ -464,7 +435,6 @@ anime_list:
     title: 作品一覧 — AnimeDB
     empty: 一覧に作品がありません。
     error: 一覧を読み込めませんでした。
-    no_cover: カバー画像なし
     search_placeholder: 作品名で検索…
     sort_label: 並べ替え
     sort_field_name: タイトル順
@@ -514,8 +484,6 @@ storage_list:
     delete_confirm: ストレージ「%name%」を削除しますか？
     never_scanned: 未スキャン
     scan_button: スキャン
-    scan_started: スキャンを開始しました。
-    scan_heading: スキャン結果
     scan_progress_text: '%processed%/%total% (%percent%%)'
     scan_failed_marker_conflict: 'スキャンを実行できません: ストレージマーカーが別のストレージに使用されています。'
     scan_failed_exception: 'スキャンがエラーで終了しました: %message%'
@@ -557,10 +525,7 @@ storage_list:
 
 anime_detail:
     title: '%title% — AnimeDB'
-    no_cover: カバー画像なし
-    editable_heading: 管理
     field_summary: あらすじ
-    reference_heading: 参考情報
     field_type: 種類
     field_episodes_count: 話数
     field_duration_minutes: 再生時間
@@ -590,7 +555,6 @@ anime_detail:
     gallery_heading: ギャラリー
     save_button: 保存
     cancel_button: キャンセル
-    rating_not_rated: 未評価
     increment_episode_button: 次の話を視聴済みにする
     error_watch_status_invalid: 視聴状況が正しくありません。
     error_watch_status_not_released: 作品が公開されるまで「視聴済み」にはできません。
@@ -672,7 +636,6 @@ storage_new:
     pick_folder_button: フォルダーを選択…
     submit_button: 作成
     error_invalid: 正しい名前、パス、ストレージの種類を指定してください。
-    skip_link: スキップ
     path_not_applicable_hint: 'この種類のメディアにはファイルパスがないため、保存されません。'
     path_purpose_hint: 'ストレージとは、作品のフォルダーが入っているフォルダーのことです。'
     error_already_connected: 'このフォルダーはすでにストレージ「%name%」として接続されています。'
@@ -736,9 +699,11 @@ plugin_widget:
     loading: 読み込み中…
     error: 'ソース「%source%」のウィジェットを読み込めませんでした。'
     retry_button: 再試行
+    slot_heading: '%title% · %plugin%'
 
 app_notification:
     close_button: 閉じる
+    request_failed: '操作を完了できませんでした。もう一度お試しください。'
 
 anime_name_role:
     official: 公式
@@ -999,3 +964,101 @@ storage_scan_log:
     status_failed: '失敗'
     status_marker_conflict: 'フォルダーは別のストレージとして接続されています'
     status_interrupted: '中断'
+
+search_plugins:
+    title: 'プラグイン内を検索 — AnimeDB'
+    heading: 'プラグイン内を検索'
+    name_label: 'タイトル'
+    search_button: '検索'
+    loading: '検索中…'
+    enter_query_hint: 'タイトルを入力して「検索」を押してください。'
+    group_loading: '読み込み中…'
+    group_error: '結果を取得できませんでした。'
+    group_empty: '見つかりませんでした。'
+    preview_error: 'アニメのデータを読み込めませんでした。'
+    error_fill_not_found: 'このソースからエントリーを入力できませんでした。もう一度試すか、別の候補を選んでください。'
+    error_fill_failed: 'ソースからデータを取得できませんでした。しばらくしてからもう一度お試しください。'
+    error_conflict_claimed: 'このアニメはすでに別のカタログエントリーに紐づいています。'
+    error_conflict_claimed_link: 'エントリーへ移動 →'
+    error_conflict_linked_other: 'このエントリーはすでに「%plugin%」で別のアニメと紐づいています。'
+    preview_field_type: '種類'
+    preview_field_dates: '放送日'
+    preview_field_episodes_count: '話数'
+    preview_field_genres: 'ジャンル'
+    already_in_catalog_link: 'すでにカタログにあります →'
+    possible_match_heading: 'すでにカタログにある可能性があります: %title%'
+    fill_existing_button: '既存のエントリーに入力'
+    create_new_button: '新規作成'
+    add_button: 'カタログに追加'
+    unavailable_not_installed: 'ソースプラグインがインストールされていません。'
+    unavailable_not_installed_link: 'マーケットを開く'
+    unavailable_disabled: 'インストール済みのすべてのプラグインで、ソースからの検索が無効になっています。'
+    unavailable_disabled_link: 'プラグインを設定'
+
+notification_list:
+    bell_label: '通知'
+    bell_label_unread: '通知、未読: %count%'
+    title: '通知'
+    page_title: '通知履歴'
+    read_all: 'すべて既読にする'
+    show_all: 'すべての通知を表示'
+    empty: '通知はまだありません。'
+    loading: '読み込み中…'
+    load_failed: '通知を読み込めませんでした。'
+    unread_marker: '未読:'
+
+nav:
+    aria_label: 'メインナビゲーション'
+    brand: 'AnimeDB'
+    add_button: '追加'
+    downloads_link: 'ダウンロード'
+    settings_link: '設定'
+    add_menu_search_plugins: 'プラグイン内を検索'
+    add_menu_search_plugins_hint_not_installed: 'ソースプラグインがインストールされていません。'
+    add_menu_search_plugins_hint_disabled: 'プラグインからの入力が無効になっています。'
+    add_menu_search_plugins_hint_link_not_installed: 'マーケットを開く →'
+    add_menu_search_plugins_hint_link_disabled: 'プラグインを設定 →'
+    add_menu_scan_heading: 'スキャン'
+    add_menu_scan_loading: '読み込み中…'
+    add_menu_scan_error: 'ストレージを読み込めませんでした。'
+    add_menu_scan_item: '「%name%」をスキャン'
+    add_menu_scan_more: '未接続: %number% →'
+    add_menu_scan_none: 'スキャンするストレージがありません'
+    add_menu_add_storage: 'ストレージを追加…'
+    add_menu_empty_entry: '空のエントリー'
+
+notification:
+    sync_review:
+        title: '同期項目の確認が必要です'
+        body: '確認待ちの項目: %count%。'
+    sync_reauth:
+        title: '同期プラグインの再認証が必要です'
+        body: '同期プラグイン「%plugin_name%」の認証が失効しました。設定を開いて再接続してください。それまで同期は一時停止されます。'
+    fallback:
+        title: '通知'
+        body: '%date%の通知の本文を表示できませんでした。'
+    plugin_update:
+        title: 'アップデートがあります: %name%'
+        body: 'プラグイン「%name%」の新しいバージョン %version% があります。'
+    scan_failed:
+        title: 'ストレージのスキャンに失敗しました: %name%'
+        body: 'ストレージ「%name%」のスキャンが完了しませんでした: %reason%'
+        reason:
+            marker_conflict: 'ストレージのマーカーが別のストレージのものです'
+            exception: '予期しないエラーが発生しました'
+    scan_attention:
+        title: '「%name%」のスキャンの確認が必要です'
+        body: '確認が必要: %needs_confirmation%。手動入力が必要: %needs_manual_entry%。ファイルなし: %files_missing%。競合: %conflict%。エラー: %error%。'
+    download_completed:
+        title: 'ダウンロード完了: %name%'
+        body: '「%name%」のダウンロードが完了し、ファイルがエントリーに紐づけられました。'
+    download_failed:
+        title: 'ダウンロードに失敗しました: %name%'
+        body: '「%name%」のダウンロードに失敗しました: %reason%'
+        reason:
+            none: 'ダウンロードを完了できませんでした'
+            disk_space: 'ディスクの空き容量が不足しています'
+            unexpected_layout: 'ダウンロードしたファイルの構成が想定と異なります'
+            storage_conflict: 'フォルダーはすでに別のエントリーに紐づいています'
+            name_conflict: '保存先のフォルダー名はすでに使われています'
+            move_failed: 'ファイルをストレージに移動できませんでした'
