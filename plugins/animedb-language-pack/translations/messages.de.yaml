@@ -703,7 +703,7 @@ plugin_widget:
 
 app_notification:
     close_button: Schließen
-    request_failed: 'Die Aktion konnte nicht ausgeführt werden, bitte versuche es erneut'
+    request_failed: 'Die Aktion konnte nicht ausgeführt werden. Bitte versuchen Sie es erneut.'
 
 anime_name_role:
     official: Offiziell
@@ -971,13 +971,13 @@ search_plugins:
     name_label: 'Titel'
     search_button: 'Suchen'
     loading: 'Suche läuft…'
-    enter_query_hint: 'Gib einen Titel ein und klicke auf „Suchen“.'
+    enter_query_hint: 'Geben Sie einen Titel ein und klicken Sie auf „Suchen“.'
     group_loading: 'Wird geladen…'
     group_error: 'Die Ergebnisse konnten nicht abgerufen werden.'
     group_empty: 'Nichts gefunden.'
     preview_error: 'Die Daten des Anime konnten nicht geladen werden.'
-    error_fill_not_found: 'Der Eintrag konnte aus dieser Quelle nicht ausgefüllt werden. Versuche es erneut oder wähle einen anderen Kandidaten.'
-    error_fill_failed: 'Die Daten konnten nicht aus der Quelle abgerufen werden. Versuche es später erneut.'
+    error_fill_not_found: 'Der Eintrag konnte aus dieser Quelle nicht ausgefüllt werden. Versuchen Sie es erneut oder wählen Sie einen anderen Kandidaten.'
+    error_fill_failed: 'Die Daten konnten nicht aus der Quelle abgerufen werden. Versuchen Sie es später erneut.'
     error_conflict_claimed: 'Dieser Anime ist bereits mit einem anderen Katalogeintrag verknüpft.'
     error_conflict_claimed_link: 'Zum Eintrag →'
     error_conflict_linked_other: 'Dieser Eintrag hat bereits eine Verknüpfung mit „%plugin%“ zu einem anderen Anime.'
@@ -1029,11 +1029,11 @@ nav:
 
 notification:
     sync_review:
-        title: 'Synchronisierte Elemente erfordern deine Aufmerksamkeit'
+        title: 'Synchronisierte Elemente erfordern Ihre Aufmerksamkeit'
         body: 'Elemente zur Prüfung: %count%.'
     sync_reauth:
         title: 'Das Synchronisierungs-Plugin muss neu autorisiert werden'
-        body: 'Das Synchronisierungs-Plugin „%plugin_name%“ hat seine Autorisierung verloren. Öffne die Einstellungen und verbinde es erneut — bis dahin ist die Synchronisierung pausiert.'
+        body: 'Das Synchronisierungs-Plugin „%plugin_name%“ hat seine Autorisierung verloren. Öffnen Sie die Einstellungen und verbinden Sie es erneut — bis dahin ist die Synchronisierung pausiert.'
     fallback:
         title: 'Benachrichtigung'
         body: 'Der Text der Benachrichtigung vom %date% konnte nicht angezeigt werden.'
@@ -1044,10 +1044,10 @@ notification:
         title: 'Scan des Speicherorts fehlgeschlagen: %name%'
         body: 'Der Scan des Speicherorts „%name%“ wurde nicht abgeschlossen: %reason%'
         reason:
-            marker_conflict: 'die Markierung des Speicherorts gehört zu einem anderen Speicherort'
+            marker_conflict: 'der Speicherort-Marker gehört zu einem anderen Speicherort'
             exception: 'ein unerwarteter Fehler ist aufgetreten'
     scan_attention:
-        title: 'Der Scan von „%name%“ erfordert deine Aufmerksamkeit'
+        title: 'Der Scan von „%name%“ erfordert Ihre Aufmerksamkeit'
         body: 'Zu bestätigen: %needs_confirmation%. Manuell einzugeben: %needs_manual_entry%. Dateien fehlen: %files_missing%. Konflikte: %conflict%. Fehler: %error%.'
     download_completed:
         title: 'Download abgeschlossen: %name%'

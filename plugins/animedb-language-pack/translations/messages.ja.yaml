@@ -703,7 +703,7 @@ plugin_widget:
 
 app_notification:
     close_button: 閉じる
-    request_failed: '操作を完了できませんでした。もう一度お試しください'
+    request_failed: '操作を完了できませんでした。もう一度お試しください。'
 
 anime_name_role:
     official: 公式
