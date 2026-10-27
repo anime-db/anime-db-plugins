@@ -100,12 +100,6 @@ watch_status:
     dropped: Abgebrochen
     on_hold: Pausiert
 
-anime_name_type:
-    original: Original
-    english: Englisch
-    russian: Russisch
-    synonym: Synonym
-
 storage_type:
     folder: Ordner
     external: Externer Datenträger
@@ -125,19 +119,8 @@ production_status:
 settings:
     title: Einstellungen — AnimeDB
     heading: Einstellungen
-    labels_link: Labels
-    market_link: Plugin-Marktplatz
-    plugins_link: Plugins
-    plugin_widgets_link: Plugin-Widgets
-    sync_review_link: Zu prüfen
-    sync_review_badge: 'Zu prüfen: %count%'
-    proxy_link: Proxy-Server
     language_label: Anzeigesprache
     language_plugin_translation_note: Die Oberflächen von Plugins werden von ihren jeweiligen Autoren übersetzt — außerhalb der in der App integrierten Sprachen kann ein Teil der Plugin-Oberfläche unübersetzt bleiben.
-    search_reindex_heading: Suchindex
-    search_reindex_button: Neu indizieren
-    search_reindex_success: Der Suchindex wurde neu aufgebaut.
-    search_reindex_error: Der Suchindex konnte nicht neu aufgebaut werden. Stellen Sie sicher, dass Meilisearch läuft.
     language_unavailable_option: '%language% — nicht verfügbar'
     theme_label: 'Farbschema'
     theme_option_system: 'System'
@@ -171,14 +154,11 @@ settings_nav:
 
 settings_labels:
     title: Labels — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
     heading: Labels
     empty_name_error: Der Label-Name darf nicht leer sein.
     name_placeholder: Label-Name
     add_button: Hinzufügen
     empty: Noch keine Labels vorhanden.
-    name_column: Name
-    actions_column: Aktionen
     save_button: Speichern
     delete_confirm: Label „%name%“ löschen?
     delete_button: Löschen
@@ -191,7 +171,6 @@ settings_labels:
 
 settings_plugin_widgets:
     title: Plugin-Widgets — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
     heading: Plugin-Widgets
     busy_retry_error: Die Plugin-Einstellungen werden gerade von einer anderen Aktualisierung belegt. Versuchen Sie es gleich noch einmal.
     plugin_column: Plugin
@@ -216,7 +195,6 @@ settings_plugin_widgets:
 
 settings_sync_review:
     title: Zu prüfen — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
     heading: Zu prüfen
     empty: Derzeit ist nichts zu prüfen.
     kind_potential_duplicate: Mögliches Duplikat
@@ -227,7 +205,6 @@ settings_sync_review:
     candidate_updated_at: 'aktualisiert %date%'
     auto_applied_winner: automatisch aufgelöst
     correct_button: Korrigieren
-    resolve_button: Erledigt
     empty_hint: 'Hier erscheinen Einträge, deren Synchronisierung Ihre Entscheidung erfordert.'
     keep_button: 'Im Katalog behalten'
     not_duplicate_button: 'Kein Duplikat'
@@ -241,9 +218,6 @@ settings_sync_review:
 
 settings_plugins:
     title: Plugins — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
-    heading: Plugins
-    widgets_link: Plugin-Widgets
     installed_heading: Installierte Plugins
     installed_empty: Noch keine Plugins installiert.
     name_column: Name
@@ -295,7 +269,6 @@ settings_plugins:
 
 settings_market:
     title: Plugin-Marktplatz — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
     heading: Plugin-Marktplatz
     empty: Der Marktplatz enthält noch keine Plugins.
     incompatible_plugins_summary: Einige Plugins sind für Ihre aktuelle App-Version nicht verfügbar. Eine Aktualisierung der App kann sie verfügbar machen.
@@ -337,7 +310,6 @@ settings_market:
 
 settings_plugin_page:
     title_suffix: Plugin-Einstellungen — AnimeDB
-    back_link: ← Plugins
     render_error: Die Einstellungsseite dieses Plugins konnte nicht angezeigt werden. Versuchen Sie es später erneut.
     oauth_fixed_port_warning: 'Die Anmeldung über OAuth ist für einige Plugins nicht verfügbar: Port 41813 wird von einem anderen Programm verwendet.'
     sync_seed_started: 'Die erste Synchronisierung mit diesem Plugin wurde eingereiht. Falls das Konto nicht verbunden war, verbinden Sie es in den Plugin-Einstellungen und öffnen Sie diese Seite danach erneut. Die Ergebnisse erscheinen unter „Zu prüfen“.'
@@ -426,7 +398,6 @@ settings_backup:
 
 settings_proxy:
     title: Proxy-Server — Einstellungen — AnimeDB
-    back_link: ← Einstellungen
     heading: Proxy-Server
     save_success: Die Proxy-Einstellungen wurden gespeichert.
     torrent_proxy_error: Die Einstellungen wurden gespeichert, aber der SOCKS5-Proxy konnte nicht auf den Torrent-Client angewendet werden. Die Torrents bleiben pausiert, bis der Proxy bestätigt ist.
@@ -464,7 +435,6 @@ anime_list:
     title: Liste — AnimeDB
     empty: Die Liste ist leer.
     error: Die Liste konnte nicht geladen werden.
-    no_cover: Kein Cover
     search_placeholder: Nach Titel suchen…
     sort_label: Sortierung
     sort_field_name: Nach Titel
@@ -514,8 +484,6 @@ storage_list:
     delete_confirm: Speicherort „%name%“ löschen?
     never_scanned: Noch nicht gescannt
     scan_button: Scan
-    scan_started: Scan gestartet.
-    scan_heading: Scan-Ergebnisse
     scan_progress_text: '%processed%/%total% (%percent%%)'
     scan_failed_marker_conflict: 'Scan fehlgeschlagen: Der Speicherort-Marker gehört zu einem anderen Speicherort.'
     scan_failed_exception: 'Scan fehlgeschlagen: %message%'
@@ -557,10 +525,7 @@ storage_list:
 
 anime_detail:
     title: '%title% — AnimeDB'
-    no_cover: Kein Cover
-    editable_heading: Verwaltung
     field_summary: Beschreibung
-    reference_heading: Weitere Informationen
     field_type: Typ
     field_episodes_count: Anzahl Folgen
     field_duration_minutes: Dauer
@@ -590,7 +555,6 @@ anime_detail:
     gallery_heading: Galerie
     save_button: Speichern
     cancel_button: Abbrechen
-    rating_not_rated: Nicht bewertet
     increment_episode_button: Nächste Folge als gesehen markieren
     error_watch_status_invalid: Ungültiger Sehstatus.
     error_watch_status_not_released: Kann nicht als „Gesehen“ markiert werden, solange der Anime noch nicht erschienen ist.
@@ -672,7 +636,6 @@ storage_new:
     pick_folder_button: Ordner wählen…
     submit_button: Erstellen
     error_invalid: Geben Sie einen gültigen Namen, Pfad und Speicherort-Typ an.
-    skip_link: Überspringen
     path_not_applicable_hint: 'Dieser Medientyp hat keinen Dateipfad, daher wird keiner gespeichert.'
     path_purpose_hint: 'Ein Speicherort ist ein Ordner, der die Ordner mit Anime enthält.'
     error_already_connected: 'Dieser Ordner ist bereits als Speicherort „%name%“ verbunden.'
@@ -736,9 +699,11 @@ plugin_widget:
     loading: Wird geladen…
     error: 'Das Widget der Quelle „%source%“ konnte nicht geladen werden.'
     retry_button: Wiederholen
+    slot_heading: '%title% · %plugin%'
 
 app_notification:
     close_button: Schließen
+    request_failed: 'Die Aktion konnte nicht ausgeführt werden, bitte versuche es erneut'
 
 anime_name_role:
     official: Offiziell
@@ -999,3 +964,101 @@ storage_scan_log:
     status_failed: 'Fehlgeschlagen'
     status_marker_conflict: 'Ordner ist als anderer Speicherort verbunden'
     status_interrupted: 'Unterbrochen'
+
+search_plugins:
+    title: 'Suche in Plugins — AnimeDB'
+    heading: 'Suche in Plugins'
+    name_label: 'Titel'
+    search_button: 'Suchen'
+    loading: 'Suche läuft…'
+    enter_query_hint: 'Gib einen Titel ein und klicke auf „Suchen“.'
+    group_loading: 'Wird geladen…'
+    group_error: 'Die Ergebnisse konnten nicht abgerufen werden.'
+    group_empty: 'Nichts gefunden.'
+    preview_error: 'Die Daten des Anime konnten nicht geladen werden.'
+    error_fill_not_found: 'Der Eintrag konnte aus dieser Quelle nicht ausgefüllt werden. Versuche es erneut oder wähle einen anderen Kandidaten.'
+    error_fill_failed: 'Die Daten konnten nicht aus der Quelle abgerufen werden. Versuche es später erneut.'
+    error_conflict_claimed: 'Dieser Anime ist bereits mit einem anderen Katalogeintrag verknüpft.'
+    error_conflict_claimed_link: 'Zum Eintrag →'
+    error_conflict_linked_other: 'Dieser Eintrag hat bereits eine Verknüpfung mit „%plugin%“ zu einem anderen Anime.'
+    preview_field_type: 'Typ'
+    preview_field_dates: 'Erscheinungsdaten'
+    preview_field_episodes_count: 'Anzahl Folgen'
+    preview_field_genres: 'Genres'
+    already_in_catalog_link: 'Bereits im Katalog →'
+    possible_match_heading: 'Möglicherweise bereits im Katalog: %title%'
+    fill_existing_button: 'Vorhandenen Eintrag ausfüllen'
+    create_new_button: 'Neu erstellen'
+    add_button: 'Zum Katalog hinzufügen'
+    unavailable_not_installed: 'Es ist kein Quell-Plugin installiert.'
+    unavailable_not_installed_link: 'Marktplatz öffnen'
+    unavailable_disabled: 'Die Suche in Quellen ist für alle installierten Plugins deaktiviert.'
+    unavailable_disabled_link: 'Plugins konfigurieren'
+
+notification_list:
+    bell_label: 'Benachrichtigungen'
+    bell_label_unread: 'Benachrichtigungen, ungelesen: %count%'
+    title: 'Benachrichtigungen'
+    page_title: 'Benachrichtigungsverlauf'
+    read_all: 'Alle als gelesen markieren'
+    show_all: 'Alle Benachrichtigungen anzeigen'
+    empty: 'Noch keine Benachrichtigungen.'
+    loading: 'Wird geladen…'
+    load_failed: 'Die Benachrichtigungen konnten nicht geladen werden.'
+    unread_marker: 'Ungelesen:'
+
+nav:
+    aria_label: 'Hauptnavigation'
+    brand: 'AnimeDB'
+    add_button: 'Hinzufügen'
+    downloads_link: 'Downloads'
+    settings_link: 'Einstellungen'
+    add_menu_search_plugins: 'Suche in Plugins'
+    add_menu_search_plugins_hint_not_installed: 'Es ist kein Quell-Plugin installiert.'
+    add_menu_search_plugins_hint_disabled: 'Das Ausfüllen über das Plugin ist deaktiviert.'
+    add_menu_search_plugins_hint_link_not_installed: 'Marktplatz öffnen →'
+    add_menu_search_plugins_hint_link_disabled: 'Plugin konfigurieren →'
+    add_menu_scan_heading: 'Scannen'
+    add_menu_scan_loading: 'Wird geladen…'
+    add_menu_scan_error: 'Die Speicherorte konnten nicht geladen werden.'
+    add_menu_scan_item: '„%name%“ scannen'
+    add_menu_scan_more: 'Nicht verbunden: %number% →'
+    add_menu_scan_none: 'Keine Speicherorte zum Scannen'
+    add_menu_add_storage: 'Speicherort hinzufügen…'
+    add_menu_empty_entry: 'Leerer Eintrag'
+
+notification:
+    sync_review:
+        title: 'Synchronisierte Elemente erfordern deine Aufmerksamkeit'
+        body: 'Elemente zur Prüfung: %count%.'
+    sync_reauth:
+        title: 'Das Synchronisierungs-Plugin muss neu autorisiert werden'
+        body: 'Das Synchronisierungs-Plugin „%plugin_name%“ hat seine Autorisierung verloren. Öffne die Einstellungen und verbinde es erneut — bis dahin ist die Synchronisierung pausiert.'
+    fallback:
+        title: 'Benachrichtigung'
+        body: 'Der Text der Benachrichtigung vom %date% konnte nicht angezeigt werden.'
+    plugin_update:
+        title: 'Update verfügbar: %name%'
+        body: 'Eine neue Version %version% des Plugins „%name%“ ist verfügbar.'
+    scan_failed:
+        title: 'Scan des Speicherorts fehlgeschlagen: %name%'
+        body: 'Der Scan des Speicherorts „%name%“ wurde nicht abgeschlossen: %reason%'
+        reason:
+            marker_conflict: 'die Markierung des Speicherorts gehört zu einem anderen Speicherort'
+            exception: 'ein unerwarteter Fehler ist aufgetreten'
+    scan_attention:
+        title: 'Der Scan von „%name%“ erfordert deine Aufmerksamkeit'
+        body: 'Zu bestätigen: %needs_confirmation%. Manuell einzugeben: %needs_manual_entry%. Dateien fehlen: %files_missing%. Konflikte: %conflict%. Fehler: %error%.'
+    download_completed:
+        title: 'Download abgeschlossen: %name%'
+        body: 'Der Download von „%name%“ ist abgeschlossen und seine Dateien sind mit dem Eintrag verknüpft.'
+    download_failed:
+        title: 'Download fehlgeschlagen: %name%'
+        body: 'Der Download von „%name%“ ist fehlgeschlagen: %reason%'
+        reason:
+            none: 'der Download konnte nicht abgeschlossen werden'
+            disk_space: 'nicht genügend freier Speicherplatz'
+            unexpected_layout: 'die heruntergeladenen Dateien haben eine unerwartete Struktur'
+            storage_conflict: 'der Ordner ist bereits mit einem anderen Eintrag verknüpft'
+            name_conflict: 'der Name des Zielordners ist bereits vergeben'
+            move_failed: 'die Dateien konnten nicht in den Speicherort verschoben werden'
