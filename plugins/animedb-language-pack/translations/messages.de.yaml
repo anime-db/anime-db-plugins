@@ -138,6 +138,36 @@ settings:
     search_reindex_button: Neu indizieren
     search_reindex_success: Der Suchindex wurde neu aufgebaut.
     search_reindex_error: Der Suchindex konnte nicht neu aufgebaut werden. Stellen Sie sicher, dass Meilisearch läuft.
+    language_unavailable_option: '%language% — nicht verfügbar'
+    theme_label: 'Farbschema'
+    theme_option_system: 'System'
+    theme_option_light: 'Hell'
+    theme_option_dark: 'Dunkel'
+    system_notifications_label: 'Systembenachrichtigungen'
+    system_notifications_hint: 'Eine Systembenachrichtigung anzeigen, wenn das Fenster ausgeblendet ist oder nicht im Fokus steht.'
+    pagination_mode_label: 'Katalog-Seitennavigation'
+    pagination_mode_option_infinite_scroll: 'Endloses Scrollen'
+    pagination_mode_option_classic: 'Klassisch'
+
+settings_nav:
+    aria_label: 'Navigation der Einstellungen'
+    group_general: 'Allgemein'
+    group_catalog: 'Katalog'
+    group_plugins: 'Plugins'
+    group_plugin_settings: 'Plugin-Einstellungen'
+    group_network: 'Netzwerk'
+    item_interface: 'Oberfläche'
+    item_storage: 'Speicherorte'
+    item_labels: 'Labels'
+    item_sync_review: 'Zu prüfen'
+    item_backup: 'Export und Import'
+    item_description_sources: 'Beschreibungsquellen'
+    item_search_index: 'Suchindex'
+    item_market: 'Marktplatz'
+    item_plugins_installed: 'Installiert'
+    item_plugins_install: 'Aus ZIP installieren'
+    item_plugin_widgets: 'Widgets'
+    item_proxy: 'Proxy und eingehende Verbindungen'
 
 settings_labels:
     title: Labels — Einstellungen — AnimeDB
@@ -152,6 +182,12 @@ settings_labels:
     save_button: Speichern
     delete_confirm: Label „%name%“ löschen?
     delete_button: Löschen
+    description: 'Labels sind Ihre eigenen Markierungen für Katalogeinträge. Sie werden auf der Seite eines Eintrags vergeben, und der Katalog lässt sich danach filtern.'
+    count_label: 'Einträge: %entries%'
+    count_link_title: 'Einträge mit diesem Label anzeigen'
+    delete_confirm_with_count: 'Label „%name%“ löschen? Einträge mit diesem Label: %count%.'
+    new_name_label: 'Neues Label'
+    rename_label: 'Label-Name'
 
 settings_plugin_widgets:
     title: Plugin-Widgets — Einstellungen — AnimeDB
@@ -170,6 +206,13 @@ settings_plugin_widgets:
     catalog:
         heading: Katalog
         empty: Für den Katalog sind keine Widgets verfügbar.
+    slot_column: 'Platzierung auf der Eintragsseite'
+    slot_bottom: 'Unten'
+    slot_side: 'Rechts'
+    active_label: 'Aktiv: %title%'
+    slot_label: 'Platzierung: %title%'
+    empty_hint: 'Widgets werden mit installierten Plugins geliefert.'
+    open_market_link: 'Marktplatz öffnen'
 
 settings_sync_review:
     title: Zu prüfen — Einstellungen — AnimeDB
@@ -185,6 +228,16 @@ settings_sync_review:
     auto_applied_winner: automatisch aufgelöst
     correct_button: Korrigieren
     resolve_button: Erledigt
+    empty_hint: 'Hier erscheinen Einträge, deren Synchronisierung Ihre Entscheidung erfordert.'
+    keep_button: 'Im Katalog behalten'
+    not_duplicate_button: 'Kein Duplikat'
+    id_conflict: '„%source%“: Die ID ist „%owner%“ fest zugeordnet; „%other%“ hat keine Synchronisierung und kein Befüllen aus dieser Quelle'
+    id_conflict_hint: 'Die Schaltfläche „Kein Duplikat“ blendet diesen Punkt aus; der zweite Eintrag erhält keine Synchronisierung mit diesen Quellen'
+    kind_type_mismatch: 'Die Quelle „%source%“ meldet einen anderen Typ: %source_type%'
+    type_mismatch_current: 'Aktueller Typ: %type%'
+    accept_type_button: 'Typ der Quelle übernehmen'
+    keep_type_button: 'Typ beibehalten'
+    delete_button: 'Eintrag löschen'
 
 settings_plugins:
     title: Plugins — Einstellungen — AnimeDB
@@ -218,6 +271,27 @@ settings_plugins:
     install_error_syntax: 'Installation abgebrochen: Die PHP-Dateien des Plugins enthalten Syntaxfehler:'
     install_error_invalid_manifest: Ungültige oder fehlende manifest.json im Archiv.
     install_error_generic: Das Archiv konnte nicht entpackt oder installiert werden. Stellen Sie sicher, dass es ein gültiges Plugin-ZIP-Archiv ist.
+    default_search_heading: 'Standard-Suchplugin'
+    default_search_hint: 'Wird bei der Titelsuche während eines Speicherort-Scans zuerst abgefragt; die übrigen Plugins folgen in der üblichen Reihenfolge. Ohne Auswahl bleibt die übliche Reihenfolge erhalten.'
+    default_search_filter: 'Plugins filtern'
+    default_search_none: 'Nicht ausgewählt'
+    default_search_unavailable: '(derzeit nicht verfügbar, Auswahl bleibt gespeichert)'
+    default_search_save: 'Speichern'
+    default_search_saved: 'Das Standard-Suchplugin wurde gespeichert.'
+    sync_on: 'an'
+    sync_off: 'aus'
+    sync_toggle: 'Synchronisierung'
+    busy_retry_error: 'Die Plugin-Einstellungen werden gerade von einer anderen Aktualisierung belegt. Versuchen Sie es gleich noch einmal.'
+    open_market_link: 'Marktplatz öffnen'
+    install_error_incompatible_plugin_contracts: 'Das Plugin ist mit dieser AnimeDB-Version nicht kompatibel (benötigt Plugin-Schnittstellenversion %requiredPluginContracts%, installiert ist %installedPluginContracts%).'
+    status_column: 'Status'
+    status_enabled: 'Aktiviert'
+    status_disabled: 'Deaktiviert'
+    status_incompatible: 'Deaktiviert — dieses Plugin benötigt eine andere App-Version, um zu funktionieren.'
+    status_incompatible_badge: 'Inkompatibel'
+    incompatible_market_link: 'Im Plugin-Marktplatz prüfen'
+    incompatible_market_update: 'Update auf Version %version% verfügbar — Plugin-Marktplatz öffnen'
+    remove_confirm: 'Plugin „%name%“ entfernen? Die von ihm im Katalog gesammelten Daten bleiben erhalten.'
 
 settings_market:
     title: Plugin-Marktplatz — Einstellungen — AnimeDB
@@ -253,11 +327,102 @@ settings_market:
     refresh_checking: Suche nach Updates…
     refresh_failed: Der Marktplatz-Katalog konnte nicht aktualisiert werden. Versuchen Sie es später erneut.
     refresh_timeout: Die Update-Prüfung läuft noch oder wurde abgebrochen. Versuchen Sie es später erneut.
+    filter_filler_empty: 'Im Marktplatz sind derzeit keine Plugin-Quellen verfügbar.'
+    filter_filler_banner: 'Plugin-Quellen werden angezeigt'
+    filter_filler_clear_link: 'Alle anzeigen'
+    incompatible_plugin_contracts: 'Keine veröffentlichte Version des Plugins ist mit dieser AnimeDB-Version kompatibel.'
+    installer_pending: 'Im Installer ausgewählte Plugins sind noch nicht installiert und werden automatisch installiert: %plugins%.'
+    install_error_incompatible_plugin_contracts: 'Keine veröffentlichte Version dieses Plugins ist mit dieser AnimeDB-Version kompatibel (Plugin-Schnittstellenversion %currentPluginContracts%).'
+    load_catalog_button: 'Katalog laden'
 
 settings_plugin_page:
     title_suffix: Plugin-Einstellungen — AnimeDB
     back_link: ← Plugins
     render_error: Die Einstellungsseite dieses Plugins konnte nicht angezeigt werden. Versuchen Sie es später erneut.
+    oauth_fixed_port_warning: 'Die Anmeldung über OAuth ist für einige Plugins nicht verfügbar: Port 41813 wird von einem anderen Programm verwendet.'
+    sync_seed_started: 'Die erste Synchronisierung mit diesem Plugin wurde eingereiht. Falls das Konto nicht verbunden war, verbinden Sie es in den Plugin-Einstellungen und öffnen Sie diese Seite danach erneut. Die Ergebnisse erscheinen unter „Zu prüfen“.'
+    sync_seed_started_link: 'Zu „Zu prüfen“ wechseln'
+
+settings_description_sources:
+    title: 'Beschreibungsquellen — Einstellungen — AnimeDB'
+    heading: 'Beschreibungsquellen'
+    intro: 'Die Reihenfolge der Plugins bestimmt, wessen Beschreibung in einem Eintrag erhalten bleibt: Ein Plugin weiter oben in der Liste ersetzt die Beschreibung eines Plugins darunter. Eine Liste gilt für alle Sprachen; ein Plugin außerhalb der Liste steht hinter allen aufgeführten. Solange die Liste nicht gespeichert ist, werden Beschreibungen nur in noch leere Sprachen eingetragen. Das Speichern berechnet nichts neu: Die Regeln gelten beim nächsten Schreibvorgang eines Plugins in einen Eintrag oder wenn Sie die Reihenfolge unten auf den Katalog anwenden.'
+    save_success: 'Die Reihenfolge der Quellen wurde gespeichert.'
+    empty: 'Es gibt keine Plugins, deren Beschreibungen eingestuft werden können.'
+    move_up: 'Nach oben'
+    move_down: 'Nach unten'
+    save_button: 'Speichern'
+    apply_button: 'Auf den Katalog anwenden (%count%)'
+    apply_hint: 'Zu prüfende Einträge werden erst neu berechnet, wenn Sie die Reihenfolge auf den Katalog anwenden; das Speichern startet nichts.'
+    apply_queued: 'Eingereihte Einträge: %count%'
+
+settings_search_index:
+    title: 'Suchindex — Einstellungen — AnimeDB'
+    heading: 'Suchindex'
+    reindex_button: 'Suchindex neu aufbauen'
+    reindex_success: 'Der Suchindex wurde neu aufgebaut.'
+    reindex_error: 'Der Suchindex konnte nicht neu aufgebaut werden. Starten Sie die App neu.'
+
+settings_plugins_install:
+    title: 'Plugin aus ZIP installieren — Einstellungen — AnimeDB'
+
+settings_backup:
+    title: 'Katalog-Export und -Import — Einstellungen — AnimeDB'
+    heading: 'Katalog-Export und -Import'
+    unavailable_outside_app: 'Diese Aktion ist nur in der AnimeDB-App verfügbar.'
+    staged_import_banner: 'Das Archiv „%name%“ wurde am %date% für den Import vorbereitet und wird beim nächsten Start der App angewendet.'
+    staged_import_cancel_button: 'Vorbereiteten Import abbrechen'
+    staged_import_rejected_banner_invalid_marker: 'Ein vorbereiteter Katalog-Import wurde gefunden, konnte aber nicht angewendet werden, da seine Markerdatei ungültig ist oder von einer inkompatiblen App-Version erstellt wurde. Die vorbereiteten Dateien wurden entfernt.'
+    staged_import_rejected_banner_incompatible_schema: 'Ein vorbereiteter Katalog-Import konnte nicht angewendet werden, da seine Datenbank Migrationen enthält, die diese App-Version nicht kennt. Die vorbereiteten Dateien wurden entfernt.'
+    staged_import_rejected_banner_user_declined: 'Ein vorbereiteter Katalog-Import wurde beim letzten App-Start abgelehnt. Die vorbereiteten Dateien wurden entfernt.'
+    staged_import_rejected_banner_import_rolled_back: 'Ein vorbereiteter Katalog-Import wurde angewendet, musste aber zurückgesetzt werden; der Katalog wurde in den Zustand vor dem Import wiederhergestellt. Die vorbereiteten Dateien wurden entfernt.'
+    import_plugins_heading: 'Plugins aus dem importierten Archiv'
+    import_plugins_description: 'Diese Plugins wurden auf dem Quellgerät verwendet. Sie werden nicht automatisch installiert — installieren Sie sie bei Bedarf manuell über den Marktplatz.'
+    import_plugins_dismiss_button: 'Ausblenden'
+    import_v1_report_heading: 'Bericht zum Import aus AnimeDB v1'
+    import_v1_report_description: 'Was der Import übernommen hat und was nicht. Behalten Sie den Bericht, bis Sie die Einträge geprüft haben; das Ausblenden kann nicht rückgängig gemacht werden.'
+    import_v1_report_dismiss_button: 'Ausblenden'
+    import_plugin_status_installed: 'installiert'
+    import_plugin_status_available_in_market: 'im Marktplatz verfügbar'
+    import_plugin_status_manual_install: 'manuell installieren'
+    import_plugin_status_check_market: 'im Marktplatz prüfen'
+    export_heading: 'Export'
+    description: 'Speichert eine Kopie des Katalogs (Datenbank und Cover) als einzelne Datei in dem von Ihnen gewählten Ordner. App- und Plugin-Einstellungen, einschließlich des Proxy-Passworts und der Zugriffstokens, sind nicht enthalten.'
+    destination_label: 'Zielordner'
+    pick_folder_button: 'Ordner wählen'
+    start_button: 'Export starten'
+    cancel_button: 'Abbrechen'
+    progress_database: 'Datenbank-Snapshot: %current%/%total%'
+    progress_media: 'Cover werden verpackt: %current%/%total%'
+    done_text: 'Katalog exportiert nach: %path%'
+    cancelled_text: 'Export abgebrochen.'
+    error_insufficient_space: 'Nicht genügend freier Speicherplatz auf dem gewählten Datenträger.'
+    error_generic: 'Der Katalog konnte nicht exportiert werden.'
+    import_heading: 'Import'
+    import_description: 'Bereitet ein zuvor exportiertes Archiv für den Import vor. Das Archiv wird jetzt geprüft und entpackt; der aktuelle Katalog wird noch nicht ersetzt.'
+    import_path_label: 'Archivdatei'
+    import_pick_button: 'Archiv wählen'
+    import_file_filter_name: 'AnimeDB-Katalogarchiv'
+    import_start_button: 'Import starten'
+    import_confirm_text: 'Das Archiv „%path%“ wird für den Import vorbereitet, und der aktuelle Katalog wird beim nächsten Start der App ersetzt. Fortfahren?'
+    import_progress_database: 'Datenbank wird vorbereitet: %current%/%total%'
+    import_progress_media: 'Medien werden entpackt: %current%/%total%'
+    import_done_text: 'Das Katalogarchiv wurde für den Import angenommen.'
+    import_error_unreadable: 'Die ausgewählte Datei „%path%“ konnte nicht als Archiv gelesen werden.'
+    import_error_missing_manifest: 'Das ausgewählte Archiv „%path%“ sieht nicht wie eine Katalogsicherung aus und kann nicht importiert werden.'
+    import_error_unsupported_format_version: 'Das ausgewählte Archiv „%path%“ wurde mit einer inkompatiblen App-Version erstellt.'
+    import_error_missing_database: 'Das ausgewählte Archiv „%path%“ enthält keine Katalogdatenbank.'
+    import_error_unsafe_entry: 'Das ausgewählte Archiv „%path%“ enthält unsichere Dateipfade und wurde abgelehnt.'
+    import_error_generic: 'Der Katalog-Import konnte nicht vorbereitet werden.'
+    snapshots_heading: 'Snapshots'
+    snapshots_description: 'Datenbanksicherungen, die vor App-Updates und Katalog-Importen erstellt wurden.'
+    snapshots_empty: 'Noch keine Snapshots vorhanden.'
+    snapshot_preimport_badge: 'Vor dem Import'
+    snapshot_size_unit_kb: 'KB'
+    snapshot_size_unit_mb: 'MB'
+    snapshot_restore_button: 'Wiederherstellen'
+    restore_confirm_text: 'Der aktuelle Katalog wird durch den Inhalt des Snapshots „%name%“ ersetzt. Dies kann nicht rückgängig gemacht werden. Fortfahren?'
+    restore_error_text: 'Der Snapshot konnte nicht wiederhergestellt werden.'
 
 settings_proxy:
     title: Proxy-Server — Einstellungen — AnimeDB
