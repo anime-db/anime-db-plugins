@@ -138,6 +138,36 @@ settings:
     search_reindex_button: 再インデックス
     search_reindex_success: 検索インデックスを再構築しました。
     search_reindex_error: 検索インデックスを再構築できませんでした。Meilisearch が起動しているか確認してください。
+    language_unavailable_option: '%language% — 利用不可'
+    theme_label: 'カラーテーマ'
+    theme_option_system: 'システム'
+    theme_option_light: 'ライト'
+    theme_option_dark: 'ダーク'
+    system_notifications_label: 'システム通知'
+    system_notifications_hint: 'ウィンドウが非表示またはフォーカスされていないときに、システム通知を表示します。'
+    pagination_mode_label: 'カタログのページ送り'
+    pagination_mode_option_infinite_scroll: '無限スクロール'
+    pagination_mode_option_classic: 'クラシック'
+
+settings_nav:
+    aria_label: '設定ナビゲーション'
+    group_general: '全般'
+    group_catalog: 'カタログ'
+    group_plugins: 'プラグイン'
+    group_plugin_settings: 'プラグイン設定'
+    group_network: 'ネットワーク'
+    item_interface: 'インターフェース'
+    item_storage: 'ストレージ'
+    item_labels: 'ラベル'
+    item_sync_review: '要確認'
+    item_backup: 'エクスポートとインポート'
+    item_description_sources: '説明のソース'
+    item_search_index: '検索インデックス'
+    item_market: 'マーケット'
+    item_plugins_installed: 'インストール済み'
+    item_plugins_install: 'ZIP からインストール'
+    item_plugin_widgets: 'ウィジェット'
+    item_proxy: 'プロキシと受信接続'
 
 settings_labels:
     title: ラベル — 設定 — AnimeDB
@@ -152,6 +182,12 @@ settings_labels:
     save_button: 保存
     delete_confirm: ラベル「%name%」を削除しますか？
     delete_button: 削除
+    description: 'ラベルは、カタログのレコードに付ける独自の目印です。レコードのページで付け、ラベルでカタログを絞り込めます。'
+    count_label: 'レコード数: %entries%'
+    count_link_title: 'このラベルのレコードを表示'
+    delete_confirm_with_count: 'ラベル「%name%」を削除しますか？ このラベルが付いたレコード: %count%。'
+    new_name_label: '新しいラベル'
+    rename_label: 'ラベル名'
 
 settings_plugin_widgets:
     title: プラグインウィジェット — 設定 — AnimeDB
@@ -170,6 +206,13 @@ settings_plugin_widgets:
     catalog:
         heading: カタログ
         empty: カタログで利用できるウィジェットはありません。
+    slot_column: 'レコードページでの配置'
+    slot_bottom: '下部'
+    slot_side: '右側'
+    active_label: '有効: %title%'
+    slot_label: '配置: %title%'
+    empty_hint: 'ウィジェットは、インストール済みのプラグインとともに提供されます。'
+    open_market_link: 'マーケットを開く'
 
 settings_sync_review:
     title: 要確認 — 設定 — AnimeDB
@@ -185,6 +228,16 @@ settings_sync_review:
     auto_applied_winner: 自動で解決済み
     correct_button: 修正
     resolve_button: 対応済み
+    empty_hint: '同期にあなたの判断が必要なレコードがここに表示されます。'
+    keep_button: 'カタログに残す'
+    not_duplicate_button: '重複ではない'
+    id_conflict: '「%source%」: ID は「%owner%」に固定されています。「%other%」にはこのソースからの同期も補完もありません'
+    id_conflict_hint: '「重複ではない」ボタンでこの項目は非表示になります。2 件目のレコードはこれらのソースと同期されません'
+    kind_type_mismatch: 'ソース「%source%」は別の種類を報告しています: %source_type%'
+    type_mismatch_current: '現在の種類: %type%'
+    accept_type_button: 'ソースの種類を採用'
+    keep_type_button: '種類を維持'
+    delete_button: 'レコードを削除'
 
 settings_plugins:
     title: プラグイン — 設定 — AnimeDB
@@ -218,6 +271,27 @@ settings_plugins:
     install_error_syntax: 'インストールを中止しました: プラグインの PHP ファイルに構文エラーがあります:'
     install_error_invalid_manifest: アーカイブ内の manifest.json が不正か、見つかりません。
     install_error_generic: アーカイブを展開またはインストールできませんでした。正しいプラグインの ZIP アーカイブか確認してください。
+    default_search_heading: '既定の検索プラグイン'
+    default_search_hint: 'ストレージのスキャンでタイトルを検索するとき最初に問い合わせます。ほかのプラグインは通常の順序で続きます。未選択の場合は通常の順序のままです。'
+    default_search_filter: 'プラグインを絞り込む'
+    default_search_none: '未選択'
+    default_search_unavailable: '(現在利用できませんが、選択は保存されています)'
+    default_search_save: '保存'
+    default_search_saved: '既定の検索プラグインを保存しました。'
+    sync_on: 'オン'
+    sync_off: 'オフ'
+    sync_toggle: '同期'
+    busy_retry_error: 'プラグイン設定は現在ほかの更新処理で使用中です。少し時間をおいてからもう一度お試しください。'
+    open_market_link: 'マーケットを開く'
+    install_error_incompatible_plugin_contracts: 'このプラグインはこのバージョンの AnimeDB と互換性がありません (プラグインインターフェースのバージョン %requiredPluginContracts% が必要ですが、インストールされているのは %installedPluginContracts% です)。'
+    status_column: '状態'
+    status_enabled: '有効'
+    status_disabled: '無効'
+    status_incompatible: '無効 — このプラグインが動作するには別のバージョンのアプリが必要です。'
+    status_incompatible_badge: '非互換'
+    incompatible_market_link: 'プラグインマーケットで確認'
+    incompatible_market_update: 'バージョン %version% へのアップデートがあります — プラグインマーケットを開く'
+    remove_confirm: 'プラグイン「%name%」を削除しますか？ カタログに蓄積されたデータは保持されます。'
 
 settings_market:
     title: プラグインマーケット — 設定 — AnimeDB
@@ -253,11 +327,102 @@ settings_market:
     refresh_checking: 更新を確認しています…
     refresh_failed: マーケットのカタログを更新できませんでした。しばらくしてからもう一度お試しください。
     refresh_timeout: 更新の確認がまだ実行中か、中断されました。しばらくしてからもう一度お試しください。
+    filter_filler_empty: '現在、マーケットで利用できるソースのプラグインはありません。'
+    filter_filler_banner: 'ソースのプラグインを表示中'
+    filter_filler_clear_link: 'すべて表示'
+    incompatible_plugin_contracts: 'このバージョンの AnimeDB と互換性のあるプラグインの公開バージョンはありません。'
+    installer_pending: 'インストーラーで選択したプラグインはまだインストールされておらず、自動的にインストールされます: %plugins%。'
+    install_error_incompatible_plugin_contracts: 'このプラグインの公開バージョンはいずれもこのバージョンの AnimeDB と互換性がありません (プラグインインターフェースのバージョン %currentPluginContracts%)。'
+    load_catalog_button: 'カタログを読み込む'
 
 settings_plugin_page:
     title_suffix: プラグイン設定 — AnimeDB
     back_link: ← プラグイン
     render_error: このプラグインの設定ページを表示できませんでした。しばらくしてからもう一度お試しください。
+    oauth_fixed_port_warning: '一部のプラグインでは OAuth によるサインインを利用できません。ポート 41813 が別のプログラムで使用されています。'
+    sync_seed_started: 'このプラグインとの初回同期をキューに追加しました。アカウントが未接続の場合は、プラグインの設定で接続してから、このページをもう一度開いてください。結果は「要確認」に表示されます。'
+    sync_seed_started_link: '「要確認」へ移動'
+
+settings_description_sources:
+    title: '説明のソース — 設定 — AnimeDB'
+    heading: '説明のソース'
+    intro: 'プラグインの順序によって、レコードに残る説明が決まります。リストの上位にあるプラグインが、下位のプラグインの説明を置き換えます。リストはすべての言語に共通で、リストにないプラグインはリスト内のすべてのプラグインより下位として扱われます。リストを保存するまでは、説明はまだ空の言語にのみ補完されます。保存しても何も再計算されません。ルールは、プラグインが次にレコードへ書き込むとき、または下の操作で順序をカタログに適用したときに反映されます。'
+    save_success: 'ソースの順序を保存しました。'
+    empty: '説明の優先順位を設定できるプラグインはありません。'
+    move_up: '上へ'
+    move_down: '下へ'
+    save_button: '保存'
+    apply_button: 'カタログに適用 (%count%)'
+    apply_hint: '確認対象のレコードは、順序をカタログに適用したときにのみ再計算されます。保存しても何も開始されません。'
+    apply_queued: 'キューに追加したレコード: %count%'
+
+settings_search_index:
+    title: '検索インデックス — 設定 — AnimeDB'
+    heading: '検索インデックス'
+    reindex_button: '検索インデックスを再構築'
+    reindex_success: '検索インデックスを再構築しました。'
+    reindex_error: '検索インデックスを再構築できませんでした。アプリを再起動してください。'
+
+settings_plugins_install:
+    title: 'ZIP からプラグインをインストール — 設定 — AnimeDB'
+
+settings_backup:
+    title: 'カタログのエクスポートとインポート — 設定 — AnimeDB'
+    heading: 'カタログのエクスポートとインポート'
+    unavailable_outside_app: 'この操作は AnimeDB アプリ内でのみ利用できます。'
+    staged_import_banner: 'アーカイブ「%name%」は %date% にインポート用に準備され、次回のアプリ起動時に適用されます。'
+    staged_import_cancel_button: '準備済みのインポートを取り消す'
+    staged_import_rejected_banner_invalid_marker: '準備済みのカタログインポートが見つかりましたが、マーカーファイルが不正か、互換性のないバージョンのアプリで作成されたため、適用できませんでした。準備済みのファイルは削除されました。'
+    staged_import_rejected_banner_incompatible_schema: '準備済みのカタログインポートは、データベースにこのバージョンのアプリが認識しないマイグレーションが含まれているため、適用できませんでした。準備済みのファイルは削除されました。'
+    staged_import_rejected_banner_user_declined: '準備済みのカタログインポートは、前回のアプリ起動時に拒否されました。準備済みのファイルは削除されました。'
+    staged_import_rejected_banner_import_rolled_back: '準備済みのカタログインポートは適用されましたが、ロールバックが必要となり、カタログはインポート前の状態に復元されました。準備済みのファイルは削除されました。'
+    import_plugins_heading: 'インポートしたアーカイブのプラグイン'
+    import_plugins_description: 'これらのプラグインは移行元のマシンで使用されていました。自動ではインストールされません。必要に応じてマーケットから手動でインストールしてください。'
+    import_plugins_dismiss_button: '非表示'
+    import_v1_report_heading: 'AnimeDB v1 からのインポートレポート'
+    import_v1_report_description: 'インポートで引き継がれた内容と、引き継げなかった内容です。レコードを確認し終えるまで残しておいてください。非表示にすると元に戻せません。'
+    import_v1_report_dismiss_button: '非表示'
+    import_plugin_status_installed: 'インストール済み'
+    import_plugin_status_available_in_market: 'マーケットで入手可能'
+    import_plugin_status_manual_install: '手動でインストール'
+    import_plugin_status_check_market: 'マーケットで確認'
+    export_heading: 'エクスポート'
+    description: 'カタログ (データベースとカバー画像) のコピーを、選択したフォルダに 1 つのファイルとして保存します。プロキシのパスワードやアクセストークンを含む、アプリとプラグインの設定は含まれません。'
+    destination_label: '保存先フォルダ'
+    pick_folder_button: 'フォルダを選択'
+    start_button: 'エクスポートを開始'
+    cancel_button: 'キャンセル'
+    progress_database: 'データベースのスナップショット: %current%/%total%'
+    progress_media: 'カバー画像を圧縮中: %current%/%total%'
+    done_text: 'カタログをエクスポートしました: %path%'
+    cancelled_text: 'エクスポートをキャンセルしました。'
+    error_insufficient_space: '選択したボリュームの空き容量が不足しています。'
+    error_generic: 'カタログをエクスポートできませんでした。'
+    import_heading: 'インポート'
+    import_description: '以前にエクスポートしたアーカイブをインポート用に準備します。アーカイブは今すぐ検証・展開されますが、現在のカタログはまだ置き換えられません。'
+    import_path_label: 'アーカイブファイル'
+    import_pick_button: 'アーカイブを選択'
+    import_file_filter_name: 'AnimeDB カタログアーカイブ'
+    import_start_button: 'インポートを開始'
+    import_confirm_text: 'アーカイブ「%path%」をインポート用に準備し、次回のアプリ起動時に現在のカタログを置き換えます。続行しますか？'
+    import_progress_database: 'データベースを準備中: %current%/%total%'
+    import_progress_media: 'メディアを展開中: %current%/%total%'
+    import_done_text: 'カタログアーカイブをインポート用に受け付けました。'
+    import_error_unreadable: '選択したファイル「%path%」をアーカイブとして読み取れませんでした。'
+    import_error_missing_manifest: '選択したアーカイブ「%path%」はカタログのバックアップとは異なるようで、インポートできません。'
+    import_error_unsupported_format_version: '選択したアーカイブ「%path%」は、互換性のないバージョンのアプリで作成されています。'
+    import_error_missing_database: '選択したアーカイブ「%path%」にはカタログのデータベースがありません。'
+    import_error_unsafe_entry: '選択したアーカイブ「%path%」に安全でないファイルパスが含まれていたため、拒否されました。'
+    import_error_generic: 'カタログのインポートを準備できませんでした。'
+    snapshots_heading: 'スナップショット'
+    snapshots_description: 'アプリの更新やカタログのインポートの前に作成されたデータベースのバックアップです。'
+    snapshots_empty: 'スナップショットはまだありません。'
+    snapshot_preimport_badge: 'インポート前'
+    snapshot_size_unit_kb: 'KB'
+    snapshot_size_unit_mb: 'MB'
+    snapshot_restore_button: '復元'
+    restore_confirm_text: '現在のカタログをスナップショット「%name%」の内容で置き換えます。この操作は元に戻せません。続行しますか？'
+    restore_error_text: 'スナップショットを復元できませんでした。'
 
 settings_proxy:
     title: プロキシサーバー — 設定 — AnimeDB
