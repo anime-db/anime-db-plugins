@@ -1,5 +1,5 @@
 {
-    "sequence": 89,
+    "sequence": 90,
     "asset_mirrors": [
         "https://github.com/anime-db/anime-db-plugins/releases/download/<id>/<version>/<file>",
         "https://mr01.anime-db.org/<id>/<version>/<file>"
@@ -158,11 +158,11 @@
             "manifest": {
                 "id": "animedb-language-pack",
                 "name": "Language Pack",
-                "version": "0.2.7",
+                "version": "0.2.8",
                 "type": "translation",
                 "description": "Официальный языковой пакет AnimeDB: дополнительные языки интерфейса.",
                 "author": "AnimeDB",
-                "translation_keys_count": 905,
+                "translation_keys_count": 952,
                 "locales": [
                     "de",
                     "ja"
@@ -173,6 +173,16 @@
                 }
             },
             "versions": [
+                {
+                    "version": "0.2.8",
+                    "core": ">=0.0.1",
+                    "sha256": "76fa127ada4698db33a3c62df0c1770aa738f0c4259712e05c0f03702ee088e7",
+                    "translation_keys_count": 952,
+                    "locales": [
+                        "de",
+                        "ja"
+                    ]
+                },
                 {
                     "version": "0.2.7",
                     "core": ">=0.0.1",
