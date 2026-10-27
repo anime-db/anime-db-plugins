@@ -368,6 +368,27 @@ storage_list:
     confirm_button: 確定
     confirm_error: 選択を確定できませんでした。
     confirmed_text: '確定済み: %title%'
+    path_unavailable: 'パスを利用できません'
+    group_conflict: 'すでにカタログにあります'
+    group_error: '処理に失敗しました'
+    cleaned_name_text: '検索名: %name%'
+    candidate_label: '%title% — %source%'
+    candidate_source_catalog: 'すでにカタログにあります'
+    none_match_link: 'どれも一致しません — 作品を作成'
+    confirmed_without_plugin_data_text: 'プラグインのデータなしで追加: %title%'
+    conflict_text: 'すでにカタログにある「%title%」で、%path% に関連付けられています'
+    error_text: 'エラー: %path% — %message%'
+    delete_error_preset: 'ストレージ「%name%」は既定のダウンロード用ストレージとして使われているため、削除できません。'
+    delete_error_unfinished_downloads: 'ストレージ「%name%」には未完了またはエラーのダウンロードが残っているため、削除できません。それらを削除するとストレージを解放できます。'
+    needs_decision: '判断が必要: %count%'
+    scan_log_link: 'スキャンログ'
+    entry_missing: 'フォルダーはもう存在しません。'
+    scan_running: 'スキャン中'
+    storage_unavailable: 'ストレージ「%name%」は現在利用できません。ディスクを接続して、もう一度お試しください。'
+    resolved_summary: '解決済み: %count%'
+    journal_load_error: 'スキャン結果を読み込めませんでした。'
+    manual_entry_text: '一致するものが見つかりません: %path%'
+    candidates_text: '候補: %titles%'
 
 anime_detail:
     title: '%title% — AnimeDB'
@@ -487,6 +508,13 @@ storage_new:
     submit_button: 作成
     error_invalid: 正しい名前、パス、ストレージの種類を指定してください。
     skip_link: スキップ
+    path_not_applicable_hint: 'この種類のメディアにはファイルパスがないため、保存されません。'
+    path_purpose_hint: 'ストレージとは、作品のフォルダーが入っているフォルダーのことです。'
+    error_already_connected: 'このフォルダーはすでにストレージ「%name%」として接続されています。'
+    existing_storage_link: 'ストレージを開く'
+    cancel_button: 'キャンセル'
+    type_detecting: '種類を判定しています…'
+    type_change: '変更'
 
 storage_scan_prompt:
     title: スキャンを実行しますか？ — AnimeDB
@@ -500,6 +528,30 @@ onboarding:
     description: カタログは空です。作品ファイルのあるストレージを追加するか、デモデータを読み込んで始めてください。
     add_storage_button: ストレージを追加
     load_demo_button: デモデータを読み込む
+    search_plugins_heading: 'プラグインで検索'
+    search_plugins_description: '外部ソースで作品を名前から探して、カタログに追加します。'
+    search_plugins_button: 'プラグインで検索'
+    search_plugins_unavailable_not_installed_button: 'マーケットを開く'
+    search_plugins_unavailable_disabled_button: 'プラグインを設定'
+    add_storage_heading: 'ストレージを追加'
+    add_storage_description: '作品ファイルのあるフォルダーを指定すると、作品が自動的に見つかります。'
+    scan_storage_heading: 'ストレージをスキャン'
+    scan_storage_description: '追加済みのストレージにある作品を探します。'
+    scan_storage_button: 'ストレージをスキャン'
+    load_demo_heading: 'デモデータを読み込む'
+    load_demo_description: 'サンプルの作品でカタログを埋めて、動作を確認できます。'
+    import_v1_heading: 'AnimeDB v1 からインポート'
+    import_v1_description: 'AnimeDB v1 がインストールされているフォルダーを選ぶと、コレクションを移行できます。インポートはカタログを置き換えるため、カタログが空の間だけ利用できます。'
+    import_v1_button: 'v1 のフォルダーを選択'
+    import_v1_cancel_button: 'キャンセル'
+    import_v1_progress_read: 'v1 のデータベースを読み込み中: %current% / %total%。'
+    import_v1_progress_records: '作品を作成中: %current% / %total%。'
+    import_v1_progress_covers: 'カバー画像をインポート中: %current% / %total%。'
+    import_v1_cancelled: 'インポートはキャンセルされました。何もインポートされていません。'
+    import_v1_error_generic: 'インポートに失敗しました。何もインポートされていません。フォルダーを確認して、もう一度お試しください。'
+    import_v1_done_heading: 'インポートが完了しました'
+    import_v1_done_no_report: 'インポートが完了しました。'
+    import_v1_open_catalog_button: 'カタログを開く'
 
 storage_edit:
     title: ストレージの編集 — AnimeDB
@@ -508,6 +560,12 @@ storage_edit:
     field_type: 種類
     submit_button: 保存
     error_invalid: 正しい名前とストレージの種類を指定してください。
+    field_path: 'パス'
+    error_preset_path: 'ストレージ「%name%」は既定のダウンロード用ストレージとして使われているため、パスを変更できません。'
+    error_preset_type: 'ストレージ「%name%」は既定のダウンロード用ストレージとして使われているため、書き込み不可にできません。'
+    error_unfinished_downloads: 'ストレージ「%name%」には未完了またはエラーのダウンロードが残っているため、変更できません。それらを削除するとストレージを解放できます。'
+    path_not_applicable_hint: 'この種類のメディアにはファイルパスがないため、保存されません。'
+    preset_path_hint: '既定のダウンロード用ストレージのパスは変更できません。'
 
 plugin_widget:
     loading: 読み込み中…
@@ -726,3 +784,53 @@ download_adopt:
     error_anime_has_folder: このエントリにはすでにフォルダー「%path%」があります。
     error_incoming_target_exists: ストレージにはすでに「%path%」があります。一時フォルダーから移動すると名前の競合が発生します。
     error_storage_mismatch: ダウンロードのファイルが、そのストレージ「%storage%」にないため、関連付けできません。
+
+import_v1:
+    error_not_v1_installation: 'これは AnimeDB v1 のインストールフォルダーではありません。「%path%」に読み取れるデータベースがありません。'
+    error_catalog_not_empty: 'カタログが空ではありません。AnimeDB v1 は空のカタログにのみインポートできます。'
+    error_invalid_record: '作品「%title%」（v1 の ID: %id%）はインポートできないため、何もインポートされませんでした。AnimeDB v1 で修正してから、もう一度インポートしてください。'
+    review_unknown_end_date: '「%title%」の終了日が不明です。視聴ステータスを確認してください。'
+    review_status_downgraded: '「%title%」は v1 で視聴済みになっていましたが、放送日が不明なため、視聴ステータスを「%status%」に設定しました。確認してください。'
+    report_created: '作成した作品: %count%（v1 のラベルからのステータス: %fromLabel%、既定のステータス: %byDefault%）。'
+    report_names: '別名: %count%（日本語: %ja%、ロシア語: %ru%、言語なし: %none%）。'
+    report_related: 'ソース: %sources%、説明: %descriptions%、スタジオ: %studios%、ラベル: %labels%。'
+    report_genres: '引き継いだジャンル、テーマ、対象層: %count%。'
+    report_genres_dropped: '意図的に除外したジャンル（18歳以上向け）: %count%。'
+    report_genres_unmapped: '対応するものがないジャンル: %count%（%names%）。'
+    report_covers: 'インポートしたカバー画像: %imported%、見つからなかったファイル: %missing%。'
+    report_storages: '作成したストレージ: %count%（存在しないパスを指すもの: %unavailable%）。'
+    report_storages_skipped: '使用できるパスがないためスキップしたストレージ: %names%。'
+    report_episodes_dropped: 'シリーズ形式ではない種類の作品で話数を引き継がなかったもの: %count%（%titles%）。'
+    report_end_dates: '終了日を初回放送日に合わせたもの: %count%。'
+    report_status_downgraded: '放送日が不明なため「視聴済み」のステータスを下げた作品: %count%。'
+    report_needs_attention: '終了日が不明で確認が必要な作品: %count%。'
+
+storage_scan_progress:
+    title: 'ストレージのスキャン — AnimeDB'
+    heading: 'スキャン結果'
+    not_started: 'スキャンは開始されていません。'
+    scan_button: 'スキャンを実行'
+    catalog_link: 'カタログ'
+    last_run_heading: '前回のスキャン'
+    progress_label: 'スキャンの進行状況'
+
+storage_scan_log:
+    title: 'スキャンログ — AnimeDB'
+    heading: 'スキャンログ: %name%'
+    run_title: 'スキャン結果 — AnimeDB'
+    run_heading: 'スキャン結果: %name%'
+    empty: 'スキャンはまだ行われていません。'
+    started_column: '開始'
+    status_column: 'ステータス'
+    counts_column: '検出数'
+    open_link: '開く'
+    back_link: 'スキャンログ'
+    storages_link: 'ストレージ'
+    count_text: '%label%: %count%'
+    run_error: 'スキャンに失敗しました: %message%'
+    interrupted_hint: 'スキャンは完了前に中断されました。もう一度実行してください。'
+    status_running: '実行中'
+    status_done: '完了'
+    status_failed: '失敗'
+    status_marker_conflict: 'フォルダーは別のストレージとして接続されています'
+    status_interrupted: '中断'

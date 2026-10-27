@@ -368,6 +368,27 @@ storage_list:
     confirm_button: Bestätigen
     confirm_error: Die Auswahl konnte nicht bestätigt werden.
     confirmed_text: 'Bestätigt: %title%'
+    path_unavailable: 'Pfad nicht verfügbar'
+    group_conflict: 'Bereits im Katalog'
+    group_error: 'Verarbeitung fehlgeschlagen'
+    cleaned_name_text: 'Suchname: %name%'
+    candidate_label: '%title% — %source%'
+    candidate_source_catalog: 'bereits im Katalog'
+    none_match_link: 'Keiner passt — Eintrag erstellen'
+    confirmed_without_plugin_data_text: 'Ohne Plugin-Daten hinzugefügt: %title%'
+    conflict_text: 'Bereits im Katalog „%title%“, verknüpft mit %path%'
+    error_text: 'Fehler: %path% — %message%'
+    delete_error_preset: 'Der Speicherort „%name%“ kann nicht gelöscht werden: Er wird als Standard-Speicherort für Downloads verwendet.'
+    delete_error_unfinished_downloads: 'Der Speicherort „%name%“ kann nicht gelöscht werden: Er enthält noch unfertige oder fehlgeschlagene Downloads. Entfernen Sie diese, um den Speicherort freizugeben.'
+    needs_decision: 'Entscheidung nötig: %count%'
+    scan_log_link: 'Scan-Protokoll'
+    entry_missing: 'Der Ordner existiert nicht mehr.'
+    scan_running: 'Scan läuft'
+    storage_unavailable: 'Der Speicherort „%name%“ ist derzeit nicht verfügbar — schließen Sie den Datenträger an und versuchen Sie es erneut.'
+    resolved_summary: 'Erledigt: %count%'
+    journal_load_error: 'Die Scan-Ergebnisse konnten nicht geladen werden.'
+    manual_entry_text: 'Keine Übereinstimmung gefunden: %path%'
+    candidates_text: 'Kandidaten: %titles%'
 
 anime_detail:
     title: '%title% — AnimeDB'
@@ -487,6 +508,13 @@ storage_new:
     submit_button: Erstellen
     error_invalid: Geben Sie einen gültigen Namen, Pfad und Speicherort-Typ an.
     skip_link: Überspringen
+    path_not_applicable_hint: 'Dieser Medientyp hat keinen Dateipfad, daher wird keiner gespeichert.'
+    path_purpose_hint: 'Ein Speicherort ist ein Ordner, der die Ordner mit Anime enthält.'
+    error_already_connected: 'Dieser Ordner ist bereits als Speicherort „%name%“ verbunden.'
+    existing_storage_link: 'Speicherort öffnen'
+    cancel_button: 'Abbrechen'
+    type_detecting: 'Typ wird erkannt…'
+    type_change: 'Ändern'
 
 storage_scan_prompt:
     title: Scan starten? — AnimeDB
@@ -500,6 +528,30 @@ onboarding:
     description: Der Katalog ist leer. Fügen Sie einen Speicherort mit Ihren Anime-Dateien hinzu oder laden Sie Demodaten, um zu starten.
     add_storage_button: Speicherort hinzufügen
     load_demo_button: Demodaten laden
+    search_plugins_heading: 'In Plugins suchen'
+    search_plugins_description: 'Suchen Sie einen Anime anhand des Namens in externen Quellen und fügen Sie ihn dem Katalog hinzu.'
+    search_plugins_button: 'In Plugins suchen'
+    search_plugins_unavailable_not_installed_button: 'Marktplatz öffnen'
+    search_plugins_unavailable_disabled_button: 'Plugins konfigurieren'
+    add_storage_heading: 'Speicherort hinzufügen'
+    add_storage_description: 'Geben Sie einen Ordner mit Ihren Anime-Dateien an, damit Einträge automatisch gefunden werden.'
+    scan_storage_heading: 'Speicherort scannen'
+    scan_storage_description: 'Finden Sie Anime in einem bereits hinzugefügten Speicherort.'
+    scan_storage_button: 'Speicherort scannen'
+    load_demo_heading: 'Demodaten laden'
+    load_demo_description: 'Füllen Sie den Katalog mit Beispieleinträgen, um zu sehen, wie es funktioniert.'
+    import_v1_heading: 'Import aus AnimeDB v1'
+    import_v1_description: 'Wählen Sie den Ordner, in dem AnimeDB v1 installiert ist, um Ihre Sammlung zu übernehmen. Der Import ersetzt den Katalog und wird nur angeboten, solange dieser leer ist.'
+    import_v1_button: 'v1-Ordner wählen'
+    import_v1_cancel_button: 'Abbrechen'
+    import_v1_progress_read: 'v1-Datenbank wird gelesen: %current% von %total%.'
+    import_v1_progress_records: 'Einträge werden erstellt: %current% von %total%.'
+    import_v1_progress_covers: 'Cover werden importiert: %current% von %total%.'
+    import_v1_cancelled: 'Der Import wurde abgebrochen. Es wurde nichts importiert.'
+    import_v1_error_generic: 'Der Import ist fehlgeschlagen. Es wurde nichts importiert. Prüfen Sie den Ordner und versuchen Sie es erneut.'
+    import_v1_done_heading: 'Import abgeschlossen'
+    import_v1_done_no_report: 'Der Import ist abgeschlossen.'
+    import_v1_open_catalog_button: 'Katalog öffnen'
 
 storage_edit:
     title: Speicherort bearbeiten — AnimeDB
@@ -508,6 +560,12 @@ storage_edit:
     field_type: Typ
     submit_button: Speichern
     error_invalid: Geben Sie einen gültigen Namen und Speicherort-Typ an.
+    field_path: 'Pfad'
+    error_preset_path: 'Der Pfad des Speicherorts „%name%“ kann nicht geändert werden: Er wird als Standard-Speicherort für Downloads verwendet.'
+    error_preset_type: 'Der Speicherort „%name%“ kann nicht schreibgeschützt werden: Er wird als Standard-Speicherort für Downloads verwendet.'
+    error_unfinished_downloads: 'Der Speicherort „%name%“ kann nicht geändert werden: Er enthält noch unfertige oder fehlgeschlagene Downloads. Entfernen Sie diese, um den Speicherort freizugeben.'
+    path_not_applicable_hint: 'Dieser Medientyp hat keinen Dateipfad, daher wird keiner gespeichert.'
+    preset_path_hint: 'Der Pfad des Standard-Speicherorts für Downloads kann nicht geändert werden.'
 
 plugin_widget:
     loading: Wird geladen…
@@ -726,3 +784,53 @@ download_adopt:
     error_anime_has_folder: Der Eintrag hat bereits den Ordner „%path%“.
     error_incoming_target_exists: „%path%“ existiert im Speicherort bereits — das Verschieben aus dem temporären Ordner würde mit einem Namenskonflikt enden.
     error_storage_mismatch: Die Dateien des Downloads liegen nicht in dessen Speicherort „%storage%“ — sie können nicht verknüpft werden.
+
+import_v1:
+    error_not_v1_installation: 'Dies ist kein Installationsverzeichnis von AnimeDB v1: Unter „%path%“ gibt es keine lesbare Datenbank.'
+    error_catalog_not_empty: 'Der Katalog ist nicht leer: AnimeDB v1 lässt sich nur in einen leeren Katalog importieren.'
+    error_invalid_record: 'Der Eintrag „%title%“ (v1-ID %id%) kann nicht importiert werden, daher wurde nichts importiert. Korrigieren Sie ihn in AnimeDB v1 und starten Sie den Import erneut.'
+    review_unknown_end_date: 'Das Enddatum von „%title%“ ist unbekannt. Prüfen Sie den Anschaustatus.'
+    review_status_downgraded: '„%title%“ war in v1 als gesehen markiert, aber die Erscheinungstermine sind unbekannt: Der Anschaustatus wurde auf „%status%“ gesetzt. Prüfen Sie ihn.'
+    report_created: 'Erstellte Einträge: %count% (Status aus einem v1-Label: %fromLabel%, Standardstatus: %byDefault%).'
+    report_names: 'Alternative Namen: %count% (japanisch: %ja%, russisch: %ru%, ohne Sprache: %none%).'
+    report_related: 'Quellen: %sources%, Beschreibungen: %descriptions%, Studios: %studios%, Labels: %labels%.'
+    report_genres: 'Übernommene Genres, Themen und Zielgruppen: %count%.'
+    report_genres_dropped: 'Absichtlich ausgelassene Genres (18+): %count%.'
+    report_genres_unmapped: 'Genres ohne Entsprechung: %count% (%names%).'
+    report_covers: 'Importierte Cover: %imported%, nicht gefundene Dateien: %missing%.'
+    report_storages: 'Erstellte Speicherorte: %count% (mit nicht vorhandenem Pfad: %unavailable%).'
+    report_storages_skipped: 'Übersprungene Speicherorte, kein verwendbarer Pfad: %names%.'
+    report_episodes_dropped: 'Folgenanzahl nicht übernommen bei Einträgen eines Typs ohne Serienformat: %count% (%titles%).'
+    report_end_dates: 'Enddatum auf das Premierendatum gesetzt: %count%.'
+    report_status_downgraded: 'Einträge, deren Status „Gesehen“ herabgestuft wurde, Erscheinungstermine unbekannt: %count%.'
+    report_needs_attention: 'Zu prüfende Einträge, Enddatum unbekannt: %count%.'
+
+storage_scan_progress:
+    title: 'Speicherort-Scan — AnimeDB'
+    heading: 'Scan-Ergebnisse'
+    not_started: 'Der Scan wurde nicht gestartet.'
+    scan_button: 'Scan starten'
+    catalog_link: 'Katalog'
+    last_run_heading: 'Letzter Scan'
+    progress_label: 'Scan-Fortschritt'
+
+storage_scan_log:
+    title: 'Scan-Protokoll — AnimeDB'
+    heading: 'Scan-Protokoll: %name%'
+    run_title: 'Scan-Ergebnisse — AnimeDB'
+    run_heading: 'Scan-Ergebnisse: %name%'
+    empty: 'Noch keine Scans.'
+    started_column: 'Gestartet'
+    status_column: 'Status'
+    counts_column: 'Gefunden'
+    open_link: 'Öffnen'
+    back_link: 'Scan-Protokoll'
+    storages_link: 'Speicherorte'
+    count_text: '%label%: %count%'
+    run_error: 'Scan fehlgeschlagen: %message%'
+    interrupted_hint: 'Der Scan wurde vor dem Abschluss unterbrochen; starten Sie ihn erneut.'
+    status_running: 'Läuft'
+    status_done: 'Abgeschlossen'
+    status_failed: 'Fehlgeschlagen'
+    status_marker_conflict: 'Ordner ist als anderer Speicherort verbunden'
+    status_interrupted: 'Unterbrochen'
