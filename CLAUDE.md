@@ -14,6 +14,9 @@ Entry point for Claude Code agents working in this monorepo. For deeper referenc
   version bumps for published plugins, catalog domain per plugin type, the
   `translation_keys_count` and `locales` manifest fields, pluralization, empty values,
   the `ui` manifest field and `assets/` directory rules, recommended Russian terminology
+- [.claude-docs/security.md](.claude-docs/security.md) — security model of the monorepo side: PHPStan
+  gate limits, invariants (external data parsing, plugin I/O), registry signing, accepted risks;
+  read before reviewing a diff for security
 
 ## Commands
 
