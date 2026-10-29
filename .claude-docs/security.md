@@ -83,14 +83,7 @@ Plugin I/O:
 
 A finding that matches an accepted risk and does not weaken it further is not a finding.
 
-### AniDB password stored in plain text in settings
-
-- Class: secret stored unencrypted at rest (plugin settings).
-- Why accepted: the settings live in the user's own profile on their own machine; the threat
-  model does not include other local users or the user themselves.
-- Decision: #226 (https://github.com/anime-db/anime-db-plugins/issues/226).
-- Revisit when: a change takes data or access beyond the user's profile on their machine —
-  settings sync or export that includes secrets, multi-user installs.
+There are no accepted risks on the monorepo side at present.
 
 ## 6. Maintenance rule
 
